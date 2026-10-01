@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#4B2A8A" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#16121D" media="(prefers-color-scheme: dark)" />
+<meta name="description" content="Song library and set lists for the Namasuba Redeemed worship team." />
+<title>NRSC Worship · Songs</title>
+<link rel="manifest" href="/manifest.webmanifest" />
+<link rel="icon" href="/icon.svg" type="image/svg+xml" />
+<link rel="stylesheet" href="/app.css?v=1" />
+<script src="/shared.js?v=1" defer></script>
+<script src="/ui.js?v=1" defer></script>
+</head>
+<body>
+<main>
+  <div class="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+    <input id="q" type="search" placeholder="Search title or lyrics…" autocomplete="off" enterkeyhint="search" aria-label="Search songs" />
+  </div>
+  <div class="filters">
+    <div class="seg" id="session" role="group" aria-label="Session">
+      <button type="button" data-v="" class="on">All</button>
+      <button type="button" data-v="praise">Praise</button>
+      <button type="button" data-v="worship">Worship</button>
+    </div>
+    <select id="theme" aria-label="Theme"><option value="">All themes</option></select>
+    <select id="lang" aria-label="Language">
+      <option value="">All languages</option>
+      <option value="luganda">Luganda</option>
+      <option value="english">English</option>
+      <option value="both">Both languages</option>
+    </select>
+  </div>
+  <div id="msg"></div>
+  <p class="count" id="count" aria-live="polite"></p>
+  <div class="songs" id="list"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div>
+</main>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var W = NRSCWorship, esc = UI.esc, $ = UI.$;
+  UI.header('songs');
+
+  var songs = null, themes = [], byTheme = {};
+  var lyricHits = null;       // { id: { match, snippet } } for the current search text, from the server
+  var lyricQuery = '';
+  var params = new URLSearchParams(location.search);
+  var f = { text: params.get('q') || '', session: params.get('session') || '', theme: params.get('theme') || '', language: params.get('lang') || '' };
+
+  $('#q').value = f.text;
+  $('#lang').value = f.language;
+  setSeg(f.session);
+
+  function setSeg(v) {
+    document.querySelectorAll('#session button').forEach(function (b) { b.classList.toggle('on', b.dataset.v === v); });
+  }
+
+  // Keep filters in the address so Back returns to the same list and links can be shared.
+  function saveUrl() {
+    var p = new URLSearchParams();
+    if (f.text) p.set('q', f.text);
+    if (f.session) p.set('session', f.session);
+    if (f.theme) p.set('theme', f.theme);
+    if (f.language) p.set('lang', f.language);
+    history.replaceState(null, '', location.pathname + (p.toString() ? '?' + p : ''));
+  }
+
+  function highlight(snippet, q) {
+    var s = esc(snippet);
+    if (!q) return s;
+    var i = snippet.toLowerCase().indexOf(q.toLowerCase());
+    if (i < 0) return s;
+    return esc(snippet.slice(0, i)) + '<mark>' + esc(snippet.slice(i, i + q.length)) + '</mark>' + esc(snippet.slice(i + q.length));
+  }
+
+  function render() {
+    if (!songs) return;
+    var q = f.text.trim();
+    var useLyrics = q.length >= 2 && lyricHits && lyricQuery === q;
+    var shown = songs.filter(function (s) {
+      if (!W.matchesFilters(s, { session: f.session, theme: f.theme, language: f.language })) return false;
+      if (!q) return true;
+      return W.matchesFilters(s, { text: q }) || (useLyrics && lyricHits[s.id]);
+    });
+    var list = $('#list');
+    if (!songs.length) {
+      $('#count').textContent = '';
+      list.innerHTML = '<div class="none">No songs in the library yet.<br><a href="/admin.html#song/new">Add a song</a> or <a href="/admin.html#import">import a list</a> (admin PIN needed).</div>';
+      return;
+    }
+    $('#count').textContent = shown.length === songs.length ? songs.length + ' songs' : shown.length + ' of ' + songs.length + ' songs';
+    if (!shown.length) {
+      list.innerHTML = '<div class="none">No songs match.' + (q.length >= 2 && !useLyrics ? ' Searching lyrics…' : '') +
+        '<br><button class="btn quiet small" id="clear" style="margin-top:10px">Clear search and filters</button></div>';
+      $('#clear').onclick = function () { f = { text: '', session: '', theme: '', language: '' }; $('#q').value = ''; $('#lang').value = ''; $('#theme').value = ''; setSeg(''); saveUrl(); render(); };
+      return;
+    }
+    list.innerHTML = shown.map(function (s) {
+      var hit = useLyrics && lyricHits[s.id];
+      var snippet = hit && hit.match !== 'title' && hit.snippet
+        ? '<div class="snip">' + (hit.match === 'english' ? 'English: ' : 'Luganda: ') + '“' + highlight(hit.snippet, q) + '”</div>' : '';
+      var themesHtml = UI.themeNames(s.theme_ids, byTheme).map(function (n) { return '<span class="badge theme">' + esc(n) + '</span>'; }).join('');
+      return '<a class="song" href="/song.html?id=' + s.id + '">' +
+        '<div class="t">' + esc(s.title) + '</div>' +
+        (s.title_alt ? '<div class="alt">' + esc(s.title_alt) + '</div>' : '') + snippet +
+        '<div class="badges">' + UI.sessionBadge(s.session) +
+        (s.song_key ? '<span class="badge key">Key ' + esc(s.song_key) + '</span>' : '') + themesHtml + '</div></a>';
+    }).join('');
+  }
+
+  // Lyrics search runs on the server (the list itself has no lyrics, to stay small).
+  var searchTimer, searchSeq = 0;
+  function searchLyrics() {
+    var q = f.text.trim();
+    clearTimeout(searchTimer);
+    if (q.length < 2) { lyricHits = null; lyricQuery = ''; return; }
+    searchTimer = setTimeout(async function () {
+      var seq = ++searchSeq;
+      try {
+        var r = await UI.api('/api/songs?q=' + encodeURIComponent(q));
+        if (seq !== searchSeq) return;
+        lyricHits = {};
+        r.matches.forEach(function (m) { lyricHits[m.id] = m; });
+        lyricQuery = q;
+        render();
+      } catch (e) { /* title search still works */ }
+    }, 350);
+  }
+
+  $('#q').addEventListener('input', function (e) { f.text = e.target.value; saveUrl(); render(); searchLyrics(); });
+  $('#session').addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    f.session = b.dataset.v; setSeg(f.session); saveUrl(); render();
+  });
+  $('#theme').addEventListener('change', function (e) { f.theme = e.target.value; saveUrl(); render(); });
+  $('#lang').addEventListener('change', function (e) { f.language = e.target.value; saveUrl(); render(); });
+
+  function showError(e) { $('#list').innerHTML = ''; $('#count').textContent = ''; $('#msg').innerHTML = UI.errorHtml(e); }
+
+  UI.cached('nw.themes', '/api/themes', function (d) {
+    themes = d.themes; byTheme = {};
+    themes.forEach(function (t) { byTheme[t.id] = t; });
+    $('#theme').innerHTML = '<option value="">All themes</option>' + themes.map(function (t) {
+      return '<option value="' + t.id + '">' + esc(t.name) + '</option>';
+    }).join('');
+    $('#theme').value = f.theme;
+    render();
+  }, showError);
+
+  UI.cached('nw.songs', '/api/songs', function (d) { songs = d.songs; $('#msg').innerHTML = ''; render(); }, showError);
+  searchLyrics();
+});
+</script>
+</body>
+</html>

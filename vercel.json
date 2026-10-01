@@ -1,0 +1,12 @@
+{
+  "headers": [
+    {
+      "source": "/(.*)\\.(css|js|svg|webmanifest)",
+      "headers": [{ "key": "cache-control", "value": "public, max-age=3600, stale-while-revalidate=604800" }]
+    },
+    {
+      "source": "/sw.js",
+      "headers": [{ "key": "cache-control", "value": "no-cache" }]
+    }
+  ]
+}

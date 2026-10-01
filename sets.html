@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#4B2A8A" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#16121D" media="(prefers-color-scheme: dark)" />
+<title>Set lists · NRSC Worship</title>
+<link rel="manifest" href="/manifest.webmanifest" />
+<link rel="icon" href="/icon.svg" type="image/svg+xml" />
+<link rel="stylesheet" href="/app.css?v=1" />
+<script src="/shared.js?v=1" defer></script>
+<script src="/ui.js?v=1" defer></script>
+</head>
+<body>
+<main>
+  <h1>Set lists</h1>
+  <div id="msg"></div>
+  <div id="upcoming"></div>
+  <div id="past"></div>
+  <div id="loading"><div class="skeleton"></div><div class="skeleton" style="margin-top:8px"></div></div>
+</main>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var W = NRSCWorship, esc = UI.esc, $ = UI.$;
+  UI.header('sets');
+  var todayIso = new Date(Date.now() + 3 * 3600000).toISOString().slice(0, 10); // Kampala date
+
+  function card(s) {
+    var n = (s.praise_count || 0) + (s.worship_count || 0);
+    return '<a class="song" href="/set.html?id=' + s.id + '">' +
+      '<div class="date">' + esc(W.formatDate(s.service_date)) + (s.service_date === todayIso ? ' · Today' : '') + '</div>' +
+      '<div class="t">' + esc(s.title || (s.theme ? s.theme.name : 'Service')) + '</div>' +
+      '<div class="badges">' + (s.theme && s.title ? '<span class="badge theme">' + esc(s.theme.name) + '</span>' : '') +
+      '<span class="badge praise">' + (s.praise_count || 0) + ' praise</span><span class="badge worship">' + (s.worship_count || 0) + ' worship</span>' +
+      (s.leader_name ? '<span class="badge key">' + esc(s.leader_name) + '</span>' : '') +
+      (n === 0 ? '<span class="badge recent">empty</span>' : '') + '</div></a>';
+  }
+
+  UI.cached('nw.sets', '/api/sets', function (d) {
+    $('#loading').hidden = true;
+    var up = d.sets.filter(function (s) { return s.service_date >= todayIso; }).reverse();
+    var past = d.sets.filter(function (s) { return s.service_date < todayIso; });
+    $('#upcoming').innerHTML = '<h2>Coming up</h2><div class="songs" style="margin-top:8px">' +
+      (up.length ? up.map(card).join('') : '<div class="none">No set list for the coming Sunday yet.<br><a href="/admin.html#set/new">Build one</a> (admin PIN needed).</div>') + '</div>';
+    $('#past').innerHTML = past.length ? '<h2>Past services</h2><div class="songs" style="margin-top:8px">' + past.map(card).join('') + '</div>' : '';
+  }, function (e) { $('#loading').hidden = true; $('#msg').innerHTML = UI.errorHtml(e); });
+});
+</script>
+</body>
+</html>

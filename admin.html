@@ -1,0 +1,626 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#4B2A8A" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#16121D" media="(prefers-color-scheme: dark)" />
+<meta name="robots" content="noindex" />
+<title>Admin · NRSC Worship</title>
+<link rel="manifest" href="/manifest.webmanifest" />
+<link rel="icon" href="/icon.svg" type="image/svg+xml" />
+<link rel="stylesheet" href="/app.css?v=1" />
+<script src="/shared.js?v=1" defer></script>
+<script src="/ui.js?v=1" defer></script>
+</head>
+<body>
+<main>
+  <section id="login" class="stack" hidden>
+    <h1>Admin</h1>
+    <p class="muted" style="margin:0">For worship leaders: add songs, build set lists and manage themes.</p>
+    <form id="loginForm" class="card stack" autocomplete="off">
+      <div>
+        <label class="lbl" for="pin">Admin PIN</label>
+        <input id="pin" type="password" autocapitalize="off" autocorrect="off" spellcheck="false" autocomplete="current-password" required />
+      </div>
+      <label class="row small"><input type="checkbox" id="remember"> Remember on this phone</label>
+      <div id="loginMsg"></div>
+      <button class="btn primary block" type="submit">Sign in</button>
+    </form>
+  </section>
+
+  <section id="panel" class="stack" hidden>
+    <div class="row">
+      <div class="seg grow" id="atabs" role="tablist">
+        <button type="button" data-t="songs">Songs</button>
+        <button type="button" data-t="sets">Set lists</button>
+        <button type="button" data-t="themes">Themes</button>
+        <button type="button" data-t="import">Import</button>
+      </div>
+    </div>
+    <div id="view" class="stack"></div>
+    <p class="small muted" style="text-align:center"><a href="#setup">Setup check</a> · <a href="#" id="signout">Sign out</a></p>
+  </section>
+</main>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var W = NRSCWorship, esc = UI.esc, $ = UI.$;
+  UI.header('admin');
+
+  var S = { pin: UI.pin.get(), songs: null, themes: null, usage: {} };
+  var dirty = false; // unsaved form changes on the current view
+  window.addEventListener('beforeunload', function (e) { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
+
+  // ------------------------------------------------------------ data
+
+  async function act(body) {
+    try { return await UI.api('/api/admin', { pin: S.pin, body: body }); }
+    catch (e) { if (e.code === 'unauthorized') signOut('Your PIN no longer works — sign in again.'); throw e; }
+  }
+  async function loadSongs(force) {
+    if (S.songs && !force) return S.songs;
+    var d = await UI.api('/api/songs' + (force ? '?fresh=' + Date.now() : ''), { fresh: force });
+    UI.store.set('nw.songs', d);
+    return (S.songs = d.songs);
+  }
+  async function loadThemes(force) {
+    if (S.themes && !force) return S.themes;
+    var d = await UI.api('/api/themes' + (force ? '?fresh=' + Date.now() : ''), { fresh: force });
+    UI.store.set('nw.themes', d);
+    return (S.themes = d.themes);
+  }
+  function themeById() { var m = {}; (S.themes || []).forEach(function (t) { m[t.id] = t; }); return m; }
+
+  // ------------------------------------------------------------ sign in
+
+  function showLogin(msg) {
+    $('#panel').hidden = true;
+    $('#login').hidden = false;
+    $('#loginMsg').innerHTML = msg ? UI.errorHtml({ message: msg }) : '';
+    setTimeout(function () { $('#pin').focus(); }, 50);
+  }
+  function signOut(msg) { UI.pin.clear(); S.pin = ''; dirty = false; showLogin(msg); }
+  $('#signout').onclick = function (e) { e.preventDefault(); signOut(); };
+
+  async function tryPin(pin, remember) {
+    var d = await UI.api('/api/admin', { pin: pin, fresh: true });
+    S.pin = pin;
+    S.usage = d.usage || {};
+    UI.pin.set(pin, remember);
+    $('#login').hidden = true;
+    $('#panel').hidden = false;
+    route();
+  }
+
+  $('#loginForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    var btn = e.target.querySelector('button[type=submit]');
+    btn.disabled = true;
+    $('#loginMsg').innerHTML = '';
+    try { await tryPin($('#pin').value.trim(), $('#remember').checked); }
+    catch (err) { $('#loginMsg').innerHTML = UI.errorHtml(err); }
+    finally { btn.disabled = false; }
+  });
+
+  // ------------------------------------------------------------ routing
+
+  window.addEventListener('hashchange', function () { if (S.pin) route(); });
+  var ROUTES = [
+    [/^#?(songs)?$/, viewSongs, 'songs'],
+    [/^#song\/(new|\d+)$/, viewSongForm, 'songs'],
+    [/^#import$/, viewImport, 'import'],
+    [/^#sets$/, viewSets, 'sets'],
+    [/^#set\/(new|\d+)$/, viewBuilder, 'sets'],
+    [/^#themes$/, viewThemes, 'themes'],
+    [/^#setup$/, viewSetup, ''],
+  ];
+  var lastHash = location.hash;
+  function route() {
+    if (dirty && location.hash !== lastHash && !confirm('You have unsaved changes. Leave without saving?')) {
+      history.replaceState(null, '', lastHash || '#');
+      return;
+    }
+    dirty = false;
+    lastHash = location.hash;
+    var h = location.hash || '#songs';
+    for (var i = 0; i < ROUTES.length; i++) {
+      var m = h.match(ROUTES[i][0]);
+      if (m) {
+        document.querySelectorAll('#atabs button').forEach(function (b) { b.classList.toggle('on', b.dataset.t === ROUTES[i][2]); });
+        $('#view').innerHTML = '<div class="skeleton"></div>';
+        window.scrollTo(0, 0);
+        Promise.resolve(ROUTES[i][1](m[1])).catch(function (e) { $('#view').innerHTML = UI.errorHtml(e); });
+        return;
+      }
+    }
+    location.hash = '#songs';
+  }
+  $('#atabs').addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (b) location.hash = '#' + b.dataset.t;
+  });
+
+  // Shows field errors returned by the API next to the matching inputs.
+  function showFieldErrors(form, fields) {
+    form.querySelectorAll('.field-err').forEach(function (el) { el.remove(); });
+    form.querySelectorAll('.has-err').forEach(function (el) { el.classList.remove('has-err'); });
+    Object.keys(fields || {}).forEach(function (k) {
+      var box = form.querySelector('[data-f="' + k + '"]') || form.querySelector('[data-f="form"]');
+      if (!box) return;
+      box.classList.add('has-err');
+      box.insertAdjacentHTML('beforeend', '<p class="field-err">' + esc(fields[k]) + '</p>');
+    });
+    var first = form.querySelector('.has-err');
+    if (first) first.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }
+
+  function songRow(s, byId, action) {
+    return '<div class="pick"><div class="grow"><div class="t">' + esc(s.title) + '</div>' +
+      '<div class="badges" style="margin-top:4px">' + UI.sessionBadge(s.session) +
+      (s.song_key ? '<span class="badge key">Key ' + esc(s.song_key) + '</span>' : '') +
+      UI.themeNames(s.theme_ids, byId).map(function (n) { return '<span class="badge theme">' + esc(n) + '</span>'; }).join('') +
+      (!s.has_luganda && !s.has_english ? '<span class="badge recent">no lyrics</span>' : '') +
+      '</div></div>' + action + '</div>';
+  }
+
+  // ------------------------------------------------------------ songs
+
+  async function viewSongs() {
+    var r = await Promise.all([loadSongs(true), loadThemes()]);
+    var songs = r[0], byId = themeById();
+    $('#view').innerHTML =
+      '<div class="row"><a class="btn primary grow" href="#song/new">+ Add song</a><a class="btn quiet" href="#import">Bulk import</a></div>' +
+      '<input type="search" id="find" placeholder="Find a song to edit…" aria-label="Find a song" />' +
+      '<p class="count" id="n"></p><div class="picklist" id="rows"></div>';
+    function draw() {
+      var q = $('#find').value.trim();
+      var list = songs.filter(function (s) { return W.matchesFilters(s, { text: q }); });
+      $('#n').textContent = list.length + ' of ' + songs.length + ' songs';
+      $('#rows').innerHTML = list.length ? list.map(function (s) {
+        return songRow(s, byId, '<a class="btn small quiet" href="#song/' + s.id + '">Edit</a>');
+      }).join('') : '<div class="none" style="border:0">No songs' + (q ? ' match' : ' yet') + '.</div>';
+    }
+    $('#find').oninput = draw;
+    draw();
+  }
+
+  async function viewSongForm(id) {
+    var themes = await loadThemes();
+    var song = { session: '', language: 'luganda', themes: [] };
+    if (id !== 'new') song = (await UI.api('/api/songs?id=' + id + '&fresh=' + Date.now(), { fresh: true })).song;
+    var picked = {};
+    (song.themes || []).forEach(function (t) { picked[t.id] = true; });
+    var v = function (k) { return esc(song[k] == null ? '' : song[k]); };
+
+    $('#view').innerHTML =
+      '<a class="back" href="#songs">← Songs</a><h1>' + (id === 'new' ? 'Add a song' : 'Edit song') + '</h1>' +
+      '<form id="sf" class="stack" novalidate>' +
+        '<div class="card stack">' +
+          '<div data-f="title"><label class="lbl" for="f-title">Title</label><input id="f-title" name="title" type="text" value="' + v('title') + '" required /></div>' +
+          '<div data-f="title_alt"><label class="lbl" for="f-alt">Title in the other language (optional)</label><input id="f-alt" name="title_alt" type="text" value="' + v('title_alt') + '" /></div>' +
+          '<div data-f="session"><label class="lbl">Session</label><div class="big-choice">' +
+            ['praise', 'worship'].map(function (s) {
+              return '<label><input type="radio" name="session" value="' + s + '"' + (song.session === s ? ' checked' : '') + '><span><b>' + W.SESSIONS[s] + '</b><small>' + W.SESSION_HINT[s] + '</small></span></label>';
+            }).join('') + '</div></div>' +
+          '<div data-f="theme_ids"><label class="lbl">Themes (tick all that fit)</label><div class="chips">' +
+            themes.map(function (t) {
+              return '<label><input type="checkbox" name="theme" value="' + t.id + '"' + (picked[t.id] ? ' checked' : '') + '><span>' + esc(t.name) + '</span></label>';
+            }).join('') + '</div><p class="small muted" style="margin:6px 2px 0"><a href="#themes">Add a new theme</a></p></div>' +
+          '<div class="row" style="align-items:flex-start">' +
+            '<div class="grow" data-f="language"><label class="lbl" for="f-lang">Language</label><select id="f-lang" name="language">' +
+              Object.keys(W.LANGUAGES).map(function (k) { return '<option value="' + k + '"' + (song.language === k ? ' selected' : '') + '>' + W.LANGUAGES[k] + '</option>'; }).join('') + '</select></div>' +
+            '<div style="flex:0 0 96px" data-f="song_key"><label class="lbl" for="f-key">Key</label><input id="f-key" name="song_key" type="text" value="' + v('song_key') + '" placeholder="G" autocapitalize="characters" /></div>' +
+            '<div style="flex:0 0 96px" data-f="tempo_bpm"><label class="lbl" for="f-bpm">BPM</label><input id="f-bpm" name="tempo_bpm" type="number" inputmode="numeric" min="30" max="260" value="' + v('tempo_bpm') + '" placeholder="opt." /></div>' +
+          '</div>' +
+          '<div data-f="youtube_url"><label class="lbl" for="f-yt">YouTube link (optional)</label><input id="f-yt" name="youtube_url" type="url" inputmode="url" value="' + v('youtube_url') + '" placeholder="https://youtu.be/…" /></div>' +
+        '</div>' +
+        '<div class="card stack" data-f="lyrics">' +
+          '<div><label class="lbl" for="f-lg">Luganda lyrics</label><textarea id="f-lg" name="lyrics_luganda" rows="10" lang="lg" placeholder="Paste the Luganda words here">' + v('lyrics_luganda') + '</textarea></div>' +
+          '<div><label class="lbl" for="f-en">English lyrics</label><textarea id="f-en" name="lyrics_english" rows="10" lang="en" placeholder="Paste the English words here">' + v('lyrics_english') + '</textarea></div>' +
+          '<div data-f="notes"><label class="lbl" for="f-notes">Notes (optional)</label><textarea id="f-notes" name="notes" rows="3" style="min-height:70px" placeholder="e.g. Capo 2, repeat chorus twice">' + v('notes') + '</textarea></div>' +
+        '</div>' +
+        '<div data-f="form"></div>' +
+        '<div class="sticky-actions"><button class="btn primary grow" type="submit">Save song</button><a class="btn quiet" href="#songs">Cancel</a></div>' +
+        (id !== 'new' ? '<button class="btn danger" type="button" id="del">Delete this song</button>' : '') +
+      '</form>';
+
+    var form = $('#sf');
+    form.addEventListener('input', function () { dirty = true; });
+    form.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      var fd = new FormData(form);
+      var data = {};
+      ['title', 'title_alt', 'language', 'song_key', 'tempo_bpm', 'youtube_url', 'lyrics_luganda', 'lyrics_english', 'notes', 'session'].forEach(function (k) { data[k] = fd.get(k) || ''; });
+      if (id !== 'new') data.id = Number(id);
+      var themeIds = fd.getAll('theme').map(Number);
+      var local = W.validateSong(data);
+      if (Object.keys(local.errors).length) return showFieldErrors(form, local.errors);
+      var btn = form.querySelector('button[type=submit]');
+      btn.disabled = true; btn.textContent = 'Saving…';
+      try {
+        var r = await act({ action: 'song.save', song: data, theme_ids: themeIds });
+        dirty = false;
+        S.songs = null;
+        UI.store.set('nw.song.' + r.song.id, { song: r.song });
+        UI.toast('Saved “' + r.song.title + '” ✓');
+        location.hash = '#songs';
+      } catch (err) {
+        showFieldErrors(form, err.fields || { form: err.message });
+        if (!err.fields) $('[data-f="form"]').innerHTML = UI.errorHtml(err);
+      } finally { btn.disabled = false; btn.textContent = 'Save song'; }
+    });
+    var del = $('#del');
+    if (del) del.onclick = async function () {
+      if (!confirm('Delete “' + song.title + '”? It will also be removed from any set lists.')) return;
+      try {
+        await act({ action: 'song.delete', id: song.id });
+        dirty = false; S.songs = null;
+        UI.store.set('nw.song.' + song.id, null);
+        UI.toast('Deleted');
+        location.hash = '#songs';
+      } catch (err) { $('[data-f="form"]').innerHTML = UI.errorHtml(err); }
+    };
+  }
+
+  // ------------------------------------------------------------ bulk import
+
+  var TEMPLATE = 'title,title_alt,language,session,song_key,tempo_bpm,youtube_url,themes,lyrics_luganda,lyrics_english,notes\n' +
+    '"Tukutendereza Yesu","We praise you Jesus",both,praise,G,120,https://youtu.be/xxxx,"Glory of God; Praise & Victory","Tukutendereza Yesu\nYesu Omwana gw\'endiga","We praise you Jesus\nJesus the Lamb",\n';
+  var TEXT_EXAMPLE = 'Tukutendereza Yesu\nAlt: We praise you Jesus\nSession: Praise\nKey: G\nThemes: Glory of God, Praise & Victory\n\n[Luganda]\nTukutendereza Yesu\nYesu Omwana gw\'endiga\n\n[English]\nWe praise you Jesus\n---\nMwoyo Mutukuvu\nSession: Worship\nKey: D\nThemes: Holy Spirit\n\nMwoyo Mutukuvu jjangu…';
+
+  async function viewImport() {
+    var themes = await loadThemes();
+    var byId = themeById();
+    $('#view').innerHTML =
+      '<h1>Bulk import</h1>' +
+      '<div class="card stack small">' +
+        '<div><b>Option 1 — a CSV file</b> (from Excel or Google Sheets: File → Download → CSV). First row = column names. ' +
+        'Columns: <code>title</code> (required), <code>title_alt</code>, <code>language</code>, <code>session</code> (praise/worship), <code>song_key</code>, <code>tempo_bpm</code>, <code>youtube_url</code>, <code>themes</code> (separate with ;), <code>lyrics_luganda</code>, <code>lyrics_english</code>, <code>notes</code>. ' +
+        '<a href="data:text/csv;charset=utf-8,' + encodeURIComponent('﻿' + TEMPLATE) + '" download="nrsc-songs-template.csv">Download a template</a></div>' +
+        '<div><b>Option 2 — paste text.</b> One song after another with a line of <code>---</code> between songs. ' +
+        'First line is the title; then optional lines like <code>Session: Praise</code>, <code>Key: G</code>, <code>Themes: Prayer, Faith</code>; then the words, under <code>[Luganda]</code> and <code>[English]</code>. ' +
+        '<a href="#" id="example">Show an example</a></div>' +
+        '<div class="muted">Theme names must match existing themes: ' + themes.map(function (t) { return esc(t.name); }).join(', ') + '.</div>' +
+      '</div>' +
+      '<label class="btn quiet"><input type="file" id="file" accept=".csv,.txt,text/csv,text/plain" hidden> Choose a CSV or text file</label>' +
+      '<textarea id="txt" rows="12" placeholder="…or paste songs here"></textarea>' +
+      '<button class="btn primary" id="prev">Check before importing</button>' +
+      '<div id="out" class="stack"></div>';
+
+    $('#example').onclick = function (e) { e.preventDefault(); $('#txt').value = TEXT_EXAMPLE; dirty = true; };
+    $('#txt').oninput = function () { dirty = true; $('#out').innerHTML = ''; };
+    $('#file').onchange = function (e) {
+      var f = e.target.files[0]; if (!f) return;
+      if (f.size > 1000000) { $('#out').innerHTML = UI.errorHtml({ message: 'That file is too big (over 1 MB). Split it into smaller files.' }); return; }
+      var reader = new FileReader();
+      reader.onload = function () { $('#txt').value = String(reader.result).replace(/^﻿/, ''); dirty = true; $('#prev').click(); };
+      reader.onerror = function () { $('#out').innerHTML = UI.errorHtml({ message: "Couldn't read that file." }); };
+      reader.readAsText(f);
+    };
+
+    $('#prev').onclick = async function () {
+      var btn = this; btn.disabled = true; btn.textContent = 'Checking…';
+      $('#out').innerHTML = '';
+      try {
+        var r = await act({ action: 'import.preview', text: $('#txt').value });
+        var sm = r.summary;
+        $('#out').innerHTML =
+          '<div class="notice ' + (sm.with_errors ? '' : 'ok') + '"><b>' + sm.total + ' song' + (sm.total === 1 ? '' : 's') + ' found (' + (r.format === 'csv' ? 'CSV' : 'pasted text') + ')</b>' +
+            sm.ready + ' new · ' + sm.existing + ' already in the library · ' + sm.with_errors + ' with problems (these will be left out)</div>' +
+          '<div class="card" style="padding:4px 10px;overflow-x:auto"><table class="preview"><tbody>' +
+            r.rows.map(function (row) {
+              var st = row.errors.length ? '❌' : row.exists ? '↺' : row.warnings.length ? '⚠️' : '✅';
+              var themes = row.theme_ids.map(function (i) { return byId[i] && byId[i].name; }).filter(Boolean).join(', ');
+              return '<tr><td class="st">' + st + '</td><td><b>' + esc(row.title || '(no title)') + '</b>' +
+                '<div class="muted">' + [row.session && W.SESSIONS[row.session], row.song_key && 'Key ' + row.song_key, themes,
+                  row.has_luganda ? 'Luganda words' : '', row.has_english ? 'English words' : ''].filter(Boolean).map(esc).join(' · ') + '</div>' +
+                (row.exists ? '<div class="small">Already in the library.</div>' : '') +
+                row.errors.concat(row.warnings).map(function (m) { return '<div class="small ' + (row.errors.indexOf(m) > -1 ? 'field-err' : 'muted') + '">' + esc(m) + '</div>'; }).join('') +
+                '</td></tr>';
+            }).join('') + '</tbody></table></div>' +
+          (sm.existing ? '<div class="card stack small"><b>Songs already in the library:</b>' +
+            '<label class="row"><input type="radio" name="mode" value="skip" checked> Leave them as they are</label>' +
+            '<label class="row"><input type="radio" name="mode" value="update"> Update them with the imported details (adds themes, fills in lyrics)</label></div>' : '') +
+          (sm.ready + sm.existing > 0 ? '<button class="btn primary" id="go">Import now</button>' : '');
+        var go = $('#go');
+        if (go) go.onclick = async function () {
+          go.disabled = true; go.textContent = 'Importing…';
+          var mode = (document.querySelector('input[name=mode]:checked') || {}).value || 'skip';
+          try {
+            var res = await act({ action: 'import.commit', text: $('#txt').value, mode: mode });
+            dirty = false; S.songs = null;
+            $('#out').innerHTML = '<div class="notice ok"><b>Import finished ✓</b>' + res.created + ' added · ' + res.updated + ' updated · ' +
+              res.skipped.length + ' left as they were · ' + res.not_imported + ' not imported because of problems.</div>' +
+              '<a class="btn quiet" href="#songs">See all songs</a>';
+          } catch (err) { $('#out').insertAdjacentHTML('beforeend', UI.errorHtml(err)); go.disabled = false; go.textContent = 'Import now'; }
+        };
+      } catch (err) { $('#out').innerHTML = UI.errorHtml(err); }
+      finally { btn.disabled = false; btn.textContent = 'Check before importing'; }
+    };
+  }
+
+  // ------------------------------------------------------------ set lists
+
+  async function viewSets() {
+    var d = await UI.api('/api/sets?fresh=' + Date.now(), { fresh: true });
+    $('#view').innerHTML = '<a class="btn primary" href="#set/new">+ New set list</a>' +
+      (d.sets.length ? '<div class="picklist">' + d.sets.map(function (s) {
+        return '<div class="pick"><div class="grow"><div class="date">' + esc(W.formatDate(s.service_date)) + '</div>' +
+          '<div class="t">' + esc(s.title || (s.theme ? s.theme.name : 'Service')) + '</div>' +
+          '<div class="small muted">' + s.praise_count + ' praise · ' + s.worship_count + ' worship' + (s.leader_name ? ' · ' + esc(s.leader_name) : '') + '</div></div>' +
+          '<a class="btn small quiet" href="/set.html?id=' + s.id + '">Open</a><a class="btn small" href="#set/' + s.id + '">Edit</a></div>';
+      }).join('') + '</div>' : '<div class="none">No set lists yet.</div>');
+  }
+
+  async function viewBuilder(id) {
+    var r = await Promise.all([loadSongs(true), loadThemes(), UI.api('/api/admin', { pin: S.pin, fresh: true }).catch(function () { return null; })]);
+    var songs = r[0], themes = r[1];
+    S.usage = (r[2] && r[2].usage) || {};
+    var byId = {}; songs.forEach(function (s) { byId[s.id] = s; });
+    var set = { service_date: W.nextSunday(), theme_id: '', title: '', leader_name: '', notes: '', items: [] };
+    if (id !== 'new') {
+      var d = (await UI.api('/api/sets?id=' + id + '&fresh=' + Date.now(), { fresh: true })).set;
+      set = { id: d.id, service_date: d.service_date, theme_id: d.theme ? d.theme.id : '', title: d.title || '', leader_name: d.leader_name || '', notes: d.notes || '',
+        items: d.items.map(function (i) { return { song_id: i.song.id, section: i.section }; }) };
+    }
+
+    $('#view').innerHTML =
+      '<a class="back" href="#sets">← Set lists</a><h1>' + (id === 'new' ? 'New set list' : 'Edit set list') + '</h1>' +
+      '<form id="bf" class="stack" novalidate>' +
+        '<div class="card stack">' +
+          '<div class="row" style="align-items:flex-start">' +
+            '<div class="grow" data-f="service_date"><label class="lbl" for="b-date">Service date</label><input id="b-date" type="date" value="' + esc(set.service_date) + '" required /></div>' +
+            '<div class="grow"><label class="lbl" for="b-theme">Sunday\'s theme</label><select id="b-theme"><option value="">— choose —</option>' +
+              themes.map(function (t) { return '<option value="' + t.id + '"' + (String(set.theme_id) === String(t.id) ? ' selected' : '') + '>' + esc(t.name) + '</option>'; }).join('') + '</select></div>' +
+          '</div>' +
+          '<div class="row"><div class="grow"><label class="lbl" for="b-lead">Worship leader</label><input id="b-lead" type="text" value="' + esc(set.leader_name) + '" placeholder="optional" /></div>' +
+            '<div class="grow"><label class="lbl" for="b-title">Title</label><input id="b-title" type="text" value="' + esc(set.title) + '" placeholder="optional, e.g. Harvest Sunday" /></div></div>' +
+          '<div><label class="lbl" for="b-notes">Notes for the team</label><textarea id="b-notes" rows="2" style="min-height:60px" placeholder="optional">' + esc(set.notes) + '</textarea></div>' +
+        '</div>' +
+        '<h2>The set</h2><div id="mine" class="stack"></div>' +
+        '<h2 id="sugTitle">Suggested songs</h2><div id="sug" class="stack"></div>' +
+        '<h2>Add any other song</h2><input type="search" id="any" placeholder="Search all songs by title…" /><div id="anyRes" class="picklist" hidden></div>' +
+        '<div data-f="items"></div><div data-f="form"></div>' +
+        '<div class="sticky-actions"><button class="btn primary grow" type="submit">Save set list</button></div>' +
+        (id !== 'new' ? '<button class="btn danger" type="button" id="del">Delete this set list</button>' : '') +
+      '</form>';
+
+    var form = $('#bf');
+    var inSet = function (sid) { return set.items.some(function (i) { return i.song_id === sid; }); };
+    var touch = function () { dirty = true; };
+
+    function drawMine() {
+      $('#mine').innerHTML = ['praise', 'worship'].map(function (sec) {
+        var items = set.items.filter(function (i) { return i.section === sec; });
+        return '<div><div class="row" style="margin:2px 2px 6px"><span class="badge ' + sec + '">' + W.SESSIONS[sec] + '</span><span class="small muted">' + items.length + ' song' + (items.length === 1 ? '' : 's') + '</span></div>' +
+          (items.length ? '<ol class="setlist build" data-sec="' + sec + '">' + items.map(function (i, n) {
+            var s = byId[i.song_id] || { title: '(deleted song)' };
+            return '<li data-id="' + i.song_id + '"><span class="drag" aria-hidden="true">⠿</span><div class="grow"><b>' + esc(s.title) + '</b>' +
+              (s.song_key ? ' <span class="small muted">· ' + esc(s.song_key) + '</span>' : '') + '</div>' +
+              '<button type="button" class="iconbtn" data-a="up" aria-label="Move up"' + (n === 0 ? ' disabled' : '') + '>↑</button>' +
+              '<button type="button" class="iconbtn" data-a="down" aria-label="Move down"' + (n === items.length - 1 ? ' disabled' : '') + '>↓</button>' +
+              '<button type="button" class="iconbtn" data-a="rm" aria-label="Remove">✕</button></li>';
+          }).join('') + '</ol>' : '<div class="none" style="padding:12px">Tap “Add” on a song below.</div>') + '</div>';
+      }).join('');
+      document.querySelectorAll('#mine ol.build').forEach(enableDrag);
+    }
+
+    // Reorder within one section: move item at `from` to `to` (indexes inside that section).
+    function moveInSection(sec, from, to) {
+      var idx = []; set.items.forEach(function (it, k) { if (it.section === sec) idx.push(k); });
+      if (to < 0 || to >= idx.length || from === to) return;
+      var secItems = idx.map(function (k) { return set.items[k]; });
+      var moved = secItems.splice(from, 1)[0];
+      secItems.splice(to, 0, moved);
+      idx.forEach(function (k, n) { set.items[k] = secItems[n]; });
+      touch(); drawMine();
+    }
+
+    $('#mine').addEventListener('click', function (e) {
+      var b = e.target.closest('button[data-a]'); if (!b) return;
+      var li = b.closest('li'), ol = li.parentElement, sec = ol.dataset.sec;
+      var n = Array.prototype.indexOf.call(ol.children, li);
+      if (b.dataset.a === 'up') moveInSection(sec, n, n - 1);
+      else if (b.dataset.a === 'down') moveInSection(sec, n, n + 1);
+      else { set.items = set.items.filter(function (i) { return !(i.section === sec && i.song_id === Number(li.dataset.id)); }); touch(); drawMine(); drawSuggestions(); }
+    });
+
+    // Touch-friendly drag (works on Android; HTML5 drag-and-drop doesn't).
+    function enableDrag(ol) {
+      ol.addEventListener('pointerdown', function (e) {
+        var handle = e.target.closest('.drag'); if (!handle) return;
+        e.preventDefault();
+        var li = handle.closest('li');
+        var rows = Array.prototype.slice.call(ol.children);
+        var from = rows.indexOf(li), to = from;
+        var rects = rows.map(function (r) { return r.getBoundingClientRect(); });
+        var step = rects.length > 1 ? rects[1].top - rects[0].top : rects[0].height + 6;
+        var startY = e.clientY;
+        li.classList.add('dragging');
+        rows.forEach(function (r) { if (r !== li) r.classList.add('shifting'); });
+        handle.setPointerCapture(e.pointerId);
+        function move(ev) {
+          var dy = ev.clientY - startY;
+          li.style.transform = 'translateY(' + dy + 'px)';
+          to = Math.max(0, Math.min(rows.length - 1, from + Math.round(dy / step)));
+          rows.forEach(function (r, i) {
+            if (r === li) return;
+            var shift = (from < to && i > from && i <= to) ? -step : (from > to && i >= to && i < from) ? step : 0;
+            r.style.transform = shift ? 'translateY(' + shift + 'px)' : '';
+          });
+        }
+        function end() {
+          handle.removeEventListener('pointermove', move);
+          handle.removeEventListener('pointerup', end);
+          handle.removeEventListener('pointercancel', end);
+          rows.forEach(function (r) { r.style.transform = ''; r.classList.remove('shifting', 'dragging'); });
+          moveInSection(ol.dataset.sec, from, to);
+        }
+        handle.addEventListener('pointermove', move);
+        handle.addEventListener('pointerup', end);
+        handle.addEventListener('pointercancel', end);
+      });
+    }
+
+    function addSong(sid, sec) {
+      if (inSet(sid)) return UI.toast('Already in the set');
+      set.items.push({ song_id: sid, section: sec });
+      touch(); drawMine(); drawSuggestions(); drawAny();
+      UI.toast('Added to ' + W.SESSIONS[sec]);
+    }
+
+    function drawSuggestions() {
+      var themeId = Number($('#b-theme').value) || null;
+      var date = $('#b-date').value;
+      var t = themes.filter(function (x) { return x.id === themeId; })[0];
+      $('#sugTitle').textContent = t ? 'Suggested for “' + t.name + '”' : 'Suggested songs';
+      if (!themeId) { $('#sug').innerHTML = '<div class="none" style="padding:12px">Choose Sunday\'s theme to see matching songs.</div>'; return; }
+      var sug = W.suggestSongs(songs, themeId, S.usage, date, set.items.map(function (i) { return i.song_id; }));
+      $('#sug').innerHTML = ['praise', 'worship'].map(function (sec) {
+        var list = sug[sec];
+        return '<div><div class="row" style="margin:2px 2px 6px"><span class="badge ' + sec + '">' + W.SESSIONS[sec] + '</span><span class="small muted">' + W.SESSION_HINT[sec] + '</span></div>' +
+          (list.length ? '<div class="picklist">' + list.map(function (x) {
+            var note = x.last_used ? (x.recent ? '<span class="badge recent">sung ' + (x.days_ago === 0 ? 'this day' : x.days_ago + ' days ago') + '</span>'
+              : '<span class="small muted">last sung ' + esc(W.formatDate(x.last_used, true)) + '</span>') : '';
+            return '<div class="pick"><div class="grow"><div class="t">' + esc(x.song.title) + '</div><div class="row small muted">' +
+              (x.song.song_key ? 'Key ' + esc(x.song.song_key) : '') + ' ' + note + '</div></div>' +
+              '<button type="button" class="btn small" data-add="' + x.song.id + '" data-sec="' + sec + '">+ Add</button></div>';
+          }).join('') + '</div>' : '<div class="none" style="padding:12px">No ' + W.SESSIONS[sec].toLowerCase() + ' songs with this theme yet' +
+            (set.items.length ? ' (or they are already in the set)' : '') + '.</div>') + '</div>';
+      }).join('');
+    }
+    $('#sug').addEventListener('click', function (e) {
+      var b = e.target.closest('button[data-add]'); if (b) addSong(Number(b.dataset.add), b.dataset.sec);
+    });
+
+    function drawAny() {
+      var q = $('#any').value.trim();
+      var box = $('#anyRes');
+      if (q.length < 1) { box.hidden = true; return; }
+      var list = songs.filter(function (s) { return W.matchesFilters(s, { text: q }); }).slice(0, 20);
+      box.hidden = false;
+      box.innerHTML = list.length ? list.map(function (s) {
+        var already = inSet(s.id);
+        return '<div class="pick"><div class="grow"><div class="t">' + esc(s.title) + '</div><div class="small muted">' + W.SESSIONS[s.session] + (s.song_key ? ' · Key ' + esc(s.song_key) : '') + '</div></div>' +
+          (already ? '<span class="small muted">in the set</span>' :
+            '<button type="button" class="btn small quiet" data-add="' + s.id + '" data-sec="praise">Praise</button>' +
+            '<button type="button" class="btn small quiet" data-add="' + s.id + '" data-sec="worship">Worship</button>') + '</div>';
+      }).join('') : '<div class="none" style="border:0">No song with that title.</div>';
+    }
+    $('#any').oninput = drawAny;
+    $('#anyRes').addEventListener('click', function (e) {
+      var b = e.target.closest('button[data-add]'); if (b) addSong(Number(b.dataset.add), b.dataset.sec);
+    });
+
+    ['b-date', 'b-theme', 'b-lead', 'b-title', 'b-notes'].forEach(function (k) { $('#' + k).addEventListener('input', touch); });
+    $('#b-theme').addEventListener('change', drawSuggestions);
+    $('#b-date').addEventListener('change', drawSuggestions);
+
+    form.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      var payload = { id: set.id, service_date: $('#b-date').value, theme_id: $('#b-theme').value || null,
+        title: $('#b-title').value, leader_name: $('#b-lead').value, notes: $('#b-notes').value };
+      if (!payload.service_date) return showFieldErrors(form, { service_date: 'Pick the date of the service.' });
+      var btn = form.querySelector('button[type=submit]');
+      btn.disabled = true; btn.textContent = 'Saving…';
+      try {
+        var res = await act({ action: 'set.save', set: payload, items: set.items });
+        dirty = false;
+        set.id = res.set.id;
+        UI.store.set('nw.set.' + res.set.id, { set: res.set });
+        var text = W.shareText(res.set, location.origin + '/set.html?id=' + res.set.id);
+        showFieldErrors(form, {});
+        $('[data-f="form"]').innerHTML = '<div class="notice ok"><b>Saved ✓</b>The team can see it now.' +
+          '<div class="row" style="margin-top:10px"><a class="btn wa" href="' + esc(W.whatsappUrl(text)) + '" target="_blank" rel="noopener">Share to WhatsApp</a>' +
+          '<a class="btn quiet" href="/set.html?id=' + res.set.id + '">Open the team page</a></div></div>';
+        $('[data-f="form"]').scrollIntoView({ block: 'center', behavior: 'smooth' });
+        if (id === 'new') { history.replaceState(null, '', '#set/' + res.set.id); lastHash = location.hash; }
+      } catch (err) {
+        showFieldErrors(form, err.fields || {});
+        if (!err.fields) $('[data-f="form"]').innerHTML = UI.errorHtml(err);
+      } finally { btn.disabled = false; btn.textContent = 'Save set list'; }
+    });
+
+    var del = $('#del');
+    if (del) del.onclick = async function () {
+      if (!confirm('Delete this set list?')) return;
+      try { await act({ action: 'set.delete', id: set.id }); dirty = false; UI.toast('Deleted'); location.hash = '#sets'; }
+      catch (err) { $('[data-f="form"]').innerHTML = UI.errorHtml(err); }
+    };
+
+    drawMine();
+    drawSuggestions();
+  }
+
+  // ------------------------------------------------------------ themes
+
+  async function viewThemes() {
+    var themes = await loadThemes(true);
+    $('#view').innerHTML =
+      '<h1>Themes</h1>' +
+      '<form id="tf" class="card stack" novalidate><div data-f="name"><label class="lbl" for="t-name">New theme</label><input id="t-name" type="text" placeholder="e.g. Joy" /></div>' +
+        '<div data-f="description"><input id="t-desc" type="text" placeholder="Short description (optional)" /></div><div data-f="form"></div>' +
+        '<button class="btn primary" type="submit">Add theme</button></form>' +
+      '<div class="picklist">' + themes.map(function (t) {
+        return '<div class="pick" data-id="' + t.id + '"><div class="grow"><div class="t">' + esc(t.name) + '</div>' +
+          (t.description ? '<div class="small muted">' + esc(t.description) + '</div>' : '') +
+          '<div class="small muted">' + t.song_count + ' song' + (t.song_count === 1 ? '' : 's') + ' · <a href="/?theme=' + t.id + '">see them</a></div></div>' +
+          '<button type="button" class="btn small quiet" data-a="edit">Edit</button><button type="button" class="btn small danger" data-a="del">Delete</button></div>';
+      }).join('') + '</div>';
+
+    var form = $('#tf');
+    form.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      var v = W.validateTheme({ name: $('#t-name').value, description: $('#t-desc').value });
+      if (Object.keys(v.errors).length) return showFieldErrors(form, v.errors);
+      try {
+        var r = await act({ action: 'theme.save', theme: v.theme });
+        S.themes = null; UI.toast('Added “' + r.theme.name + '” ✓'); viewThemes();
+      } catch (err) { showFieldErrors(form, err.fields || { name: err.message }); }
+    });
+
+    $('#view').querySelector('.picklist').addEventListener('click', async function (e) {
+      var b = e.target.closest('button[data-a]'); if (!b) return;
+      var row = b.closest('.pick'), t = themes.filter(function (x) { return x.id === Number(row.dataset.id); })[0];
+      if (b.dataset.a === 'del') {
+        if (!confirm('Delete the theme “' + t.name + '”?' + (t.song_count ? ' It will be removed from ' + t.song_count + ' song(s). The songs themselves stay.' : ''))) return;
+        try { await act({ action: 'theme.delete', id: t.id }); S.themes = null; UI.toast('Deleted'); viewThemes(); }
+        catch (err) { row.insertAdjacentHTML('afterend', UI.errorHtml(err)); }
+        return;
+      }
+      row.innerHTML = '<form class="stack grow" novalidate><div data-f="name"><input type="text" name="n" value="' + esc(t.name) + '" /></div>' +
+        '<div data-f="description"><input type="text" name="d" value="' + esc(t.description || '') + '" placeholder="Description (optional)" /></div><div data-f="form"></div>' +
+        '<div class="row"><button class="btn primary small" type="submit">Save</button><button class="btn quiet small" type="button" data-a="cancel">Cancel</button></div></form>';
+      var f = row.querySelector('form');
+      f.querySelector('[data-a=cancel]').onclick = function () { viewThemes(); };
+      f.addEventListener('submit', async function (ev) {
+        ev.preventDefault();
+        var v = W.validateTheme({ name: f.n.value, description: f.d.value });
+        if (Object.keys(v.errors).length) return showFieldErrors(f, v.errors);
+        try { await act({ action: 'theme.save', theme: Object.assign({ id: t.id }, v.theme) }); S.themes = null; UI.toast('Saved ✓'); viewThemes(); }
+        catch (err) { showFieldErrors(f, err.fields || { name: err.message }); }
+      });
+    });
+  }
+
+  // ------------------------------------------------------------ setup check
+
+  async function viewSetup() {
+    var d = await UI.api('/api/health?fresh=' + Date.now(), { fresh: true });
+    $('#view').innerHTML = '<h1>Setup check</h1>' + d.checks.map(function (c) {
+      return '<div class="notice ' + (c.ok ? 'ok' : 'error') + '"><b>' + (c.ok ? '✓ ' : '✗ ') + esc(c.name) + '</b>' + esc(c.message) + '</div>';
+    }).join('');
+  }
+
+  // ------------------------------------------------------------ start
+
+  if (S.pin) {
+    tryPin(S.pin, !!UI.store.get('nw.pin', '')).catch(function (e) {
+      if (e.code === 'unauthorized') signOut('Sign in again.');
+      else { showLogin(); $('#loginMsg').innerHTML = UI.errorHtml(e); }
+    });
+  } else showLogin();
+});
+</script>
+</body>
+</html>

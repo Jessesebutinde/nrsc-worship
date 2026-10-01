@@ -1,0 +1,14 @@
+{
+  "name": "nrsc-worship",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "dev": "node scripts/dev.mjs",
+    "demo": "node scripts/dev.mjs --demo"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8"
+  }
+}

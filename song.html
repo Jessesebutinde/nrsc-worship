@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#4B2A8A" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#16121D" media="(prefers-color-scheme: dark)" />
+<title>Song · NRSC Worship</title>
+<link rel="manifest" href="/manifest.webmanifest" />
+<link rel="icon" href="/icon.svg" type="image/svg+xml" />
+<link rel="stylesheet" href="/app.css?v=1" />
+<script src="/shared.js?v=1" defer></script>
+<script src="/ui.js?v=1" defer></script>
+</head>
+<body>
+<main>
+  <a class="back" href="/" id="back">← All songs</a>
+  <div id="msg"></div>
+  <div id="song"><div class="skeleton"></div><div class="skeleton" style="height:300px;margin-top:10px"></div></div>
+</main>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var W = NRSCWorship, esc = UI.esc, $ = UI.$;
+  UI.header('songs');
+  if (document.referrer && new URL(document.referrer).origin === location.origin && history.length > 1) {
+    $('#back').addEventListener('click', function (e) { e.preventDefault(); history.back(); });
+  }
+
+  var id = Number(new URLSearchParams(location.search).get('id'));
+  if (!id) { $('#song').innerHTML = UI.errorHtml({ message: 'No song chosen. Go back to the song list.' }); return; }
+
+  var size = UI.store.get('nw.size', 20);
+  document.documentElement.style.setProperty('--lyrics-size', size + 'px');
+  var tab = null;
+  var song = null;
+  var wakeLock = null;
+
+  function render(s, loading) {
+    song = s;
+    document.title = s.title + ' · NRSC Worship';
+    var parts = [];
+    if (s.lyrics_luganda) parts.push(['luganda', 'Luganda', s.lyrics_luganda]);
+    if (s.lyrics_english) parts.push(['english', 'English', s.lyrics_english]);
+    var pref = UI.store.get('nw.lang', 'luganda');
+    if (!tab || !parts.some(function (p) { return p[0] === tab; })) {
+      tab = parts.some(function (p) { return p[0] === pref; }) ? pref : (parts[0] ? parts[0][0] : null);
+    }
+    var current = parts.filter(function (p) { return p[0] === tab; })[0];
+    var adminLink = UI.pin.get() ? ' · <a href="/admin.html#song/' + s.id + '">Edit</a>' : '';
+
+    $('#song').innerHTML =
+      '<div class="stack">' +
+        '<div><h1>' + esc(s.title) + '</h1>' + (s.title_alt ? '<div class="muted" style="margin-top:2px">' + esc(s.title_alt) + '</div>' : '') + '</div>' +
+        '<div class="meta">' + UI.sessionBadge(s.session) +
+          (s.song_key ? '<span class="badge key">Key ' + esc(s.song_key) + '</span>' : '') +
+          (s.tempo_bpm ? '<span class="badge key">' + s.tempo_bpm + ' BPM</span>' : '') +
+          '<span class="badge key">' + esc(W.LANGUAGES[s.language] || '') + '</span>' +
+          (s.themes || []).map(function (t) { return '<a class="badge theme" style="text-decoration:none" href="/?theme=' + t.id + '">' + esc(t.name) + '</a>'; }).join('') +
+        '</div>' +
+        (s.youtube_url ? '<a class="btn quiet" href="' + esc(s.youtube_url) + '" target="_blank" rel="noopener">▶ Listen on YouTube</a>' : '') +
+      '</div>' +
+      '<div class="lyrics-tabs">' +
+        (parts.length > 1 ? '<div class="seg grow" id="tabs">' + parts.map(function (p) {
+          return '<button type="button" data-v="' + p[0] + '" class="' + (p[0] === tab ? 'on' : '') + '">' + p[1] + '</button>';
+        }).join('') + '</div>' : '<div class="grow"><h2 style="margin:0">' + (current ? current[1] + ' lyrics' : 'Lyrics') + '</h2></div>') +
+        '<div class="sizer"><button class="iconbtn" id="smaller" aria-label="Smaller text">A−</button><button class="iconbtn" id="bigger" aria-label="Bigger text">A+</button></div>' +
+      '</div>' +
+      (loading ? '<div class="skeleton" style="height:240px" aria-label="Loading lyrics"></div>' :
+       current ? '<div class="card lyrics" lang="' + (tab === 'luganda' ? 'lg' : 'en') + '">' + esc(current[2]) + '</div>'
+               : '<div class="none">No lyrics added yet.</div>') +
+      (s.notes ? '<div class="card"><label class="lbl">Notes</label><div style="white-space:pre-wrap">' + esc(s.notes) + '</div></div>' : '') +
+      ('wakeLock' in navigator ? '<label class="row small muted"><input type="checkbox" id="awake"' + (wakeLock ? ' checked' : '') + '> Keep the screen on while I sing</label>' : '') +
+      '<p class="small muted">' + adminLink.replace(/^ · /, '') + '</p>';
+
+    var tabs = $('#tabs');
+    if (tabs) tabs.addEventListener('click', function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      tab = b.dataset.v; UI.store.set('nw.lang', tab); render(song, false);
+    });
+    $('#smaller').onclick = function () { setSize(size - 2); };
+    $('#bigger').onclick = function () { setSize(size + 2); };
+    var awake = $('#awake');
+    if (awake) awake.onchange = toggleAwake;
+  }
+
+  function setSize(n) {
+    size = Math.max(14, Math.min(36, n));
+    UI.store.set('nw.size', size);
+    document.documentElement.style.setProperty('--lyrics-size', size + 'px');
+  }
+
+  async function toggleAwake(e) {
+    try {
+      if (e.target.checked) {
+        wakeLock = await navigator.wakeLock.request('screen');
+        wakeLock.addEventListener('release', function () { wakeLock = null; });
+      } else if (wakeLock) { await wakeLock.release(); wakeLock = null; }
+    } catch (err) { e.target.checked = false; UI.toast("This phone didn't allow keeping the screen on."); }
+  }
+  document.addEventListener('visibilitychange', async function () {
+    var box = $('#awake');
+    if (document.visibilityState === 'visible' && box && box.checked && !wakeLock) {
+      try { wakeLock = await navigator.wakeLock.request('screen'); } catch (e) { /* ignore */ }
+    }
+  });
+
+  // While the full song loads, show what the library list already knows.
+  var listed = (UI.store.get('nw.songs', { songs: [] }).songs || []).filter(function (s) { return s.id === id; })[0];
+  var byTheme = {};
+  (UI.store.get('nw.themes', { themes: [] }).themes || []).forEach(function (t) { byTheme[t.id] = t; });
+  if (listed && !UI.store.get('nw.song.' + id, null)) {
+    render(Object.assign({}, listed, { themes: (listed.theme_ids || []).map(function (t) { return byTheme[t]; }).filter(Boolean),
+      lyrics_luganda: null, lyrics_english: null }), true);
+  }
+
+  // Songs opened on this phone stay available offline; keep the newest 200.
+  function remember(songId) {
+    var recent = UI.store.get('nw.recent', []).filter(function (x) { return x !== songId; });
+    recent.unshift(songId);
+    recent.slice(200).forEach(function (old) { UI.store.set('nw.song.' + old, null); });
+    UI.store.set('nw.recent', recent.slice(0, 200));
+  }
+
+  UI.cached('nw.song.' + id, '/api/songs?id=' + id, function (d) { $('#msg').innerHTML = ''; render(d.song); remember(id); }, function (e) {
+    $('#song').innerHTML = '';
+    $('#msg').innerHTML = UI.errorHtml(e);
+  });
+});
+</script>
+</body>
+</html>

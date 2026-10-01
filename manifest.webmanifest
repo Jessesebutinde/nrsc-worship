@@ -1,0 +1,10 @@
+{
+  "name": "NRSC Worship",
+  "short_name": "Worship",
+  "description": "Song library and set lists for the Namasuba Redeemed worship team.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F7F4FC",
+  "theme_color": "#4B2A8A",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}
