@@ -10,6 +10,9 @@ A phone-friendly web app that cuts the worship songs out of a church service rec
 
 ## Using it
 
+- **Getting around.** The player bar has skip buttons for ±30 s, ±1 min and ±2 min, plus ±10 s around the play
+  button. Tap the timeline to jump anywhere. On a computer, Space plays or pauses, ←/→ skip 30 s, and Shift+←/→ skip
+  2 min. In **Name all**, +30s, +1m and +2m skip ahead within the current song.
 - **Fixing cuts.** Tap **Fix cuts** on a song to nudge the start and end (±0.2 s, ±1 s or ±5 s), type a time, set
   either one to the playhead, or tap the waveform around the cut. **▶ Hear the end** plays the last seconds and stops
   exactly at the cut.

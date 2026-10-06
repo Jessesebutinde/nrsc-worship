@@ -3,6 +3,10 @@
 
 import { useEffect, useState } from './h.js';
 
+/** Skip buttons, in seconds (the player bar and the naming pass use these). */
+export const SKIPS = [-120, -60, -30, 30, 60, 120];
+export const skipLabel = (d) => (Math.abs(d) >= 60 ? `${Math.abs(d) / 60}m` : `${Math.abs(d)}s`);
+
 export function createPlayer(src) {
   const audio = new Audio();
   audio.preload = 'metadata';
