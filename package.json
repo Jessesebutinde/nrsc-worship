@@ -1,0 +1,10 @@
+{
+  "name": "songcut",
+  "private": true,
+  "description": "Cut the worship songs out of a church service recording.",
+  "type": "module",
+  "scripts": {
+    "start": "npx --yes http-server -c-1 -p 8080 .",
+    "test": "node --test tests/*.test.mjs"
+  }
+}
