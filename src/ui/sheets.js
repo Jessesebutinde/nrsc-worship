@@ -40,7 +40,7 @@ export function NameAllSheet({ songs, player, nameSong, suggestFor, onClose }) {
   }, [i]);
 
   const go = (next, name) => {
-    if (song && name != null) nameSong(song.id, name);
+    if (song && name != null) nameSong(song.id, name, { undo: false });
     setI(Math.max(0, Math.min(songs.length, next)));
   };
 

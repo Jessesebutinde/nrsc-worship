@@ -77,12 +77,19 @@ function containerMedia(source, info, { ext, mime, extract, mux, raw, decode }) 
     ext,
     mime,
     lossless: true,
+    sourceBytes: source.size,
     duration: info.duration,
     sampleRate: info.sampleRate,
     channels: info.channels,
     info,
     extract,
     mux,
+    /** Full-quality decode of an extracted clip, trimmed to [clip.t0, clip.t1). */
+    async decodeClip(clip, rate) {
+      if (!decode) throw new Error('No decoder available');
+      const buf = await decode(concatParts(raw(clip)), rate);
+      return trim(buf, clip.t0 - clip.startTime, clip.t1 - clip.t0);
+    },
     async readPcm(t0, t1, rate) {
       if (!decode) throw new Error('No decoder available');
       const clip = await extract(t0, t1);
@@ -114,6 +121,10 @@ export function pcmMedia(buf) {
     mux(clip, meta) {
       return wavParts(fmt, clip.parts, meta);
     },
+    async decodeClip(clip) {
+      // Our own samples: slice, no decoding needed.
+      return trim({ sampleRate, channels }, clip.t0, clip.t1 - clip.t0);
+    },
     async readPcm(t0, t1, rate) {
       const a = Math.max(0, Math.floor(t0 * sampleRate));
       const b = Math.min(channels[0].length, Math.ceil(t1 * sampleRate));
@@ -130,6 +141,12 @@ export function pcmMedia(buf) {
       return { data: out, sampleRate: sampleRate / step, startTime: a / sampleRate };
     },
   };
+}
+
+function trim(buf, offset, duration) {
+  const a = Math.max(0, Math.round(offset * buf.sampleRate));
+  const b = Math.min(buf.channels[0].length, a + Math.round(duration * buf.sampleRate));
+  return { sampleRate: buf.sampleRate, channels: buf.channels.map((c) => c.slice(a, b)) };
 }
 
 export function concatParts(parts) {
