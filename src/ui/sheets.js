@@ -14,6 +14,7 @@ import {
   mergeLibraries,
 } from '../naming.js';
 import { loadPrefs, savePrefs } from '../store.js';
+import { SKIPS, skipLabel } from './player.js';
 
 // ------------------------------------------------------------ name all pass
 
@@ -70,7 +71,15 @@ export function NameAllSheet({ songs, player, nameSong, suggestFor, onClose }) {
     </div>
     <div class="row wrap">
       <button class="btn small" onClick=${() => player.play(song.start)}>▶ Start</button>
-      <button class="btn small" onClick=${() => player.play(Math.min(song.end - 5, player.time + 30))}>+30s</button>
+      ${SKIPS.filter((d) => d > 0).map(
+        (d) => html`<button
+          class="btn small"
+          onMouseDown=${keepFocus}
+          onClick=${() => player.play(Math.max(song.start, Math.min(song.end - 5, player.time + d)))}
+        >
+          +${skipLabel(d)}
+        </button>`,
+      )}
       <button class="btn small" onClick=${() => player.play((song.start + song.end) / 2)}>▶ Middle</button>
       <button class="btn small" onClick=${() => player.pause()}>❚❚</button>
       <label class="check small"><input type="checkbox" checked=${autoplay} onChange=${() => setAutoplay(!autoplay)} /> Auto-play</label>

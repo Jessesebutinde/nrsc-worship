@@ -18,7 +18,7 @@
   --playhead: #d14b2f;
   --radius: 14px;
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 2px 8px rgba(0, 0, 0, 0.04);
-  --player-h: 104px;
+  --player-h: 146px;
   color-scheme: light;
 }
 
@@ -1940,4 +1940,44 @@ main > section:nth-child(4) {
     width: 100% !important;
     opacity: 0.4;
   }
+}
+
+/* Skip strip in the player */
+.skips {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.skip {
+  min-height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--card);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition:
+    transform 0.12s ease,
+    background-color 0.2s,
+    border-color 0.2s;
+}
+
+.skip:hover {
+  border-color: var(--accent);
+}
+
+.skip:active {
+  transform: scale(0.93);
+  background: var(--accent-soft);
+}
+
+.skip.back {
+  color: var(--muted);
+}
+
+.skip.fwd {
+  color: var(--accent);
 }

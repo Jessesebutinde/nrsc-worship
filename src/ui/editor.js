@@ -1,7 +1,7 @@
 // The song editor: listen, fix cut points, split medleys, name songs, export.
 
 import { html, useState, useEffect, useRef, useMemo, useCallback } from './h.js';
-import { createPlayer, usePlayerState } from './player.js';
+import { createPlayer, usePlayerState, SKIPS, skipLabel } from './player.js';
 import { fmtTime, parseTime } from '../util.js';
 import {
   fromDetected,
@@ -250,6 +250,25 @@ function PlayheadTime({ player }) {
 
 function PlayerBar({ player, songs, total }) {
   const { time, playing } = usePlayerState(player);
+
+  // Keyboard: Space plays/pauses, ←/→ skip 30 s, Shift+←/→ skip 2 min.
+  useEffect(() => {
+    const onKey = (e) => {
+      const t = e.target;
+      if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(t.tagName))) return;
+      if (document.body.classList.contains('sheet-open')) return;
+      if (e.key === ' ') {
+        e.preventDefault();
+        player.toggle();
+      } else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+        e.preventDefault();
+        const d = (e.shiftKey ? 120 : 30) * (e.key === 'ArrowRight' ? 1 : -1);
+        player.seek(Math.max(0, Math.min(total, player.time + d)));
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [player, total]);
   const barRef = useRef(null);
   const current = songs.findIndex((s) => time >= s.start && time < s.end);
   const seekFromEvent = (e) => {
@@ -289,6 +308,17 @@ function PlayerBar({ player, songs, total }) {
           </div>`,
         )}
         <div class="tl-head" style=${{ left: `${(time / total) * 100}%` }}></div>
+      </div>
+      <div class="skips" role="group" aria-label="Skip">
+        ${SKIPS.map(
+          (d) => html`<button
+            class=${'skip' + (d < 0 ? ' back' : ' fwd')}
+            aria-label=${`${d < 0 ? 'Back' : 'Forward'} ${skipLabel(d)}`}
+            onClick=${() => player.seek(Math.max(0, Math.min(total, time + d)))}
+          >
+            ${d < 0 ? '−' : '+'}${skipLabel(d)}
+          </button>`,
+        )}
       </div>
       <div class="player-row">
         <button class="icon-btn" aria-label="Back 10 seconds" onClick=${() => player.seek(time - 10)}>−10</button>
