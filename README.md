@@ -17,7 +17,8 @@ A phone-friendly web app that cuts the worship songs out of a church service rec
   You can also pause where the next song begins and tap **Split at playhead**. The new part is never named for you.
   Use **⋯ → Join with next song** to undo a wrong split.
 - **Naming** (nothing is ever renamed unless you choose it):
-  - Tap a song's name to type it. Suggestions appear underneath, and a tap picks one.
+  - Tap a song's name to type it. Suggestions appear underneath: tap one, or use ↑/↓ and Enter (Tab takes the top
+    one). A "✓ saved" confirmation pops up, and every rename can be undone from the toast.
   - **Name all** walks through every song: it plays each one, you type a name and press Enter for the next.
   - **Paste setlist** takes a list straight from WhatsApp or another chat. It strips numbering, emoji, chat
     timestamps, keys like "(Key of G)" and, if you want, the artist. It then shows which title goes to which song
@@ -27,9 +28,20 @@ A phone-friendly web app that cuts the worship songs out of a church service rec
     automatically. You can export and import the library to move it between your phone and computer.
   - Section clips (chorus, verse, and so on) take the song title: "Way Maker - Chorus 2". Empty names become
     "Song N". File names come from the titles, e.g. `03 - Way Maker.m4a`.
-- **Export.** You can **Save** each file, **Download as ZIP** (easiest on a phone), or **Share…** where the phone
-  supports it. **Times & names (.txt)** and **Copy list** give you the setlist with times. If you rename a song after
-  downloading, **Download renamed files** saves it again under the new name without re-cutting the audio.
+- **Export.** Pick a preset (the size estimate updates live), or choose **Custom**:
+  - **Original**: an exact copy of the audio, with no quality loss. It's instant.
+  - **MP3**: 64–320 kbps. Plays everywhere. Encoded on your device by LAME, which runs in a Web Worker.
+  - **AAC (.m4a)**: 64–256 kbps, using the browser's own encoder where it has one (Chrome or Edge on Windows, Mac or
+    Android).
+  - **Opus**: 24–160 kbps. The smallest files for the quality, and good for WhatsApp. Uses the browser's encoder.
+  - **FLAC**: lossless, at about half the size of WAV.
+  - **WAV**: uncompressed.
+  - Optional **mono**, and **numbered** file names.
+
+  Each file shows a meter with its stage (Downloading, Decoding, Encoding) and a percentage. An overall meter shows
+  the time left, and there's a Cancel button. You can then **Save** each file, **Download ZIP**, or **Share…**.
+  **Times & names (.txt)** and **Copy list** give you the setlist with times. If you rename a song after exporting,
+  only the file's small tag header is rebuilt. Nothing is cut or encoded again.
 - **Saving.** Names, cut changes and splits are saved on this device, so a refresh doesn't lose them.
 - **When a job fails,** the app shows the error. You can then pick a local audio or video file, and the songs are found
   in the browser on your device. Nothing is uploaded. You can also start this from the home page.
@@ -72,6 +84,6 @@ npm start        # serves on http://localhost:8080
 npm test         # unit tests (the audio tests use ffmpeg if it's installed)
 ```
 
-`.github/workflows/pages.yml` runs the tests and publishes the site to GitHub Pages on every push to `main`. Turn it on
-once under **Settings → Pages → Source: GitHub Actions**. The site then works on any phone, and you can add it to your
-home screen.
+`.github/workflows/pages.yml` runs the tests on every push. On `main` it also publishes the site to the `gh-pages`
+branch, which GitHub Pages serves at **https://jessesebutinde.github.io/nrsc-worship/**. You can add the site to your
+phone's home screen.

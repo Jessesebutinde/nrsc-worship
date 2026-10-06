@@ -442,3 +442,60 @@ export function muxMp4(info, clip, { meta = {}, trim = true } = {}) {
   const mdatHdr = new Writer(8).u32(8 + clip.bytes).str('mdat').done();
   return [ftyp, moov, mdatHdr, ...clip.parts];
 }
+
+// ------------------------------------------------- new AAC files (encoded here)
+
+function descriptor(tag, body) {
+  return new Writer(2 + body.length).u8(tag).u8(body.length).bytes(body).done();
+}
+
+/** mp4a sample entry with an esds built from the AudioSpecificConfig. */
+export function aacStsd(asc, channels, sampleRate, bitrate) {
+  const dsi = descriptor(0x05, asc);
+  const dcd = descriptor(
+    0x04,
+    new Writer().u8(0x40).u8(0x15).u8(0).u16(0).u32(bitrate).u32(bitrate).bytes(dsi).done(),
+  );
+  const es = descriptor(0x03, new Writer().u16(1).u8(0).bytes(dcd).bytes(descriptor(0x06, new Uint8Array([2]))).done());
+  const esds = full('esds', 0, 0, es);
+  const entry = new Writer()
+    .zeros(6)
+    .u16(1)
+    .zeros(8)
+    .u16(channels)
+    .u16(16)
+    .u16(0)
+    .u16(0)
+    .u32((sampleRate & 0xffff) * 65536)
+    .bytes(esds)
+    .done();
+  return full('stsd', 0, 0, new Writer(4).u32(1).done(), box('mp4a', entry));
+}
+
+/** AudioSpecificConfig for AAC-LC when the encoder doesn't give one. */
+export function aacLcConfig(sampleRate, channels) {
+  const rates = [96000, 88200, 64000, 48000, 44100, 32000, 24000, 22050, 16000, 12000, 11025, 8000, 7350];
+  const fi = Math.max(0, rates.indexOf(sampleRate));
+  const v = (2 << 11) | (fi << 7) | (channels << 3);
+  return new Uint8Array([v >> 8, v & 0xff]);
+}
+
+/**
+ * payload: { sampleRate, channels, asc, bitrate, sizes: number[], data: Uint8Array }
+ * (raw AAC frames, 1024 samples each). Returns file parts with tags.
+ */
+export function aacM4aParts(payload, meta = {}) {
+  const n = payload.sizes.length;
+  const dts = new Float64Array(n + 1);
+  for (let i = 1; i <= n; i++) dts[i] = i * 1024;
+  const info = {
+    timescale: payload.sampleRate,
+    mediaTime: 0,
+    stsdBytes: aacStsd(payload.asc, payload.channels, payload.sampleRate, payload.bitrate),
+    dts,
+    sizes: payload.sizes,
+    count: n,
+  };
+  const clip = { first: 0, last: n - 1, t0: 0, t1: n * 1024 / payload.sampleRate, parts: [payload.data], bytes: payload.data.length };
+  return muxMp4(info, clip, { meta, trim: false });
+}

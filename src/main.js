@@ -1,5 +1,5 @@
 import { html, render, useState, useEffect, useMemo, useRef } from './ui/h.js';
-import { ProgressBar, toast } from './ui/common.js';
+import { Meter, Ring, Bars, toast } from './ui/common.js';
 import { Editor } from './ui/editor.js';
 import { WINDOWS } from './config.js';
 import { youtubeId, canonicalUrl } from './youtube.js';
@@ -214,12 +214,12 @@ function Home() {
       ${recentErr && html`<p class="muted small">Couldn't refresh (${recentErr}). Showing what this device remembers.</p>`}
       ${!recent.length && !recentErr && html`<p class="muted">Finished services will show up here.</p>`}
       <ul class="recent">
-        ${recent.map((j) => {
+        ${recent.map((j, i) => {
           const edits = loadEdits(j.id);
           const count = j.songs ? j.songs.length : j.songCount;
           const named = edits && edits.songs ? edits.songs.filter((s) => s.name).length : 0;
           const total = edits && edits.songs ? edits.songs.length : count;
-          return html`<li key=${j.id}>
+          return html`<li key=${j.id} style=${{ '--i': i }}>
             <a href=${`#/job/${j.id}`}>
               <div class="r-title">${j.title || j.youtube_url}</div>
               <div class="muted small">
@@ -306,7 +306,14 @@ function JobPage({ id }) {
   const loadMedia = useMemo(() => {
     if (!job || job.status !== 'ready' || !job.audio_url) return null;
     const url = job.audio_url;
-    return () => new HttpSource(url).open().then((src) => openMedia(src, { decode: decodeAudio }));
+    return (onProgress) =>
+      new HttpSource(url).open().then((src) => {
+        if (onProgress) onProgress(0.4, 'Reading the audio index');
+        return openMedia(src, {
+          decode: decodeAudio,
+          onProgress: (got, all) => onProgress && onProgress(0.4 + 0.6 * (got / all), 'Downloading the audio'),
+        });
+      });
   }, [job && job.status, job && job.audio_url]);
 
   if (!job) {
@@ -345,28 +352,46 @@ const STEPS = [
 
 function ProgressView({ job, err, stalled }) {
   const idx = STEPS.findIndex(([s]) => s === job.status);
+  const queued = job.status === 'queued';
+  const pct = job.progress || 0;
+  // Time left from the rate of progress since we first saw it move.
+  const seen = useRef(null);
+  if (!queued && pct > 0 && (!seen.current || pct < seen.current.p)) seen.current = { p: pct, t: Date.now() };
+  let eta = null;
+  if (seen.current && pct > seen.current.p + 3) {
+    const rate = (pct - seen.current.p) / ((Date.now() - seen.current.t) / 1000);
+    if (rate > 0) eta = (100 - pct) / rate;
+  }
   return html`
-    <section class="card">
+    <section class="card progress-card">
       <h1 class="svc-title">${job.title || 'New service'}</h1>
-      <div class="muted small">${windowLabel(job.scan_window)} · <a href=${job.youtube_url} target="_blank" rel="noopener">${job.youtube_url}</a></div>
-      <ol class="steps">
-        ${STEPS.map(
-          ([s, label], i) => html`<li class=${i < idx ? 'done' : i === idx ? 'now' : ''}>
-            <span class="step-dot">${i < idx ? '✓' : i + 1}</span>${label}
-          </li>`,
-        )}
-      </ol>
-      <${ProgressBar} value=${job.progress || 0} indeterminate=${job.status === 'queued'} />
-      <p class="stage">${job.stage || '…'} ${job.status !== 'queued' ? html`<span class="muted">· ${Math.round(job.progress || 0)}%</span>` : ''}</p>
-      ${job.status === 'queued' &&
+      <div class="muted small ellipsis">${windowLabel(job.scan_window)} · <a href=${job.youtube_url} target="_blank" rel="noopener">${job.youtube_url}</a></div>
+      <div class="progress-hero">
+        <${Ring} value=${pct} spinning=${queued} label=${queued ? 'waiting' : STEPS[idx] ? STEPS[idx][1].split(' ')[0].toLowerCase() : ''} />
+        <ol class="steps">
+          ${STEPS.map(
+            ([s, label], i) => html`<li class=${i < idx ? 'done' : i === idx ? 'now' : ''}>
+              <span class="step-dot">${i < idx ? '✓' : i === idx && !queued ? html`<${Bars} />` : i + 1}</span>
+              <span>${label}</span>
+            </li>`,
+          )}
+        </ol>
+      </div>
+      <${Meter} value=${pct} indeterminate=${queued} active=${!queued} />
+      <p class="stage">
+        ${job.stage || '…'}
+        ${!queued ? html`<span class="muted"> · ${Math.round(pct)}%</span>` : ''}
+        ${eta != null ? html`<span class="muted"> · about ${fmtTime(Math.ceil(eta))} left</span>` : ''}
+      </p>
+      ${queued &&
       stalled > 25000 &&
-      html`<div class="notice">
+      html`<div class="notice pop">
         <strong>Your computer hasn't picked this up yet.</strong> Make sure it's switched on, awake and the SongCut worker
         is running. The job starts as soon as it is — you can leave this page open or come back later.
       </div>`}
-      ${job.status !== 'queued' &&
+      ${!queued &&
       stalled > 150000 &&
-      html`<div class="notice">
+      html`<div class="notice pop">
         No progress for ${fmtTime(stalled / 1000)}. If your computer went to sleep, wake it up — the job carries on.
       </div>`}
       ${err && html`<p class="muted small">Can't reach the job server right now (${err}). Retrying…</p>`}
@@ -433,10 +458,10 @@ function LocalPage({ window: initialWindow }) {
       setResult(null);
       const key = `local:${file.name}:${file.size}:${file.lastModified}:${win}`;
       try {
-        setPhase({ label: 'Opening the file…', value: 0 });
+        setPhase({ step: 0, label: 'Opening the file', value: 0, started: Date.now() });
         const media = await openMedia(new BlobSource(file), {
           decode: decodeAudio,
-          onProgress: (got, all) => setPhase({ label: 'Reading the file…', value: (got / all) * 100 }),
+          onProgress: (got, all) => setPhase((p) => ({ ...p, step: 0, label: 'Reading the file', value: (got / all) * 100 })),
         });
         const limit = (WINDOWS.find((w) => w.value === win) || WINDOWS[0]).seconds;
         let songs = [];
@@ -444,7 +469,7 @@ function LocalPage({ window: initialWindow }) {
           songs = await analyzeMedia(media, {
             limit,
             signal: ac.signal,
-            onProgress: (p) => setPhase({ label: 'Finding the songs…', value: p * 100 }),
+            onProgress: (f) => setPhase((p) => ({ ...p, step: 1, label: 'Listening for songs', value: f * 100, aStart: p.aStart || Date.now() })),
           });
         }
         url = URL.createObjectURL(file);
@@ -490,7 +515,7 @@ function LocalPage({ window: initialWindow }) {
         )}
       </div>
       ${file && html`<p><strong>${file.name}</strong> <span class="muted">(${(file.size / 1048576).toFixed(1)} MB)</span></p>`}
-      ${phase && html`<div class="busy"><${ProgressBar} value=${phase.value} /><p class="muted small">${phase.label}</p></div>`}
+      ${phase && html`<${LocalProgress} phase=${phase} />`}
       ${err && html`<p class="error">${err}</p>`}
       ${!phase &&
       html`<button class="btn primary" onClick=${() => fileRef.current.click()}>${file ? 'Choose another file…' : 'Choose a file…'}</button>`}
@@ -501,6 +526,34 @@ function LocalPage({ window: initialWindow }) {
       </p>
     </section>
   `;
+}
+
+function LocalProgress({ phase }) {
+  const [, tick] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => tick((n) => n + 1), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const f = phase.value / 100;
+  let eta = null;
+  if (phase.step === 1 && phase.aStart && f > 0.05) {
+    const el = (Date.now() - phase.aStart) / 1000;
+    eta = (el / f) * (1 - f);
+  }
+  const steps = ['Read the file', 'Listen for songs', 'Ready to edit'];
+  return html`<div class="local-progress">
+    <ol class="steps inline">
+      ${steps.map(
+        (s, i) => html`<li class=${i < phase.step ? 'done' : i === phase.step ? 'now' : ''}>
+          <span class="step-dot">${i < phase.step ? '✓' : i === phase.step ? html`<${Bars} />` : i + 1}</span><span>${s}</span>
+        </li>`,
+      )}
+    </ol>
+    <${Meter} value=${phase.value} active />
+    <p class="muted small">
+      ${phase.label} · ${Math.round(phase.value)}%${eta != null ? ` · about ${fmtTime(Math.ceil(eta))} left` : ''}
+    </p>
+  </div>`;
 }
 
 render(html`<${App} />`, document.getElementById('app'));

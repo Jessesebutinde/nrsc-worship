@@ -28,16 +28,16 @@ function dosDateTime(d) {
  * files: [{ name, parts: Uint8Array[] }]
  * Returns an array of Uint8Array parts forming the .zip (wrap in a Blob).
  */
-export function zipParts(files, now = new Date()) {
+export function zipParts(files, now = new Date(), crcs = null) {
   const enc = new TextEncoder();
   const { time, date } = dosDateTime(now);
   const out = [];
   const central = [];
   let offset = 0;
-  for (const f of files) {
+  for (const [i, f] of files.entries()) {
     const name = enc.encode(f.name);
     const size = f.parts.reduce((s, p) => s + p.length, 0);
-    const crc = crc32(f.parts);
+    const crc = crcs ? crcs[i] : crc32(f.parts);
     const local = new DataView(new ArrayBuffer(30));
     local.setUint32(0, 0x04034b50, true);
     local.setUint16(4, 20, true);
@@ -76,4 +76,18 @@ export function zipParts(files, now = new Date()) {
   end.setUint32(12, cdSize, true);
   end.setUint32(16, offset, true);
   return [...out, ...central, new Uint8Array(end.buffer)];
+}
+
+/** Same as zipParts, but yields between files and reports progress (0..1). */
+export async function zipPartsAsync(files, onProgress) {
+  const total = files.reduce((s, f) => s + f.parts.reduce((a, p) => a + p.length, 0), 0) || 1;
+  let done = 0;
+  const crcs = [];
+  for (const f of files) {
+    crcs.push(crc32(f.parts));
+    done += f.parts.reduce((a, p) => a + p.length, 0);
+    if (onProgress) onProgress(done / total);
+    await new Promise((r) => setTimeout(r, 0));
+  }
+  return zipParts(files, new Date(), crcs);
 }

@@ -16,7 +16,7 @@ import {
 } from '../songs.js';
 import { displayName, suggestNames, libraryRecord } from '../naming.js';
 import { loadEdits, saveEdits, loadLibrary, saveLibrary } from '../store.js';
-import { keepFocus, toast } from './common.js';
+import { keepFocus, toast, Meter, AnimatedNumber } from './common.js';
 import { NameAllSheet, SetlistSheet, LibrarySheet } from './sheets.js';
 import { ExportPanel } from './export.js';
 
@@ -45,6 +45,7 @@ export function Editor({ jobKey, title, link, subtitle, audioSrc, loadMedia, det
   const [sheet, setSheet] = useState(null);
   const [media, setMedia] = useState(null);
   const [mediaError, setMediaError] = useState(null);
+  const [mediaProg, setMediaProg] = useState({ f: 0.05, label: 'Connecting to the audio' });
   const player = useMemo(() => createPlayer(audioSrc), [audioSrc]);
   const cuts = useRef(new Map());
 
@@ -52,7 +53,7 @@ export function Editor({ jobKey, title, link, subtitle, audioSrc, loadMedia, det
 
   useEffect(() => {
     let alive = true;
-    loadMedia()
+    loadMedia((f, label) => alive && setMediaProg({ f, label }))
       .then((m) => alive && setMedia(m))
       .catch((e) => alive && setMediaError(e.message || String(e)));
     return () => {
@@ -80,7 +81,7 @@ export function Editor({ jobKey, title, link, subtitle, audioSrc, loadMedia, det
 
   // The only way a song gets a name: the user typed it or tapped it.
   const nameSong = useCallback(
-    (id, name) => {
+    (id, name, opts = {}) => {
       const clean = name.replace(/\s+/g, ' ').trim();
       const song = latest.current.songs.find((x) => x.id === id);
       if (!song || song.name === clean) return;
@@ -90,9 +91,18 @@ export function Editor({ jobKey, title, link, subtitle, audioSrc, loadMedia, det
         saveLibrary(next);
         return next;
       });
+      if (opts.undo !== false) {
+        const before = song.name;
+        toast(clean ? `Renamed to “${clean}”` : 'Name cleared', {
+          label: 'Undo',
+          run: () => nameRef.current(id, before, { undo: false }),
+        });
+      }
     },
     [jobKey],
   );
+  const nameRef = useRef(nameSong);
+  nameRef.current = nameSong;
 
   const suggestFor = useCallback(
     (song, typed) =>
@@ -120,6 +130,21 @@ export function Editor({ jobKey, title, link, subtitle, audioSrc, loadMedia, det
         </div>
         ${state.restored && html`<div class="svc-meta saved">Your names and cut changes on this device were restored.</div>`}
       </header>
+
+      ${songs.length > 0 &&
+      html`<div class="named-meter">
+        <div class="named-top">
+          <span><strong><${AnimatedNumber} value=${named} /></strong> of ${songs.length} named</span>
+          ${named === songs.length ? html`<span class="ok pop">All named ✓</span>` : html`<span class="muted small">tap a name to edit</span>`}
+        </div>
+        <${Meter} value=${(named / songs.length) * 100} small />
+      </div>`}
+      ${!media &&
+      !mediaError &&
+      html`<div class="media-loading">
+        <${Meter} value=${mediaProg.f * 100} active small />
+        <span class="muted small">${mediaProg.label}… ${Math.round(mediaProg.f * 100)}%</span>
+      </div>`}
 
       <div class="toolbar">
         <button class="btn primary" onClick=${() => setSheet('nameAll')} disabled=${!songs.length}>
@@ -197,7 +222,7 @@ export function Editor({ jobKey, title, link, subtitle, audioSrc, loadMedia, det
         player=${player}
         onApply=${(names, lines) => {
           setState((s) => ({ ...s, setlist: lines }));
-          for (const [id, name] of names) nameSong(id, name);
+          for (const [id, name] of names) nameSong(id, name, { undo: false });
           setSheet(null);
           if (names.length) toast(`Named ${names.length} song${names.length > 1 ? 's' : ''}`);
         }}
@@ -291,7 +316,10 @@ function SongCard({ song, index, isLast, total, player, media, setSongs, nameSon
   const moved = Math.abs(song.start - song.detected.start) > 0.05 || Math.abs(song.end - song.detected.end) > 0.05;
 
   return html`
-    <li class=${'song card' + (song.selected ? '' : ' deselected') + (song.check ? ' needs-check' : '')}>
+    <li
+      class=${'song card' + (song.selected ? '' : ' deselected') + (song.check ? ' needs-check' : '') + (song.name ? ' is-named' : '')}
+      style=${{ '--i': index }}
+    >
       <div class="song-top">
         <label class="check big" title="Export this song">
           <input
@@ -301,7 +329,7 @@ function SongCard({ song, index, isLast, total, player, media, setSongs, nameSon
             onChange=${() => setSongs((ss) => updateSong(ss, song.id, { selected: !song.selected }))}
           />
         </label>
-        <div class="song-num">${index + 1}</div>
+        <div class="song-num">${song.name ? html`<span class="num-tick">✓</span>` : index + 1}</div>
         <div class="song-main">
           <${NameField} song=${song} index=${index} suggestFor=${suggestFor} onCommit=${(name) => nameSong(song.id, name)} />
           <div class="song-times">
@@ -372,57 +400,86 @@ function SongCard({ song, index, isLast, total, player, media, setSongs, nameSon
 export function NameField({ song, index, suggestFor, onCommit }) {
   const [text, setText] = useState(song.name || '');
   const [focused, setFocused] = useState(false);
+  const [hi, setHi] = useState(-1);
+  const [flash, setFlash] = useState(0);
   const ref = useRef(null);
   const cancelled = useRef(false);
   useEffect(() => {
     if (!focused) setText(song.name || '');
   }, [song.name]);
   const sugg = focused ? suggestFor(song, text === song.name ? '' : text) : [];
+  const commit = (name) => {
+    if ((name || '').trim() !== (song.name || '')) setFlash((n) => n + 1);
+    onCommit(name);
+  };
+  const pick = (title) => {
+    setText(title);
+    commit(title);
+    cancelled.current = true;
+    ref.current.blur();
+  };
   return html`
     <div class=${'name-edit' + (focused ? ' focused' : '')}>
-      <input
-        ref=${ref}
-        class=${'song-name' + (song.name ? '' : ' unnamed')}
-        value=${text}
-        placeholder=${`Song ${index + 1} — tap to name`}
-        aria-label=${`Name of song ${index + 1}`}
-        autocomplete="off"
-        autocorrect="off"
-        spellcheck=${false}
-        autocapitalize="words"
-        enterkeyhint="done"
-        onFocus=${(e) => {
-          cancelled.current = false;
-          setFocused(true);
-          e.currentTarget.select();
-        }}
-        onInput=${(e) => setText(e.currentTarget.value)}
-        onKeyDown=${(e) => {
-          if (e.key === 'Enter') e.currentTarget.blur();
-          if (e.key === 'Escape') {
-            cancelled.current = true;
-            setText(song.name || '');
-            e.currentTarget.blur();
-          }
-        }}
-        onBlur=${() => {
-          setFocused(false);
-          if (!cancelled.current) onCommit(text);
-        }}
-      />
+      <div class="name-wrap">
+        <input
+          ref=${ref}
+          class=${'song-name' + (song.name ? '' : ' unnamed')}
+          value=${text}
+          placeholder=${`Song ${index + 1} — tap to name`}
+          aria-label=${`Name of song ${index + 1}`}
+          aria-autocomplete="list"
+          autocomplete="off"
+          autocorrect="off"
+          spellcheck=${false}
+          autocapitalize="words"
+          enterkeyhint="done"
+          onFocus=${(e) => {
+            cancelled.current = false;
+            setFocused(true);
+            setHi(-1);
+            e.currentTarget.select();
+          }}
+          onInput=${(e) => {
+            setText(e.currentTarget.value);
+            setHi(-1);
+          }}
+          onKeyDown=${(e) => {
+            if (e.key === 'ArrowDown' && sugg.length) {
+              e.preventDefault();
+              setHi((h) => (h + 1) % sugg.length);
+            } else if (e.key === 'ArrowUp' && sugg.length) {
+              e.preventDefault();
+              setHi((h) => (h <= 0 ? sugg.length - 1 : h - 1));
+            } else if (e.key === 'Enter') {
+              if (hi >= 0 && sugg[hi]) pick(sugg[hi].title);
+              else e.currentTarget.blur();
+            } else if (e.key === 'Tab' && !e.shiftKey && sugg.length && text && text !== song.name) {
+              e.preventDefault();
+              pick(sugg[Math.max(0, hi)].title);
+            } else if (e.key === 'Escape') {
+              cancelled.current = true;
+              setText(song.name || '');
+              e.currentTarget.blur();
+            }
+          }}
+          onBlur=${() => {
+            setFocused(false);
+            if (!cancelled.current) commit(text);
+          }}
+        />
+        ${flash > 0 && html`<span class="saved-flash" key=${flash} aria-hidden="true">✓ saved</span>`}
+      </div>
       ${sugg.length > 0 &&
-      html`<div class="chips" aria-label="Suggestions">
+      html`<div class="chips suggest" role="listbox" aria-label="Suggestions">
         ${sugg.map(
-          (s) => html`<button
-            class=${'chip' + (s.taken ? ' taken' : '')}
+          (s, i) => html`<button
+            role="option"
+            aria-selected=${i === hi}
+            class=${'chip' + (s.taken ? ' taken' : '') + (i === hi ? ' hi' : '')}
+            style=${{ '--i': i }}
             onMouseDown=${keepFocus}
             onPointerDown=${keepFocus}
-            onClick=${() => {
-              setText(s.title);
-              onCommit(s.title);
-              cancelled.current = true;
-              ref.current.blur();
-            }}
+            onClick=${() => pick(s.title)}
             title=${s.reason}
           >
             ${s.title}<small>${s.taken ? 'already used' : s.reason}</small>
