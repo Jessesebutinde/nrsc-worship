@@ -1,9 +1,8 @@
-// The anon key is public by design: row-level security on songcut_jobs only
-// lets the browser insert (youtube_url, scan_window) and read rows.
-export const SUPABASE_URL = 'https://fftlbnialgifdcxxkkxv.supabase.co';
-export const SUPABASE_ANON_KEY =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZmdGxibmlhbGdpZmRjeHhra3h2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAzNTE0NDgsImV4cCI6MjEwNTkyNzQ0OH0.z-KN1EdMO3kbbG_kQRM9qolk1PSXDXu8lhmX1PEoFLY';
-export const TABLE = 'songcut_jobs';
+// Songcut job API runs on Jesse's box (Cloudflare tunnel). No Supabase.
+// If Find songs / Recent break with network errors, the tunnel URL may have
+// rotated — update SONGCUT_API_BASE from /workspace/songcut/public-api-url.txt
+// on the box and redeploy.
+export const SONGCUT_API_BASE = 'https://procedure-labour-asp-smaller.trycloudflare.com';
 
 export const WINDOWS = [
   { value: '40', label: 'First 40 min', seconds: 40 * 60 },

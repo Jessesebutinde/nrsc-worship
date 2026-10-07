@@ -70,13 +70,15 @@ are marked as estimates (`~117 BPM`). It never invents song titles or fingerprin
 
 ## Backend contract
 
-- Table `public.songcut_jobs` through Supabase's REST API with the public anon key (`src/config.js`).
-- The browser only **INSERTs** `{ youtube_url, scan_window }` (`'40' | '60' | 'full'`) and **SELECTs** rows. It never
-  updates or deletes.
+- Jobs live on Jesse's box computer (SQLite + local audio), exposed as a public HTTPS API via a Cloudflare tunnel.
+  Base URL is `SONGCUT_API_BASE` in `src/config.js` (also written on the box to `/workspace/songcut/public-api-url.txt`).
+- The browser only **POSTs** `{ youtube_url, scan_window }` (`'40' | '60' | 'full'`) to `/api/jobs` and **GETs** job
+  status / Recent. It never updates or deletes.
+- Audio is served from `/audio/...` on the same API host. The app may `HEAD` the file for size when `Content-Range`
+  is hidden cross-origin.
 - A song name only appears as a suggestion if the backend sends a real `label` (not "Song 1"). Fingerprint matches are
   never shown unless the backend sends them.
-- Your Supabase storage doesn't expose `Content-Range` to browsers, so the app reads the file size from a `HEAD`
-  request.
+- If the Cloudflare quick-tunnel URL rotates, update `SONGCUT_API_BASE` and push to `main` (Pages redeploys).
 
 ## Running and deploying
 

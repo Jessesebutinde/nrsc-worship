@@ -1,21 +1,17 @@
-// songcut_jobs over Supabase's REST API. The browser only ever INSERTs
-// (youtube_url, scan_window) and SELECTs; it never updates or deletes.
+// Songcut jobs over the box job API (local SQLite + filesystem audio).
+// The browser only creates jobs and reads status / recent / audio.
 
-import { SUPABASE_URL, SUPABASE_ANON_KEY, TABLE } from './config.js';
+import { SONGCUT_API_BASE } from './config.js';
 
-export const COLUMNS =
-  'id,youtube_url,scan_window,status,progress,stage,title,duration_s,audio_url,songs,error,created_at';
-
-const BASE = `${SUPABASE_URL}/rest/v1/${TABLE}`;
-
-function headers(extra = {}) {
-  return { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}`, ...extra };
-}
+const BASE = `${SONGCUT_API_BASE}/api/jobs`;
 
 async function request(url, init = {}, fetchImpl = fetch) {
   let res;
   try {
-    res = await fetchImpl(url, { ...init, headers: headers(init.headers) });
+    res = await fetchImpl(url, {
+      ...init,
+      headers: { Accept: 'application/json', ...(init.headers || {}) },
+    });
   } catch {
     throw new Error('Could not reach the job server. Check your internet connection.');
   }
@@ -24,6 +20,7 @@ async function request(url, init = {}, fetchImpl = fetch) {
     try {
       const body = await res.json();
       if (body && body.message) msg += `: ${body.message}`;
+      else if (body && body.detail && body.detail.message) msg += `: ${body.detail.message}`;
     } catch {
       /* ignore */
     }
@@ -47,26 +44,20 @@ export function normalizeJob(row) {
 }
 
 export async function getJob(id, fetchImpl) {
-  const rows = await request(`${BASE}?select=${COLUMNS}&id=eq.${encodeURIComponent(id)}`, {}, fetchImpl);
-  return rows && rows[0] ? normalizeJob(rows[0]) : null;
+  const row = await request(`${BASE}/${encodeURIComponent(id)}`, {}, fetchImpl);
+  return row ? normalizeJob(row) : null;
 }
 
 export async function listReady(limit = 25, fetchImpl) {
-  const rows = await request(
-    `${BASE}?select=${COLUMNS}&status=eq.ready&order=created_at.desc&limit=${limit}`,
-    {},
-    fetchImpl,
-  );
+  const rows = await request(`${BASE}?status=ready&limit=${limit}`, {}, fetchImpl);
   return (rows || []).map(normalizeJob);
 }
 
 /** Recent jobs for the same video and window (newest first). */
 export async function findJobs(videoId, scanWindow, fetchImpl) {
   const q = new URLSearchParams({
-    select: COLUMNS,
-    youtube_url: `ilike.*${videoId}*`,
-    scan_window: `eq.${scanWindow}`,
-    order: 'created_at.desc',
+    video_id: videoId,
+    scan_window: scanWindow,
     limit: '10',
   });
   const rows = await request(`${BASE}?${q}`, {}, fetchImpl);
@@ -74,22 +65,20 @@ export async function findJobs(videoId, scanWindow, fetchImpl) {
 }
 
 export async function createJob(youtubeUrl, scanWindow, fetchImpl) {
-  const rows = await request(
+  const row = await request(
     BASE,
     {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Prefer: 'return=representation' },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ youtube_url: youtubeUrl, scan_window: scanWindow }),
     },
     fetchImpl,
   );
-  if (rows && rows[0]) return normalizeJob(rows[0]);
-  return null;
+  return row ? normalizeJob(row) : null;
 }
 
 export async function getJobs(ids, fetchImpl) {
   if (!ids.length) return [];
-  const list = ids.map((id) => encodeURIComponent(id)).join(',');
-  const rows = await request(`${BASE}?select=${COLUMNS}&id=in.(${list})`, {}, fetchImpl);
+  const rows = await request(`${BASE}?ids=${ids.map(encodeURIComponent).join(',')}`, {}, fetchImpl);
   return (rows || []).map(normalizeJob);
 }
