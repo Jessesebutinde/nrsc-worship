@@ -3,7 +3,7 @@
 // Three transports, used together:
 // - a BroadcastChannel: windows of one browser (the operator laptop and its TV / ATEM windows);
 // - a relay: Supabase Realtime when src/lyrics/config.js has a project, else the public MQTT
-//   broker, so a phone can drive a TV or a PC anywhere with internet and no account;
+//   broker, so a laptop or phone can drive a TV or a PC anywhere with internet and no account;
 // - "ports": Cast (Presentation API) connections, added with addPort().
 // Messages: { t: 'hello' | 'here' | 'state', id, role, state? }.
 // Whoever has the newest state answers a 'hello', so a refreshed screen or remote catches up.

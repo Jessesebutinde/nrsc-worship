@@ -760,3 +760,137 @@ mark.sp {
   padding: 2px 8px;
   background: rgba(0, 0, 0, 0.6);
 }
+
+/* ------------------------------------------------------------ laptop console (wide screens) */
+
+kbd {
+  font-family: inherit;
+  font-size: 0.85em;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 5px;
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  background: var(--card-2);
+}
+.app.console {
+  height: 100dvh;
+  padding-bottom: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.console .top .keys {
+  flex: 1;
+  text-align: center;
+}
+.console-grid {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(330px, 400px) minmax(0, 1fr) minmax(300px, 380px);
+}
+.pane {
+  min-height: 0;
+  overflow: auto;
+}
+.pane.lib {
+  border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.lib-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-bottom: 1px solid var(--line);
+  flex: none;
+}
+.lib-tabs button {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+  min-height: 46px;
+}
+.lib-tabs button.on {
+  color: var(--gold);
+  box-shadow: inset 0 -3px 0 var(--gold);
+}
+.pane-body {
+  flex: 1;
+  overflow: auto;
+  padding: 12px 14px 24px;
+}
+.pane.live-pane {
+  padding: 14px 18px 24px;
+}
+.console .live .preview {
+  max-width: 960px;
+  margin: 0 auto;
+}
+.console .live .nav,
+.console .live .modes {
+  max-width: 960px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.console .slides {
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+}
+.pane.out-pane {
+  border-left: 1px solid var(--line);
+  padding: 12px 14px 24px;
+  background: rgba(255, 255, 255, 0.015);
+}
+.out-panel section {
+  padding-bottom: 14px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+}
+.out-panel h2 {
+  margin: 0;
+}
+.out-panel .mini {
+  margin: 8px 0;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: #000;
+}
+.out-panel .seg button {
+  min-height: 40px;
+  padding: 6px 12px;
+}
+.out-panel .more {
+  width: 100%;
+  justify-content: flex-start;
+  text-align: left;
+  font-weight: 500;
+  color: var(--muted);
+}
+.chooser {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  padding: 12px;
+  margin-bottom: 12px;
+  border-radius: 10px;
+  border: 1px solid var(--gold);
+  background: #241d18;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.card.best {
+  border-color: rgba(227, 183, 90, 0.5);
+}
+.console-grid > main {
+  max-width: none;
+  margin: 0;
+  width: 100%;
+}
+div.out-btn {
+  border: 1px solid var(--line);
+  background: var(--card-2);
+}

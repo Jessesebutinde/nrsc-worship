@@ -1,5 +1,7 @@
-// Wireless outputs from the browser: Google Cast (Chromecast, Google TV, Android TV) through the
-// Presentation API, and the computer's own second display through the Window Management API.
+// Getting the picture onto the TV and the ATEM from the operator's laptop:
+// - Google Cast (Chromecast, Google TV, Android TV) through the Presentation API;
+// - any display attached to the laptop (HDMI, or a wireless display joined with Windows+K or AirPlay),
+//   placed with the Window Management API when the browser has it.
 
 export const canCast = () => typeof PresentationRequest !== 'undefined';
 
@@ -25,27 +27,48 @@ export function receiveCast(onConnection) {
   return true;
 }
 
-/** The displays attached to this computer (needs the window-management permission). */
-export async function otherScreens() {
-  if (!window.getScreenDetails) return [];
+export const canPlaceWindows = () => typeof window !== 'undefined' && 'getScreenDetails' in window;
+
+/**
+ * The displays other than the laptop's own screen: [{ label, left, top, width, height }].
+ * Asks for the window-management permission the first time. [] when not available.
+ */
+export async function extraDisplays() {
+  if (!canPlaceWindows()) return [];
   try {
     const d = await window.getScreenDetails();
-    return d.screens.filter((s) => !s.isPrimary || d.screens.length === 1);
+    const list = d.screens.length > 1 ? d.screens.filter((s) => s !== d.currentScreen && !s.isInternal) : [];
+    const others = list.length ? list : d.screens.filter((s) => s !== d.currentScreen);
+    return others.map((s, i) => ({
+      label: s.label || `Display ${i + 2}`,
+      left: s.availLeft,
+      top: s.availTop,
+      width: s.availWidth,
+      height: s.availHeight,
+    }));
   } catch {
     return [];
   }
 }
 
-/**
- * Opens `url` as a fullscreen window on another display when the browser allows it,
- * otherwise as a plain popup the user drags to the TV.
- */
-export async function openOnScreen(url, name = 'lyric-screen') {
-  const screens = await otherScreens();
-  const s = screens[0];
-  if (s) {
-    const w = window.open(url, name, `popup,fullscreen,left=${s.availLeft},top=${s.availTop},width=${s.availWidth},height=${s.availHeight}`);
-    return { window: w, placed: true, label: s.label || 'second display' };
+/** Opens `url` filling `display` (from extraDisplays), or as a window to drag when there is none. */
+export function openOn(url, name, display) {
+  if (display) {
+    const w = window.open(
+      url,
+      name,
+      `popup,fullscreen,left=${display.left},top=${display.top},width=${display.width},height=${display.height}`,
+    );
+    return { window: w, placed: true, label: display.label };
   }
   return { window: window.open(url, name, 'popup,width=1280,height=720'), placed: false };
+}
+
+/** "windows" | "mac" | "chromeos" | "other": for the wireless-display steps. */
+export function platform() {
+  const p = ((navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || navigator.userAgent || '').toLowerCase();
+  if (p.includes('win')) return 'windows';
+  if (p.includes('mac')) return 'mac';
+  if (p.includes('cros') || p.includes('chrome os')) return 'chromeos';
+  return 'other';
 }

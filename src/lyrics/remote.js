@@ -1,6 +1,6 @@
 // /lyrics/ — the remote: pick songs, scripture, pictures and videos, step through slides,
 // Clear / Black / Logo, and put the picture on the TV and the stream.
-// Phone first; also works on the operator laptop (Space / arrows, B, C, L).
+// Laptop: library, live slides and both outputs side by side (keys: Space / arrows, B, C, L). Phone: tabs.
 
 import { html, render, useState, useEffect, useRef, useMemo } from '../ui/h.js';
 import { Fit, Stage } from './stage.js';
@@ -10,7 +10,7 @@ import { loadSongs, saveSongs, visibleSongs, upsertSong, removeSong, searchSongs
 import { parseRef } from './books.js';
 import { allVersions, importVersion, removeVersion, passageItem, BUILTIN_VERSIONS } from './bible.js';
 import { relayConfig, cloudConfigured, loadSession, captureSession, sendMagicLink, signOut, pullSongs, pushSongs } from './cloud.js';
-import { canCast, castTo, openOnScreen } from './cast.js';
+import { canCast, castTo, extraDisplays, openOn, platform } from './cast.js';
 import { fontsReady, scriptureFit } from './measure.js';
 import { idbSet, idbDel } from './idb.js';
 import { SongEditor } from './editor.js';
@@ -42,6 +42,18 @@ const remoteUrl = (room) => new URL(`?room=${room}`, location.href).href;
 const shortUrl = (u) => u.replace(/^https?:\/\//, '').replace(/\/$/, '');
 
 // ------------------------------------------------------------------ small parts
+
+const WIDE = '(min-width: 1100px)';
+function useWide() {
+  const [wide, setWide] = useState(() => matchMedia(WIDE).matches);
+  useEffect(() => {
+    const m = matchMedia(WIDE);
+    const on = () => setWide(m.matches);
+    m.addEventListener('change', on);
+    return () => m.removeEventListener('change', on);
+  }, []);
+  return wide;
+}
 
 let showToast = () => {};
 function Toast() {
@@ -116,11 +128,12 @@ function Pair({ onPair }) {
 
 // ------------------------------------------------------------------ outputs: TV and stream
 
-function Outputs({ room, link, info, onClose }) {
+/** The actions behind every "put it on the TV / stream" button, with the display chooser they may need. */
+function useOutputs(room, link) {
   const [busy, setBusy] = useState('');
+  const [choose, setChoose] = useState(null); // { what, url, name, displays }
   const tvUrl = screenUrl(room);
   const streamUrl = screenUrl(room, '&out=stream');
-  const tvPage = new URL('tv.html', location.href).href;
 
   const cast = async () => {
     setBusy('cast');
@@ -129,19 +142,68 @@ function Outputs({ room, link, info, onClose }) {
       link.addPort(conn);
       showToast('Casting to the TV');
     } catch (e) {
-      if (!/abort|cancel|dismiss/i.test(e.message || '')) showToast(e.message || 'Could not cast');
+      if (!/abort|cancel|dismiss|not ?allowed/i.test(`${e.name} ${e.message}`)) showToast(e.message || 'Could not cast');
     } finally {
       setBusy('');
     }
   };
-  const second = async (url, name, what) => {
-    setBusy(name);
-    const r = await openOnScreen(url, name);
-    setBusy('');
-    if (!r.window) showToast('The browser blocked the window. Allow pop-ups for this site.');
-    else if (r.placed) showToast(`${what} opened on the ${r.label}`);
-    else showToast(`${what} opened. Drag it to the TV and click it for fullscreen.`);
+
+  const place = (url, name, what, display) => {
+    setChoose(null);
+    const r = openOn(url, name, display);
+    if (!r.window) showToast('The browser blocked the window. Allow pop-ups for this site, then try again.');
+    else if (r.placed) showToast(`${what} is on ${r.label}. Click it once for fullscreen.`);
+    else showToast(`${what} opened. Drag it onto the TV and click it for fullscreen.`);
   };
+
+  const open = async (what) => {
+    const url = what === 'TV' ? tvUrl : streamUrl;
+    const name = what === 'TV' ? 'lyric-screen' : 'lyric-stream';
+    setBusy(name);
+    const displays = await extraDisplays();
+    setBusy('');
+    if (displays.length > 1) setChoose({ what, url, name, displays });
+    else place(url, name, what === 'TV' ? 'The TV picture' : 'The stream feed', displays[0]);
+  };
+
+  const chooser =
+    choose &&
+    html`<div class="chooser" role="dialog" aria-label="Choose a display">
+      <b>Which display is the ${choose.what === 'TV' ? 'TV' : 'ATEM'}?</b>
+      <div class="row wrap">
+        ${choose.displays.map(
+          (d) => html`<button class="primary" onClick=${() => place(choose.url, choose.name, choose.what === 'TV' ? 'The TV picture' : 'The stream feed', d)}>
+            ${d.label} <span class="small">${d.width}×${d.height}</span>
+          </button>`,
+        )}
+        <button class="ghost" onClick=${() => setChoose(null)}>Cancel</button>
+      </div>
+    </div>`;
+
+  return { busy, cast, openTv: () => open('TV'), openStream: () => open('stream'), chooser, tvUrl, streamUrl };
+}
+
+function WirelessSteps() {
+  const os = platform();
+  if (os === 'windows')
+    return html`<span>Press <kbd>Windows</kbd> + <kbd>K</kbd>, pick the TV, and choose <b>Extend</b> (<kbd>Windows</kbd> + <kbd>P</kbd> → Extend). Then click <b>TV picture</b>.</span>`;
+  if (os === 'mac')
+    return html`<span>Open <b>Control Centre → Screen Mirroring</b>, pick the TV (AirPlay), and choose <b>Use As Separate Display</b>. Then click <b>TV picture</b>.</span>`;
+  return html`<span>Join the TV as a wireless display in the laptop's display settings, set it to <b>extend</b>, then click <b>TV picture</b>.</span>`;
+}
+
+const ATEM_STEPS = html`<ol class="small">
+  <li>HDMI from the laptop into a spare ATEM input (say input 4). Set the laptop to <b>extend</b> to it, not mirror.</li>
+  <li>Click <b>Stream feed</b> here and pick that display.</li>
+  <li>In ATEM Software Control open <b>Palettes → Upstream Key 1</b>, choose <b>Luma</b>, and set both <b>Fill Source</b> and <b>Key Source</b> to input 4.</li>
+  <li>Set <b>Clip</b> around 10% and <b>Gain</b> around 50% so the black disappears and the white text stays. Leave <b>Invert Key</b> off.</li>
+  <li>Press <b>KEY 1</b> on the ATEM. The text now sits over whatever camera is live.</li>
+</ol>`;
+
+/** The full "Show on TV & stream" sheet: every way, with the steps. */
+function Outputs({ room, link, info, onClose }) {
+  const o = useOutputs(room, link);
+  const tvPage = new URL('tv.html', location.href).href;
 
   return html`<div class="sheet outputs" role="dialog" aria-label="Outputs">
     <header class="sheet-head">
@@ -150,23 +212,35 @@ function Outputs({ room, link, info, onClose }) {
       <span class="muted small">Code <b class="code">${room}</b></span>
     </header>
     <div class="outputs-body">
+      ${o.chooser}
+      <section class="card best">
+        <h2>Best with one laptop</h2>
+        <p class="small">The laptop's <b>HDMI cable goes to the ATEM</b> (stream feed). The <b>TV gets the picture wirelessly</b>: Cast, or the TV as a wireless display.
+        Everything is driven from this window; both outputs follow it.</p>
+      </section>
+
       <section class="card">
         <h2>Hall TV <span class=${`pill ${info.peers.screen || info.ports ? 'ok' : ''}`}>${info.peers.screen || info.ports ? 'connected' : 'not yet'}</span></h2>
         <div class="out-grid">
+          <div class="out-btn static">
+            <span class="out-ic">📶</span><b>TV as a wireless display</b>
+            <span class="muted small"><${WirelessSteps} /></span>
+            <button class="primary" onClick=${o.openTv} disabled=${o.busy === 'lyric-screen'}>TV picture</button>
+          </div>
           ${canCast() &&
-          html`<button class="out-btn" onClick=${cast} disabled=${busy === 'cast'}>
+          html`<button class="out-btn" onClick=${o.cast} disabled=${o.busy === 'cast'}>
             <span class="out-ic">📡</span><b>Cast to the TV</b>
-            <span class="muted small">Chromecast, Google TV or Android TV on this Wi-Fi. Chrome shows the list.</span>
+            <span class="muted small">Chromecast, Google TV or Android TV on the same Wi-Fi. Chrome shows the list.</span>
           </button>`}
-          <button class="out-btn" onClick=${() => second(tvUrl, 'lyric-screen', 'TV window')} disabled=${busy === 'lyric-screen'}>
-            <span class="out-ic">🖥</span><b>TV on this computer</b>
-            <span class="muted small">HDMI from this PC. Opens the picture fullscreen on the second display.</span>
+          <button class="out-btn" onClick=${o.openTv} disabled=${o.busy === 'lyric-screen'}>
+            <span class="out-ic">🖥</span><b>TV on HDMI</b>
+            <span class="muted small">The TV is plugged into this laptop. Opens the picture on it.</span>
           </button>
           <div class="out-btn static">
             <span class="out-ic">📺</span><b>The TV's own browser</b>
             <span class="muted small">On the TV open <b>${shortUrl(tvPage)}</b> and type <b>${room}</b>. Or scan:</span>
-            <${Qr} text=${tvUrl} size=${132} />
-            <button class="chip ghost" onClick=${() => copy(tvUrl, 'TV link')}>Copy TV link</button>
+            <${Qr} text=${o.tvUrl} size=${132} />
+            <button class="chip ghost" onClick=${() => copy(o.tvUrl, 'TV link')}>Copy TV link</button>
           </div>
         </div>
         ${info.cloud === 'off' &&
@@ -177,30 +251,25 @@ function Outputs({ room, link, info, onClose }) {
         <h2>Stream · ATEM / Blackmagic</h2>
         <p class="muted small">A second picture made for the switcher: lower thirds on black, so the ATEM keys it over the camera.</p>
         <div class="out-grid">
-          <button class="out-btn" onClick=${() => second(streamUrl, 'lyric-stream', 'Stream feed')} disabled=${busy === 'lyric-stream'}>
-            <span class="out-ic">🎬</span><b>Open the stream feed</b>
-            <span class="muted small">Fullscreen on the display that goes to the ATEM.</span>
+          <button class="out-btn" onClick=${o.openStream} disabled=${o.busy === 'lyric-stream'}>
+            <span class="out-ic">🎬</span><b>Stream feed</b>
+            <span class="muted small">Opens on the display that goes to the ATEM (the laptop's HDMI).</span>
           </button>
           <div class="out-btn static">
             <span class="out-ic">🎥</span><b>OBS</b>
             <span class="muted small">Browser Source, 1920×1080, with this link (transparent):</span>
-            <button class="chip ghost" onClick=${() => copy(`${streamUrl}&transparent=1`, 'OBS link')}>Copy OBS link</button>
+            <button class="chip ghost" onClick=${() => copy(`${o.streamUrl}&transparent=1`, 'OBS link')}>Copy OBS link</button>
           </div>
         </div>
         <details>
           <summary>Set up the ATEM Mini once</summary>
-          <ol class="small">
-            <li>HDMI from the PC output that shows the stream feed into a spare ATEM input (say input 4).</li>
-            <li>In ATEM Software Control open <b>Palettes → Upstream Key 1</b>, choose <b>Luma</b>, and set both <b>Fill Source</b> and <b>Key Source</b> to input 4.</li>
-            <li>Set <b>Clip</b> around 10% and <b>Gain</b> around 50% so the black disappears and the white text stays. Leave <b>Invert Key</b> off.</li>
-            <li>Press <b>KEY 1</b> on the ATEM (or ON AIR in the keyer palette). The text now sits over whatever camera is live, on the hall TV and the stream alike.</li>
-          </ol>
+          ${ATEM_STEPS}
         </details>
       </section>
 
       <section class="card">
         <h2>Another remote</h2>
-        <p class="muted small">A second phone or laptop controls the same screens: open <b>${shortUrl(remoteUrl(room))}</b> or scan.</p>
+        <p class="muted small">A phone or a second laptop can control the same screens: open <b>${shortUrl(remoteUrl(room))}</b> or scan.</p>
         <div class="row wrap">
           <${Qr} text=${remoteUrl(room)} size=${120} />
           <button class="chip ghost" onClick=${() => copy(remoteUrl(room), 'Remote link')}>Copy remote link</button>
@@ -210,9 +279,44 @@ function Outputs({ room, link, info, onClose }) {
   </div>`;
 }
 
+/** The laptop console's right column: what the TV and the stream show, and one click to put them up. */
+function OutputsPanel({ room, link, info, state, act, onMore }) {
+  const o = useOutputs(room, link);
+  const tvOn = info.peers.screen > 0 || info.ports > 0;
+  const layout = state.streamLayout || 'lowerthird';
+  return html`<div class="out-panel">
+    ${o.chooser}
+    <section>
+      <div class="row between"><h2>TV</h2><span class=${`pill ${tvOn ? 'ok' : 'warn'}`}>${tvOn ? 'connected' : 'not connected'}</span></div>
+      <div class="mini"><${Fit}><${Stage} state=${state} out="tv" /><//></div>
+      <div class="row wrap">
+        <button class="primary" onClick=${o.openTv} disabled=${o.busy === 'lyric-screen'} title="Opens on the TV display (HDMI or wireless display)">TV picture</button>
+        ${canCast() && html`<button onClick=${o.cast} disabled=${o.busy === 'cast'}>Cast…</button>`}
+      </div>
+      <p class="muted small"><${WirelessSteps} /></p>
+    </section>
+    <section>
+      <div class="row between"><h2>Stream · ATEM</h2></div>
+      <div class="mini"><${Fit}><${Stage} state=${state} out="stream" layout=${layout} background=${state.streamBg === 'tv' ? 'auto' : 'key'} /><//></div>
+      <div class="row wrap">
+        <button class="primary" onClick=${o.openStream} disabled=${o.busy === 'lyric-stream'}>Stream feed</button>
+        <div class="seg">
+          <button class=${layout === 'lowerthird' ? 'on' : ''} onClick=${() => act({ type: 'set', patch: { streamLayout: 'lowerthird' } })}>Lower thirds</button>
+          <button class=${layout === 'full' ? 'on' : ''} onClick=${() => act({ type: 'set', patch: { streamLayout: 'full' } })}>Full</button>
+        </div>
+      </div>
+      <details>
+        <summary class="small">ATEM keyer setup</summary>
+        ${ATEM_STEPS}
+      </details>
+    </section>
+    <button class="ghost more" onClick=${onMore}>More ways: TV browser, QR codes, OBS, another remote ›</button>
+  </div>`;
+}
+
 // ------------------------------------------------------------------ live
 
-function Live({ state, act, info, goTab, onOutputs }) {
+function Live({ state, act, info, goTab, onOutputs, wide }) {
   const item = state.item;
   const list = useRef(null);
   const swipe = useRef(null);
@@ -246,6 +350,7 @@ function Live({ state, act, info, goTab, onOutputs }) {
     </div>
     <div class="modes">${modeBtn('clear', 'Clear')}${modeBtn('black', 'Black')}${modeBtn('logo', 'Logo')}</div>
     ${!connected &&
+    !wide &&
     html`<button class="note-btn" onClick=${onOutputs}>
       <b>No TV connected yet.</b> <span>Tap to put the picture on the TV or the stream ›</span>
     </button>`}
@@ -731,7 +836,9 @@ function App() {
   const [room, setRoom] = useState(() => normalizeCode(params.get('room')) || read(LS_ROOM, ''));
   const [state, setState] = useState(() => (room ? read(`ls-remote-state:${room}`, emptyState()) : emptyState()));
   const [info, setInfo] = useState({ peers: { screen: 0, remote: 0 }, cloud: 'off', pending: false, ports: 0 });
+  const wide = useWide();
   const [tab, setTab] = useState('live');
+  const [libTab, setLibTab] = useState('songs');
   const [songs, setSongsRaw] = useState(() => loadSongs());
   const [editing, setEditing] = useState(null);
   const [outputs, setOutputs] = useState(false);
@@ -812,13 +919,13 @@ function App() {
     return html`<${Pair}
         onPair=${(code, fresh) => {
           setRoom(code);
-          if (fresh) setOutputs(true);
+          if (fresh && !matchMedia(WIDE).matches) setOutputs(true);
         }}
       /><${Toast} />`;
 
   const showItem = (item, index = 0) => {
     act({ type: 'item', item, index });
-    setTab('live');
+    if (!wide) setTab('live');
   };
   const showSong = (song, index = 0) => showItem(songItem(song), index);
 
@@ -841,55 +948,41 @@ function App() {
   };
 
   const connected = info.peers.screen > 0 || info.ports > 0;
-  const tabs = [
-    ['live', 'Live'],
-    ['songs', 'Songs'],
-    ['scripture', 'Scripture'],
-    ['media', 'Media'],
-    ['settings', 'Settings'],
-  ];
-
-  return html`<div class="app">
-    <header class="top">
-      <div class="brand"><span class="cross">✝</span> Lyric Slides</div>
-      <button class=${`pill ${connected ? 'ok' : 'warn'}`} onClick=${() => setOutputs(true)}>
-        ${connected ? 'TV ✓' : 'Show on TV'} · ${room}${info.pending ? ' · waiting' : ''}
-      </button>
-    </header>
-    <main>
-      ${tab === 'live' && html`<${Live} state=${state} act=${act} info=${info} goTab=${setTab} onOutputs=${() => setOutputs(true)} />`}
-      ${tab === 'songs' &&
-      html`<${Songs}
-        songs=${songs}
-        liveId=${state.item && state.item.id}
-        onShow=${(s) => showSong(s)}
-        onEdit=${(s) => setEditing(s)}
-        onNew=${() => setEditing('new')}
-      />`}
-      ${tab === 'scripture' && html`<${Scripture} prefs=${prefs} setPrefs=${setPrefs} onShow=${showItem} />`}
-      ${tab === 'media' && html`<${Media} onShow=${showItem} liveId=${state.item && state.item.id} relayOn=${info.cloud !== 'off'} />`}
-      ${tab === 'settings' &&
-      html`<${Settings}
-        room=${room}
-        state=${state}
-        act=${act}
-        info=${info}
-        prefs=${prefs}
-        setPrefs=${setPrefs}
-        songs=${songs}
-        setSongs=${setSongs}
-        session=${session}
-        setSession=${setSession}
-        onOutputs=${() => setOutputs(true)}
-        onUnpair=${() => {
-          write(LS_ROOM, '');
-          setRoom('');
-        }}
-      />`}
-    </main>
-    <nav class="tabs">
-      ${tabs.map(([k, label]) => html`<button class=${tab === k ? 'on' : ''} onClick=${() => setTab(k)}>${label}</button>`)}
-    </nav>
+  const songsPane = html`<${Songs}
+    songs=${songs}
+    liveId=${state.item && state.item.id}
+    onShow=${(s) => showSong(s)}
+    onEdit=${(s) => setEditing(s)}
+    onNew=${() => setEditing('new')}
+  />`;
+  const scripturePane = html`<${Scripture} prefs=${prefs} setPrefs=${setPrefs} onShow=${showItem} />`;
+  const mediaPane = html`<${Media} onShow=${showItem} liveId=${state.item && state.item.id} relayOn=${info.cloud !== 'off'} />`;
+  const settingsPane = html`<${Settings}
+    room=${room}
+    state=${state}
+    act=${act}
+    info=${info}
+    prefs=${prefs}
+    setPrefs=${setPrefs}
+    songs=${songs}
+    setSongs=${setSongs}
+    session=${session}
+    setSession=${setSession}
+    onOutputs=${() => setOutputs(true)}
+    onUnpair=${() => {
+      write(LS_ROOM, '');
+      setRoom('');
+    }}
+  />`;
+  const livePane = html`<${Live} state=${state} act=${act} info=${info} wide=${wide} goTab=${wide ? setLibTab : setTab} onOutputs=${() => setOutputs(true)} />`;
+  const header = html`<header class="top">
+    <div class="brand"><span class="cross">✝</span> Lyric Slides</div>
+    ${wide && html`<span class="muted small keys">Space / → next · ← back · B black · C clear · L logo</span>`}
+    <button class=${`pill ${connected ? 'ok' : 'warn'}`} onClick=${() => setOutputs(true)}>
+      ${connected ? 'TV ✓' : 'Show on TV'} · ${room}${info.pending ? ' · waiting' : ''}
+    </button>
+  </header>`;
+  const sheets = html`
     ${outputs && link.current && html`<${Outputs} room=${room} link=${link.current} info=${info} onClose=${() => setOutputs(false)} />`}
     ${editing &&
     html`<${SongEditor}
@@ -903,7 +996,53 @@ function App() {
         showSong(song, index);
       }}
     />`}
-    <${Toast} />
+    <${Toast} />`;
+
+  // Laptop: library | live | outputs, all on one screen.
+  if (wide) {
+    const libTabs = [
+      ['songs', 'Songs'],
+      ['scripture', 'Scripture'],
+      ['media', 'Media'],
+      ['settings', 'Settings'],
+    ];
+    return html`<div class="app console">
+      ${header}
+      <div class="console-grid">
+        <aside class="pane lib">
+          <nav class="lib-tabs">
+            ${libTabs.map(([k, label]) => html`<button class=${libTab === k ? 'on' : ''} onClick=${() => setLibTab(k)}>${label}</button>`)}
+          </nav>
+          <div class="pane-body">
+            ${libTab === 'songs' && songsPane}${libTab === 'scripture' && scripturePane}${libTab === 'media' && mediaPane}${libTab === 'settings' && settingsPane}
+          </div>
+        </aside>
+        <main class="pane live-pane">${livePane}</main>
+        <aside class="pane out-pane">
+          ${link.current && html`<${OutputsPanel} room=${room} link=${link.current} info=${info} state=${state} act=${act} onMore=${() => setOutputs(true)} />`}
+        </aside>
+      </div>
+      ${sheets}
+    </div>`;
+  }
+
+  const tabs = [
+    ['live', 'Live'],
+    ['songs', 'Songs'],
+    ['scripture', 'Scripture'],
+    ['media', 'Media'],
+    ['settings', 'Settings'],
+  ];
+
+  return html`<div class="app">
+    ${header}
+    <main>
+      ${tab === 'live' && livePane}${tab === 'songs' && songsPane}${tab === 'scripture' && scripturePane}${tab === 'media' && mediaPane}${tab === 'settings' && settingsPane}
+    </main>
+    <nav class="tabs">
+      ${tabs.map(([k, label]) => html`<button class=${tab === k ? 'on' : ''} onClick=${() => setTab(k)}>${label}</button>`)}
+    </nav>
+    ${sheets}
   </div>`;
 }
 
