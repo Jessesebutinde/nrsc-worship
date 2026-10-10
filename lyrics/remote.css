@@ -674,27 +674,173 @@ main {
 mark.sp {
   background: none;
   color: inherit;
-  text-decoration: underline wavy var(--danger);
+  text-decoration: underline wavy var(--warn);
   text-underline-offset: 3px;
 }
-.spell {
+
+/* Proof view: the lyrics under the textarea, a small tag under each word that looks wrong.
+   One colour per kind, from the theme's tokens; the underline style tells them apart too. */
+.proof {
+  --k-spelling: var(--warn);
+  --k-grammar: var(--ok);
+  --k-punctuation: var(--danger);
+  --k-capital: var(--gold);
   margin-top: 14px;
-  padding: 12px;
+  padding: 10px 12px 12px;
   border-radius: 10px;
   background: var(--card);
   border: 1px solid var(--line);
 }
-.spell ul {
-  list-style: none;
-  padding: 0;
-  margin: 8px 0 0;
+@supports (color: hsl(from red h s l)) {
+  .proof {
+    --k-spelling: hsl(from var(--warn) calc(h - 10) s l); /* amber, away from the gold */
+    --k-grammar: hsl(from var(--ok) calc(h + 35) s l); /* teal, from the theme's green */
+  }
 }
-.spell li {
+.proof .k-spelling,
+.proof .u-spelling {
+  --k: var(--k-spelling);
+}
+.proof .k-grammar,
+.proof .u-grammar {
+  --k: var(--k-grammar);
+}
+.proof .k-punctuation,
+.proof .u-punctuation {
+  --k: var(--k-punctuation);
+}
+.proof .k-capital,
+.proof .u-capital {
+  --k: var(--k-capital);
+}
+.proof-head,
+.proof-sub {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
-  padding: 4px 0;
+  justify-content: space-between;
+  gap: 6px 14px;
+}
+.proof-head {
+  min-height: 34px;
+}
+.proof-sub {
+  margin: 4px 0 8px;
+}
+.proof-key {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  color: var(--muted);
+}
+.proof-key i {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-style: normal;
+}
+.proof-key i::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--k);
+}
+button.proof-all {
+  min-height: 34px;
+}
+.proof-text {
+  max-height: 60vh;
+  overflow: auto;
+  font-size: 0.95rem;
+  line-height: 1.35;
+}
+.proof-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  padding: 3px 0;
+}
+.proof-label {
+  margin: 8px 0 2px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  opacity: 0.8;
+}
+.proof-gap {
+  height: 8px;
+}
+.ps {
+  white-space: pre;
+}
+.ps[class*='u-'] {
+  border-radius: 3px;
+  box-shadow: inset 0 -2px var(--k);
+}
+.pw {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.pw[class*='u-'] > .pw-text {
+  text-decoration: underline solid var(--k);
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 3px;
+}
+.pw.u-spelling > .pw-text {
+  text-decoration-style: wavy;
+}
+.pw.u-grammar > .pw-text {
+  text-decoration-style: dashed;
+}
+.pw.u-punctuation > .pw-text {
+  text-decoration-style: dotted;
+}
+.tag {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 3px;
+  border: 1px solid var(--k);
+  border-radius: 99px;
+  background: var(--card-2);
+  color: var(--k);
+  font-size: 0.7rem;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.tag + .tag {
+  margin-top: 2px;
+}
+.tag button {
+  min-height: 0;
+  padding: 1px 3px 1px 7px;
+  border: 0;
+  border-radius: 99px;
+  background: transparent;
+  color: inherit;
+  font-size: inherit;
+  font-weight: 600;
+}
+.tag button.tag-x {
+  padding: 1px 6px 1px 3px;
+  font-weight: 400;
+  opacity: 0.65;
+}
+.tag button:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+@supports (background: color-mix(in srgb, red 10%, transparent)) {
+  .tag {
+    background: color-mix(in srgb, var(--k) 14%, var(--card));
+    border-color: color-mix(in srgb, var(--k) 55%, transparent);
+    color: color-mix(in srgb, var(--k) 80%, var(--text)); /* readable on light themes too */
+  }
+  .ps[class*='u-'] {
+    background: color-mix(in srgb, var(--k) 28%, transparent);
+  }
 }
 .danger-zone {
   margin-top: 20px;

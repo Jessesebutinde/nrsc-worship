@@ -29,7 +29,27 @@ export class Dictionary {
   constructor(...lists) {
     this.rank = new Map();
     this.byLen = new Map();
+    this.lists = {};
     for (const list of lists) for (const w of list) this.add(w);
+  }
+
+  /** Adds a named word list (most frequent first), e.g. 'lg' or 'en', remembering each word's place in it. */
+  addList(name, list) {
+    const places = new Map();
+    for (const word of list) {
+      const w = String(word).trim().toLowerCase();
+      if (!w || places.has(w)) continue;
+      places.set(w, places.size);
+      this.add(w);
+    }
+    this.lists[name] = places;
+    return this;
+  }
+
+  /** The word's place in a named list (0 = most frequent), or -1 when it is not there. */
+  rankIn(name, word) {
+    const r = this.lists[name] && this.lists[name].get(String(word).toLowerCase());
+    return r === undefined ? -1 : r;
   }
 
   add(word) {

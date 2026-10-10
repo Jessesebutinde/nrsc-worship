@@ -332,8 +332,13 @@ or the other way round. Videos play with sound; **Loop video** repeats one.
   never on "and", "the", "mu", "nga"…) and never inside a word. Slides that already fit are left alone.
 - The preview shows the slide under the cursor exactly as the TV will. A slide is flagged if a line would wrap on
   the TV (measured in the real font) or has too many lines. Sizes never shrink to fit.
-- **Spelling** underlines words not found in the Luganda 1968 Bible, the KJV or your other songs, and offers a
-  one-tap fix. **It's right** teaches it a word.
+- **Suggestions** sit under the lyrics as you type: each word that looks wrong gets a small tag showing the fix.
+  Tap the tag to fix it, or its **×** if the word is right (it is not suggested again). Amber is spelling
+  (`erinya` → `erinnya`, `okuyinba` → `okuyimba`, checked against the Luganda 1968 Bible and the KJV), teal is
+  grammar (`na omwana` → `n'omwana`), red is punctuation (`n' essanyu` → `n'essanyu`, spaces around commas), gold
+  is a capital on a sacred name (`Katonda`, `Mukama`, `Yesu`). Hover a tag for the reason. **Fix all safe ones**
+  applies all but the spelling tags. It would rather miss a mistake than tag a right word: on the Psalms and John
+  nearly every verse gets no tag. Words in the title and your other songs count as right.
 - Each song has a look:
 
 | Look | Style | Text | Position | Change |
