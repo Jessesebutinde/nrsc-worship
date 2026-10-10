@@ -5,7 +5,7 @@ import { parseRef, findBook, formatRef, bookByCode, BOOKS } from '../src/lyrics/
 import { parseBibleText, splitVerse, paginate, passageItem, wrapCount, CHAR_FIT } from '../src/lyrics/bible.js';
 import { parseSlides, formatSlides, splitLyrics, splitShort, lintSlides, wrapLine, splitAtPauses, labelOf } from '../src/lyrics/split.js';
 import { Dictionary, checkText, applyFix, wordsOf, distance } from '../src/lyrics/spell.js';
-import { emptyState, reduce, newer, songItem, mediaItem, shownOn, lookOf, slideWords, markKey, stepsOf, scriptureLookOf, PRESETS, PRESET_INFO, BACKGROUNDS, SCRIPTURE_LOOKS, SCRIPTURE_INFO } from '../src/lyrics/state.js';
+import { emptyState, reduce, newer, songItem, mediaItem, shownOn, lookOf, slideWords, markKey, stepsOf, scriptureLookOf, PRESETS, PRESET_INFO, BACKGROUNDS, SCRIPTURE_LOOKS, SCRIPTURE_INFO, SCRIPTURE_GROUPS, SCRIPTURE_MOTIONS } from '../src/lyrics/state.js';
 import { Link, normalizeCode, newCode, CODE_ALPHABET } from '../src/lyrics/link.js';
 import { RealtimeChannel } from '../src/lyrics/realtime.js';
 import { MqttClient, connectPacket, subscribePacket, publishPacket, parsePackets, parsePublish } from '../src/lyrics/mqtt.js';
@@ -580,15 +580,37 @@ test('cutting wisely: joiners stay with the next word, repeats and closing words
   for (const s of parseSlides(out)) assert.ok(s.lines.length <= 2, out);
 });
 
-test('scripture looks: eleven, each with a name, hint and environment; Ink & stone is the default', () => {
-  assert.equal(SCRIPTURE_LOOKS.length, 11);
+test('scripture looks: 9 pages and 24 cards, each with a name, hint, environment, group and swatch; Ink & stone is the default', () => {
+  assert.equal(SCRIPTURE_LOOKS.length, 33);
   for (const k of SCRIPTURE_LOOKS) {
     const i = SCRIPTURE_INFO[k];
-    assert.ok(i && i.name && i.hint && i.env, k);
+    assert.ok(i && i.name && i.hint && i.env && SCRIPTURE_GROUPS[i.group] && i.sw.length === 2, k);
   }
+  assert.equal(SCRIPTURE_LOOKS.filter((k) => SCRIPTURE_INFO[k].group === 'page').length, 9);
+  assert.equal(SCRIPTURE_LOOKS.filter((k) => SCRIPTURE_INFO[k].group === 'card').length, 24);
+  assert.equal(new Set(SCRIPTURE_LOOKS.map((k) => SCRIPTURE_INFO[k].name)).size, 33, 'names are distinct');
   assert.equal(scriptureLookOf(emptyState()), 'ink');
   assert.equal(scriptureLookOf({ sLook: 'nope' }), 'ink');
   assert.equal(scriptureLookOf({ sLook: 'kitenge' }), 'kitenge');
+  assert.equal(scriptureLookOf({ sLook: 'bible' }), 'bible');
+  assert.deepEqual(Object.keys(SCRIPTURE_MOTIONS), ['gentle', 'page', 'type', 'reveal', 'slide']);
+  const e = emptyState();
+  assert.equal(e.sMotion, 'reveal');
+  assert.equal(e.quotes, true);
+});
+
+test('every scripture look has measurements and styles, and every card environment is drawn', () => {
+  const css = fs.readFileSync('lyrics/stage.css', 'utf8');
+  const stage = fs.readFileSync('src/lyrics/stage.js', 'utf8');
+  const measure = fs.readFileSync('src/lyrics/measure.js', 'utf8');
+  for (const k of SCRIPTURE_LOOKS) {
+    assert.ok(css.includes(`.sl-${k}`) || k === 'ink', `palette for ${k}`);
+    assert.ok(measure.includes(`${k}:`) || measure.includes(`'${k}'`), `measurements for ${k}`);
+    const env = SCRIPTURE_INFO[k].env;
+    assert.ok(css.includes(`.bg-${env}`), `environment ${env}`);
+    assert.ok(stage.includes(`'${env}'`), `environment ${env} is drawn`);
+  }
+  for (const m of Object.keys(SCRIPTURE_MOTIONS)) if (m !== 'gentle') assert.ok(css.includes(`.smo-${m} `), `motion ${m}`);
 });
 
 test('verse by verse: Next reveals the verses of a slide one at a time, then turns the page; Back retraces', () => {

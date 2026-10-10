@@ -6,7 +6,7 @@ import { html, render, useState, useEffect, useRef, useMemo } from '../ui/h.js';
 import { Fit, Stage } from './stage.js';
 import { Link, normalizeCode } from './link.js';
 import { ROOM } from './config.js';
-import { emptyState, reduce, songItem, mediaItem, BACKGROUNDS, BACKGROUND_INFO, PRESETS, PRESET_INFO, STREAM_LAYOUTS, ILLUSTRATION_SIZES, MARK_COLORS, PLAY_LEVELS, PLACES, SCRIPTURE_LOOKS, SCRIPTURE_INFO, scriptureLookOf, stepsOf, lookOf, slideWords, markKey } from './state.js';
+import { emptyState, reduce, songItem, mediaItem, BACKGROUNDS, BACKGROUND_INFO, PRESETS, PRESET_INFO, STREAM_LAYOUTS, ILLUSTRATION_SIZES, MARK_COLORS, PLAY_LEVELS, PLACES, SCRIPTURE_LOOKS, SCRIPTURE_INFO, SCRIPTURE_GROUPS, SCRIPTURE_MOTIONS, scriptureLookOf, stepsOf, lookOf, slideWords, markKey } from './state.js';
 import { loadSongs, saveSongs, visibleSongs, upsertSong, removeSong, searchSongs, mergeSongs, exportLibrary, importLibrary } from './library.js';
 import { parseRef, bookByCode } from './books.js';
 import { allVersions, importVersion, removeVersion, passageItem, BUILTIN_VERSIONS } from './bible.js';
@@ -446,26 +446,113 @@ function Emphasis({ state, act }) {
 
 // ------------------------------------------------------------------ live
 
-/** The scripture look chips and the reading switches (under the live slide and in Settings). */
-function ScriptureControls({ state, act, setLook, hints = false }) {
+// A short verse every look can show, for the gallery's thumbnails.
+const SAMPLE_VERSE = {
+  kind: 'scripture',
+  id: 'sample',
+  title: 'Zabbuli 23 : 1',
+  book: { lg: 'Zabbuli', en: 'Psalms', code: 'PSA' },
+  chapter: 23,
+  v1: 1,
+  v2: 1,
+  versions: ['Luganda 1968', 'KJV'],
+  secondaryLabel: 'KJV',
+  slides: [
+    {
+      ref: 'Zabbuli 23 : 1 · Psalm 23 : 1',
+      primary: 'Mukama ye musumba wange; seetaagenga:',
+      secondary: 'The LORD is my shepherd; I shall not want.',
+      verses: [{ verse: 1, part: '', primary: 'Mukama ye musumba wange; seetaagenga:', secondary: 'The LORD is my shepherd; I shall not want.' }],
+    },
+  ],
+};
+
+/** Renders its children only once scrolled into view (the gallery's thumbnails are real stages). */
+function Lazy({ children, class: cls }) {
+  const ref = useRef(null);
+  const [seen, setSeen] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || seen) return undefined;
+    const io = new IntersectionObserver((es) => es.some((e) => e.isIntersecting) && setSeen(true), { rootMargin: '200px' });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [seen]);
+  return html`<div class=${cls} ref=${ref}>${seen ? children : null}</div>`;
+}
+
+/** Every scripture look as a small live picture, in two groups: pages and cards. */
+function LookGallery({ state, setLook, onClose }) {
   const look = scriptureLookOf(state);
-  return html`<div class="looks chips" role="group" aria-label="Scripture look">
-      ${SCRIPTURE_LOOKS.map(
-        (k) => html`<button class=${`chip ${look === k ? 'on' : ''}`} onClick=${() => setLook({ sLook: k })} title=${SCRIPTURE_INFO[k].hint}>${SCRIPTURE_INFO[k].name}</button>`,
+  useEffect(() => {
+    const onKey = (e) => e.key === 'Escape' && onClose();
+    addEventListener('keydown', onKey);
+    return () => removeEventListener('keydown', onKey);
+  }, []);
+  const tile = (k) => {
+    const st = { ...emptyState(), rev: 1, mode: 'show', item: SAMPLE_VERSE, index: 0, sLook: k, sFont: state.sFont, quotes: state.quotes, progress: false, reveal: false };
+    return html`<button class=${`look-tile ${look === k ? 'on' : ''}`} onClick=${() => setLook({ sLook: k })} title=${SCRIPTURE_INFO[k].hint}>
+      <${Lazy} class="look-pic"><${Fit}><${Stage} state=${st} still=${true} /><//><//>
+      <span class="look-name"><i class="sw" style=${`--a:${SCRIPTURE_INFO[k].sw[0]};--b:${SCRIPTURE_INFO[k].sw[1]}`}></i>${SCRIPTURE_INFO[k].name}</span>
+    </button>`;
+  };
+  return html`<div class="sheet gallery" role="dialog" aria-label="Scripture looks">
+    <header class="sheet-head">
+      <button class="ghost" onClick=${onClose}>Done</button>
+      <b>Scripture looks</b>
+      <span class="muted small">${SCRIPTURE_INFO[look].name}</span>
+    </header>
+    <div class="gallery-body">
+      ${Object.entries(SCRIPTURE_GROUPS).map(
+        ([g, label]) => html`<section>
+          <h2>${label} <span class="muted small">${g === 'page' ? 'the words on the page' : 'the words on a card, a book or a stone'}</span></h2>
+          <div class="look-grid">${SCRIPTURE_LOOKS.filter((k) => SCRIPTURE_INFO[k].group === g).map(tile)}</div>
+        </section>`,
       )}
     </div>
-    <div class="wordplay row wrap">
-      <span class="seg" role="group" aria-label="Type">
-        <button class=${state.sFont !== 'sans' ? 'on' : ''} onClick=${() => setLook({ sFont: 'serif' })} title="Source Serif, like a printed Bible">Serif</button>
-        <button class=${state.sFont === 'sans' ? 'on' : ''} onClick=${() => setLook({ sFont: 'sans' })} title="Montserrat, like the lyrics">Sans</button>
-      </span>
-      <span class="seg" role="group" aria-label="Reading">
-        <button class=${state.reveal !== false ? 'on' : ''} onClick=${() => act({ type: 'set', patch: { reveal: state.reveal === false } })} title="Next brings the next verse; verses already read dim">Verse by verse</button>
-        <button class=${state.progress !== false ? 'on' : ''} onClick=${() => act({ type: 'set', patch: { progress: state.progress === false } })} title="A thin bar along the bottom shows how far through the passage you are">Progress bar</button>
-      </span>
+  </div>`;
+}
+
+/** The scripture look, motion and reading switches (under the live slide and in Settings). */
+function ScriptureControls({ state, act, setLook, hints = false }) {
+  const look = scriptureLookOf(state);
+  const [open, setOpen] = useState(false);
+  const motion = SCRIPTURE_MOTIONS[state.sMotion] ? state.sMotion : 'reveal';
+  const i = SCRIPTURE_LOOKS.indexOf(look);
+  const step = (d) => setLook({ sLook: SCRIPTURE_LOOKS[(i + d + SCRIPTURE_LOOKS.length) % SCRIPTURE_LOOKS.length] });
+  return html`<div class="scrip-ctl">
+      <div class="row look-pick">
+        <button class="ghost arrow" onClick=${() => step(-1)} aria-label="Previous look">‹</button>
+        <button class="look-btn" onClick=${() => setOpen(true)} title="All scripture looks">
+          <i class="sw" style=${`--a:${SCRIPTURE_INFO[look].sw[0]};--b:${SCRIPTURE_INFO[look].sw[1]}`}></i>
+          <b>${SCRIPTURE_INFO[look].name}</b>
+          <span class="muted small">${SCRIPTURE_GROUPS[SCRIPTURE_INFO[look].group]} · ${i + 1} of ${SCRIPTURE_LOOKS.length}</span>
+          <span class="more">All looks ▾</span>
+        </button>
+        <button class="ghost arrow" onClick=${() => step(1)} aria-label="Next look">›</button>
+      </div>
+      <div class="wordplay row wrap">
+        <span class="seg" role="group" aria-label="Motion">
+          ${Object.entries(SCRIPTURE_MOTIONS).map(
+            ([k, l]) => html`<button class=${motion === k ? 'on' : ''} onClick=${() => act({ type: 'set', patch: { sMotion: k } })}>${l}</button>`,
+          )}
+        </span>
+      </div>
+      <div class="wordplay row wrap">
+        <span class="seg" role="group" aria-label="Type">
+          <button class=${state.sFont !== 'sans' ? 'on' : ''} onClick=${() => setLook({ sFont: 'serif' })} title="Source Serif, like a printed Bible">Serif</button>
+          <button class=${state.sFont === 'sans' ? 'on' : ''} onClick=${() => setLook({ sFont: 'sans' })} title="Montserrat, like the lyrics">Sans</button>
+        </span>
+        <span class="seg" role="group" aria-label="Reading">
+          <button class=${state.reveal !== false ? 'on' : ''} onClick=${() => act({ type: 'set', patch: { reveal: state.reveal === false } })} title="Next brings the next verse; verses already read dim">Verse by verse</button>
+          <button class=${state.progress !== false ? 'on' : ''} onClick=${() => act({ type: 'set', patch: { progress: state.progress === false } })} title="A thin bar along the bottom shows how far through the passage you are">Progress bar</button>
+          <button class=${state.quotes !== false ? 'on' : ''} onClick=${() => act({ type: 'set', patch: { quotes: state.quotes === false } })} title="Quotation marks around the words">“Quotes”</button>
+        </span>
+      </div>
     </div>
+    ${open && html`<${LookGallery} state=${state} setLook=${setLook} onClose=${() => setOpen(false)} />`}
     ${hints &&
-    html`<small class="muted">Every look brings its own page: Ink & stone (the default), Parchment and Linen card for reading, Manuscript and Scroll for one verse, Chalk & slate for teaching, Kitenge for Kampala, Candlelight for evenings, Watercolour for mornings, Blueprint for youth, Dawn for sunrise. Verse by verse: with several verses on a slide, Next reveals them one at a time and dims the ones already read. The progress bar is a thin line along the bottom of the TV.</small>`}`;
+    html`<small class="muted">${SCRIPTURE_LOOKS.length} looks: ${SCRIPTURE_LOOKS.filter((k) => SCRIPTURE_INFO[k].group === 'page').length} pages and ${SCRIPTURE_LOOKS.filter((k) => SCRIPTURE_INFO[k].group === 'card').length} cards; ‹ › step through them, All looks shows them all. Motion: Gentle lines rise in turn; Page turn turns the old page over from its edge (the open Bible turns its right-hand leaf); Typing writes each word in; Reveal sweeps a soft edge of light across; Slide comes in from the right and leaves to the left. Calm mode always crossfades. Verse by verse: with several verses on a slide, Next reveals them one at a time and dims the ones already read. Each verse starts with its number; a verse that goes on to the next slide ends with … and continues with …; three dots at the corner say the passage goes on.</small>`}`;
 }
 
 function Live({ state, act, info, goTab, onOutputs, wide, setLook }) {

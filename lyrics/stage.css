@@ -400,14 +400,14 @@
   --sfam: 'Source Serif 4', Georgia, 'Times New Roman', serif;
   --sa: var(--gold); /* accent: reference, bar, verse numbers */
   --sfg: var(--white); /* the language on top */
-  --sfg2: rgba(245, 243, 238, 0.68); /* the one below */
+  --sfg2: rgba(245, 243, 238, 0.8); /* the one below */
   --sshadow: var(--shadow);
   --sl: 154px; /* block left */
   --sw: 1613px; /* block width */
   --sp: 56px; /* room for the bar */
   --sps: 92px; /* primary size */
   --spw: 600;
-  --sss: 64px; /* secondary size */
+  --sss: 74px; /* secondary size */
   --ssw: 400;
   --ssi: normal; /* secondary italic? */
   --salign: left;
@@ -486,19 +486,74 @@
 .scrip .vn {
   color: var(--sa);
 }
-/* The marker that the passage goes on, and the bar through it. */
+/* Three dots: the passage goes on. They glow in turn, slowly. */
 .smore {
   position: absolute;
-  right: 96px;
-  bottom: 54px;
-  font-family: 'Montserrat', sans-serif;
-  font-size: 26px;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--sa);
-  opacity: 0.6;
+  right: 104px;
+  bottom: 58px;
+  display: flex;
+  gap: 16px;
   animation: ls-fade-in 600ms ease both;
+}
+.smore i,
+.lt-scrip .more i {
+  display: block;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--sa);
+  opacity: 0.35;
+  animation: ls-dot 2.4s ease-in-out infinite;
+}
+.smore i:nth-child(2),
+.lt-scrip .more i:nth-child(2) {
+  animation-delay: 0.3s;
+}
+.smore i:nth-child(3),
+.lt-scrip .more i:nth-child(3) {
+  animation-delay: 0.6s;
+}
+@keyframes ls-dot {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  45% {
+    opacity: 1;
+  }
+}
+.calm .smore i,
+.still .smore i,
+.calm .lt-scrip .more i,
+.still .lt-scrip .more i {
+  animation: none;
+  opacity: 0.75;
+}
+/* Quotation marks in the accent colour; the dots of a verse that goes on. */
+.scrip .q,
+.lt-scrip .q,
+.titlecard .q {
+  color: var(--sa);
+  font-style: normal;
+}
+.scrip .el,
+.lt-scrip .el {
+  opacity: 0.75;
+  letter-spacing: 0.04em;
+}
+.scrip .vn {
+  font-family: 'Montserrat', sans-serif;
+}
+/* The verse number on an illuminated capital. */
+.scrip .cap .vn {
+  position: absolute;
+  left: -0.1em;
+  top: 0.2em;
+  font-size: 0.13em;
+  margin: 0;
+}
+.scrip .cap {
+  position: relative;
 }
 .progress {
   position: absolute;
@@ -706,11 +761,13 @@
   color: var(--gold);
 }
 .lt-scrip .more {
-  font-size: 26px;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: rgba(245, 243, 238, 0.45);
+  display: flex;
+  gap: 10px;
+  --sa: var(--gold);
+}
+.lt-scrip .more i {
+  width: 10px;
+  height: 10px;
 }
 .lt-scrip .pri {
   font-size: 56px;
@@ -718,7 +775,7 @@
   line-height: 1.2;
 }
 .lt-scrip .sec {
-  font-size: 40px;
+  font-size: 46px;
   font-weight: 500;
   line-height: 1.25;
   color: rgba(245, 243, 238, 0.72);
@@ -1846,7 +1903,7 @@
   --sl: 140px;
   --sw: 1640px;
   --sp: 0px;
-  --sss: 60px;
+  --sss: 70px;
   --ssi: italic;
   --strack: rgba(0, 0, 0, 0.1);
 }
@@ -1855,13 +1912,13 @@
   --sbar: none;
   --sa: #f0e6b0;
   --sfg: #f6f2e6;
-  --sfg2: rgba(246, 242, 230, 0.6);
+  --sfg2: rgba(246, 242, 230, 0.78);
   --sshadow: 0 0 2px rgba(255, 255, 255, 0.55);
   --sl: 160px;
   --sw: 1600px;
   --sp: 0px;
   --spw: 400;
-  --sss: 60px;
+  --sss: 70px;
   --salign: center;
 }
 .sl-chalk .scrip .ref {
@@ -1885,11 +1942,11 @@
 }
 .sl-kitenge {
   --sa: #d4a017;
-  --sfg2: rgba(245, 243, 238, 0.65);
+  --sfg2: rgba(245, 243, 238, 0.8);
   --sl: 150px;
   --sw: 1620px;
   --sps: 88px;
-  --sss: 60px;
+  --sss: 70px;
   --strack: transparent;
 }
 /* Candlelight: centred in one warm pool of light. */
@@ -1897,12 +1954,12 @@
   --sbar: none;
   --sa: #f0b860;
   --sfg: #fff1d6;
-  --sfg2: rgba(255, 230, 190, 0.6);
+  --sfg2: rgba(255, 230, 190, 0.78);
   --sshadow: 0 0 30px rgba(255, 170, 70, 0.35);
   --sl: 240px;
   --sw: 1440px;
   --sp: 0px;
-  --sss: 60px;
+  --sss: 70px;
   --ssi: italic;
   --salign: center;
 }
@@ -1911,12 +1968,12 @@
   --sbar: none;
   --sa: #9cd0f2;
   --sfg: #eef6fb;
-  --sfg2: rgba(238, 246, 251, 0.6);
+  --sfg2: rgba(238, 246, 251, 0.78);
   --sl: 140px;
   --sw: 1240px;
   --sp: 0px;
   --spw: 400;
-  --sss: 52px;
+  --sss: 62px;
   --strack: rgba(140, 190, 230, 0.2);
 }
 .sl-blueprint .scrip .sec {
@@ -1932,7 +1989,7 @@
   --sw: 1728px;
   --sp: 0px;
   --sps: 80px;
-  --sss: 60px;
+  --sss: 68px;
   --strack: rgba(90, 60, 20, 0.15);
 }
 .sref {
@@ -1964,12 +2021,12 @@
 }
 /* Manuscript: book and chapter above, an illuminated capital, an ornament below. */
 .sl-manuscript {
-  --sfg2: rgba(245, 243, 238, 0.62);
+  --sfg2: rgba(245, 243, 238, 0.78);
   --sl: 240px;
   --sw: 1440px;
   --sp: 0px;
   --sps: 86px;
-  --sss: 56px;
+  --sss: 66px;
   --ssi: italic;
 }
 .sl-manuscript .scrip {
@@ -2025,13 +2082,13 @@
 .sl-linen {
   --sa: #8a6a1e;
   --sfg: #22202a;
-  --sfg2: rgba(245, 243, 238, 0.65);
+  --sfg2: rgba(245, 243, 238, 0.8);
   --sshadow: none;
   --sl: 150px;
   --sw: 1620px;
   --sp: 0px;
   --sps: 96px;
-  --sss: 44px;
+  --sss: 56px;
   --strack: rgba(255, 255, 255, 0.1);
 }
 .sl-linen .progress i,
@@ -2085,7 +2142,7 @@
   --sw: 1920px;
   --sp: 0px;
   --sps: 100px;
-  --sss: 60px;
+  --sss: 70px;
   --ssi: italic;
   --salign: center;
 }
@@ -2318,4 +2375,1283 @@
 }
 .bg-night {
   background: radial-gradient(ellipse 70% 70% at 50% 50%, #1b1a2e, #0a0912);
+}
+
+/* ------------------------------------------------------------ scripture motion */
+/* Gentle: the lines rise in turn (the default frame motion above). The others are chosen in the
+   console (stage class smo-<motion>); calm mode, the console's still previews and reduced motion
+   always fall back to a crossfade. */
+
+/* Cards settle in gently in Gentle and Typing. */
+.smo-gentle .frame.k-scripture.in .lc .card,
+.smo-gentle .frame.k-scripture.in .lc2 .card,
+.smo-type .frame.k-scripture.in .lc .card,
+.smo-type .frame.k-scripture.in .lc2 .card {
+  animation: ls-card-in 650ms var(--ease) both;
+}
+.smo-gentle .frame.k-scripture.in .lc2 .c2,
+.smo-type .frame.k-scripture.in .lc2 .c2 {
+  animation-delay: 160ms;
+}
+@keyframes ls-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(26px) scale(0.985);
+  }
+}
+.smo-type .frame.k-scripture.in .l-stack .c2,
+.smo-gentle .frame.k-scripture.in .l-stack .c2 {
+  animation-name: ls-card-in-tilt;
+}
+@keyframes ls-card-in-tilt {
+  from {
+    opacity: 0;
+    transform: translateY(26px) rotate(-0.6deg) scale(0.985);
+  }
+}
+
+/* Page turn: the old page turns over from its left edge toward you; the new one lies beneath.
+   A passage's title card turns like a book cover opening. */
+.stage.smo-page {
+  perspective: 2600px;
+}
+.smo-page .frame.k-scripture.out,
+.smo-page .frame.k-title.ik-scripture.out {
+  z-index: 2;
+  transform-origin: 0% 50%;
+  backface-visibility: hidden;
+  animation: ls-page-out 760ms cubic-bezier(0.5, 0, 0.3, 1) forwards;
+}
+@keyframes ls-page-out {
+  0% {
+    transform: rotateY(0deg);
+    opacity: 1;
+  }
+  55% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: rotateY(-95deg);
+    opacity: 0;
+  }
+}
+.smo-page .frame.k-scripture.in {
+  animation: ls-page-under 650ms ease 380ms both;
+}
+.smo-page .frame.k-scripture.in .ln {
+  animation: none;
+}
+@keyframes ls-page-under {
+  from {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+  35% {
+    opacity: 1;
+  }
+}
+/* The open Bible turns only its right-hand leaf, over the spine. */
+.smo-page.sl-bible .frame.k-scripture.out {
+  transform: none;
+  animation: ls-fade-out 120ms ease 640ms forwards;
+}
+.smo-page.sl-bible .frame.k-scripture.out .l-bible {
+  perspective: 2400px;
+}
+.smo-page.sl-bible .frame.k-scripture.out .c2 {
+  transform-origin: 0% 50%;
+  backface-visibility: hidden;
+  animation: ls-leaf 700ms cubic-bezier(0.45, 0, 0.3, 1) forwards;
+}
+.smo-page.sl-bible .frame.k-scripture.out .c1 {
+  animation: ls-leaf-left 700ms linear forwards;
+}
+@keyframes ls-leaf {
+  to {
+    transform: rotateY(-180deg);
+  }
+}
+@keyframes ls-leaf-left {
+  0%,
+  50% {
+    opacity: 1;
+  }
+  62%,
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Typing: each word writes itself in, left to right, one after another. With verse by verse the
+   newly revealed verse writes itself in the same way. */
+.smo-type .frame.k-scripture.in .ln {
+  animation: ls-fade-in 300ms ease both;
+  animation-delay: 0ms;
+}
+.smo-type .frame.k-scripture .scrip .w {
+  display: inline-block;
+}
+.smo-type .frame.k-scripture.in .scrip .w {
+  animation: ls-type 240ms linear both;
+  animation-delay: calc(380ms + var(--wi, 0) * 58ms);
+}
+.smo-type .frame.k-scripture.in .scrip .sec .w {
+  animation-delay: calc(700ms + var(--wi, 0) * 46ms);
+}
+.smo-type.reveal-on .frame.k-scripture.in .scrip .vs .w {
+  animation: none;
+}
+.smo-type.reveal-on .frame.k-scripture.in .scrip .vs.cur .w {
+  animation: ls-type-verse 240ms linear both;
+  animation-delay: calc(380ms + var(--li, 0) * 58ms);
+}
+.smo-type.reveal-on .frame.k-scripture.in .scrip .sec .vs.cur .w {
+  animation-delay: calc(700ms + var(--li, 0) * 46ms);
+}
+@keyframes ls-type {
+  from {
+    clip-path: inset(-0.4em 100% -0.4em -0.2em);
+  }
+  to {
+    clip-path: inset(-0.4em -0.3em -0.4em -0.2em);
+  }
+}
+@keyframes ls-type-verse {
+  from {
+    clip-path: inset(-0.4em 100% -0.4em -0.2em);
+  }
+  to {
+    clip-path: inset(-0.4em -0.3em -0.4em -0.2em);
+  }
+}
+
+/* Reveal: a soft edge of light sweeps across and leaves the words behind it. */
+.smo-reveal .frame.k-scripture.in {
+  -webkit-mask-image: linear-gradient(100deg, #000 40%, rgba(0, 0, 0, 0) 60%);
+  mask-image: linear-gradient(100deg, #000 40%, rgba(0, 0, 0, 0) 60%);
+  -webkit-mask-size: 260% 100%;
+  mask-size: 260% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  animation: ls-sweep-in 1500ms cubic-bezier(0.35, 0.1, 0.2, 1) 180ms both;
+}
+.smo-reveal .frame.k-scripture.in .ln {
+  animation: none;
+}
+.smo-reveal .frame.k-scripture.in::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(100deg, rgba(255, 236, 196, 0) 45%, rgba(255, 236, 196, 0.22) 50%, rgba(255, 236, 196, 0) 55%) no-repeat;
+  background-size: 260% 100%;
+  animation: ls-glint 1500ms cubic-bezier(0.35, 0.1, 0.2, 1) 180ms both;
+}
+@keyframes ls-sweep-in {
+  from {
+    -webkit-mask-position: 100% 0;
+    mask-position: 100% 0;
+  }
+  to {
+    -webkit-mask-position: 0% 0;
+    mask-position: 0% 0;
+  }
+}
+@keyframes ls-glint {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: 0% 0;
+  }
+}
+.smo-reveal .frame.k-scripture.out {
+  animation: ls-fade-out 260ms ease forwards;
+}
+
+/* Slide: in from the right, out to the left. */
+.smo-slide .frame.k-scripture.in {
+  animation: ls-slide-in 700ms cubic-bezier(0.2, 0.8, 0.2, 1) 200ms both;
+}
+.smo-slide .frame.k-scripture.in .ln {
+  animation: none;
+}
+.smo-slide .frame.k-scripture.out {
+  animation: ls-slide-out 440ms cubic-bezier(0.5, 0, 0.75, 0) forwards;
+}
+@keyframes ls-slide-in {
+  from {
+    transform: translateX(480px);
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@keyframes ls-slide-out {
+  0% {
+    transform: none;
+    opacity: 1;
+  }
+  70% {
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(-480px);
+    opacity: 0;
+  }
+}
+
+/* Calm mode, the console's still previews and reduced motion: a plain crossfade. */
+.calm .frame.k-scripture.in,
+.still .frame.k-scripture.in {
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+  animation: ls-fade-in 400ms ease both !important;
+}
+.calm .frame.k-scripture.out,
+.still .frame.k-scripture.out,
+.calm .frame.k-title.out,
+.still .frame.k-title.out {
+  transform: none !important;
+  animation: ls-fade-out 300ms ease forwards !important;
+}
+.calm .frame.k-scripture .w,
+.still .frame.k-scripture .w,
+.calm .frame.k-scripture .card,
+.still .frame.k-scripture .card {
+  animation: none !important;
+  clip-path: none !important;
+}
+.calm .frame.k-scripture.in::after,
+.still .frame.k-scripture.in::after {
+  display: none;
+}
+.still .frame.k-scripture.in {
+  animation-duration: 0s !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .frame.k-scripture.in {
+    -webkit-mask-image: none !important;
+    mask-image: none !important;
+    animation: ls-fade-in 400ms ease both !important;
+  }
+  .frame.k-scripture.out,
+  .frame.k-title.out {
+    transform: none !important;
+    animation: ls-fade-out 300ms ease forwards !important;
+  }
+  .frame.k-scripture .w,
+  .frame.k-scripture .card {
+    animation: none !important;
+    clip-path: none !important;
+  }
+  .frame.k-scripture.in::after {
+    display: none;
+  }
+}
+
+/* ------------------------------------------------------------ scripture cards */
+/* The words sit on a card (lc) or on one card per language (lc2). Geometry is set on the block
+   (.l-<look>), colours on the stage (.sl-<look>) so the dots, bar and title card share them. */
+
+.scrip.lc,
+.scrip.lc2 {
+  --sl: 180px;
+  --sw: 1560px;
+  --sp: 0px;
+  --sps: 88px;
+  --sss: 70px;
+}
+.lc .card,
+.lc2 .card {
+  position: relative;
+  box-sizing: border-box;
+  background: var(--cbg, #f3ecdc);
+  border-radius: var(--crad, 24px);
+  padding: var(--cpy, 84px) var(--cpx, 115px);
+  box-shadow: var(--cshadow, 0 40px 100px rgba(0, 0, 0, 0.5));
+}
+/* A card is an object: it keeps its size from slide to slide and the words sit in its middle. */
+.lc .card {
+  display: grid;
+  align-content: center;
+  min-height: var(--cmin, 600px);
+}
+.l-gallery .card {
+  --cmin: 470px;
+}
+.l-bold .ref {
+  justify-self: start;
+}
+.l-twin .card {
+  min-height: 620px;
+}
+.lc .card > i,
+.lc2 .card > i {
+  position: absolute;
+  display: none;
+  pointer-events: none;
+}
+.lc .ref,
+.lc2 .ref {
+  margin-bottom: calc(30px * var(--fs, 1));
+}
+.lc .sec {
+  margin-top: calc(34px * var(--fs, 1));
+}
+.lc2 .c2 .sec {
+  margin-top: 0;
+}
+.lc2 .ver2 {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--sdot, var(--sa));
+  margin-bottom: 24px;
+  text-shadow: none;
+}
+.smore i {
+  background: var(--sdot, var(--sa));
+}
+.progress i {
+  background: var(--sdot, var(--sa));
+}
+.with-illus .scrip.lc,
+.with-illus .scrip.lc2 {
+  left: 154px;
+  width: calc(1613px - var(--illus-w) - 48px);
+}
+.with-illus .scrip.lc2 {
+  grid-template-columns: 1fr !important;
+  gap: 24px !important;
+}
+.with-illus .scrip.lc2 .card {
+  width: auto !important;
+  margin: 0 !important;
+  transform: none !important;
+}
+
+/* Narrow cards keep the reference on one line. */
+.l-twin .ver2,
+.l-twin .ref,
+.l-cathedral .ref,
+.l-tablet .ref {
+  font-size: calc(32px * min(var(--fs, 1), 1.1));
+  letter-spacing: 0.12em;
+}
+
+/* Twin cards: Luganda on a cream card, English on a dark one, side by side. */
+.sl-twin {
+  --sa: #8a5a1e;
+  --sfg: #2a2230;
+  --sfg2: rgba(246, 240, 230, 0.94);
+  --sshadow: none;
+  --sdot: #e3b75a;
+}
+.scrip.l-twin {
+  --sl: 96px;
+  --sw: 1728px;
+  --sps: 76px;
+  --sss: 64px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 48px;
+  align-items: stretch;
+}
+.l-twin .card {
+  --cpy: 64px;
+  --cpx: 68px;
+  --crad: 28px;
+}
+.l-twin .c1 {
+  --cbg: #f6efe1;
+}
+.l-twin .c2 {
+  --cbg: rgba(26, 16, 34, 0.8);
+  box-shadow: 0 40px 100px rgba(0, 0, 0, 0.45), inset 0 0 0 1.5px rgba(227, 183, 90, 0.35);
+}
+.l-twin .c2 .vn,
+.l-twin .c2 .q {
+  color: #e3b75a;
+}
+
+/* Card stack: a large white card, a second one tucked below it, slightly turned. */
+.sl-stack {
+  --sa: #9a7a2c;
+  --sfg: #1d2a2c;
+  --sfg2: rgba(240, 236, 224, 0.94);
+  --sshadow: none;
+  --sdot: #c9a14a;
+}
+.scrip.l-stack {
+  --sl: 110px;
+  --sw: 1700px;
+  --sps: 88px;
+  --sss: 66px;
+}
+.l-stack .c1 {
+  --cbg: #fbf8f2;
+  --cpy: 70px;
+  --cpx: 85px;
+  width: 1500px;
+  padding-bottom: 110px;
+}
+.l-stack .c2 {
+  --cbg: #13262a;
+  --cpy: 50px;
+  --cpx: 65px;
+  width: 1300px;
+  margin: -64px 0 0 400px;
+  transform: rotate(-0.6deg);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55), inset 0 0 0 1.5px rgba(201, 161, 74, 0.55);
+}
+.l-stack .c2 .vn,
+.l-stack .c2 .q {
+  color: #c9a14a;
+}
+
+/* Open Bible: two pages with a soft spine, running heads, red verse numbers. */
+.sl-bible {
+  --sa: #8a2b1a;
+  --sfg: #2b2118;
+  --sfg2: #3b2f24;
+  --sshadow: none;
+  --sdot: #e3b75a;
+}
+.scrip.l-bible {
+  --sl: 110px;
+  --sw: 1700px;
+  --sps: 70px;
+  --sss: 60px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+.l-bible .card {
+  --crad: 0;
+  --cpy: 64px;
+  --cpx: 100px;
+  min-height: 800px;
+}
+.l-bible .c1 {
+  --cbg: linear-gradient(90deg, #eadabb 0%, #f4e9d2 10%, #f3e7cf 80%, #dccaa3 94%, #b39d72 100%);
+  border-radius: 14px 2px 2px 14px;
+  box-shadow: -4px 5px 0 #e3d3b1, -8px 10px 0 #d3c19b, -12px 15px 0 #c4b088, 0 40px 90px rgba(0, 0, 0, 0.6);
+}
+.l-bible .c2 {
+  --cbg: linear-gradient(90deg, #b39d72 0%, #dccaa3 6%, #f3e7cf 20%, #f4e9d2 90%, #eadabb 100%);
+  border-radius: 2px 14px 14px 2px;
+  box-shadow: 4px 5px 0 #e3d3b1, 8px 10px 0 #d3c19b, 12px 15px 0 #c4b088, 0 40px 90px rgba(0, 0, 0, 0.6);
+}
+.l-bible .rh {
+  font-family: var(--sfam);
+  font-variant: small-caps;
+  text-align: center;
+  font-size: 32px;
+  letter-spacing: 0.12em;
+  color: var(--sa);
+  padding-bottom: 14px;
+  margin-bottom: 34px;
+  border-bottom: 1px solid rgba(138, 43, 26, 0.3);
+}
+.l-bible .c2 .sec {
+  font-style: normal;
+}
+
+/* Frosted glass over aurora colours. */
+.sl-glass {
+  --sa: #8fdcff;
+  --sfg: #ffffff;
+  --sfg2: rgba(236, 240, 255, 0.88);
+  --sshadow: 0 2px 20px rgba(10, 0, 40, 0.35);
+}
+.l-glass .card {
+  --cbg: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.06) 60%, rgba(255, 255, 255, 0.1));
+  --crad: 40px;
+  box-shadow: 0 40px 100px rgba(10, 0, 40, 0.35), inset 0 0 0 1.5px rgba(255, 255, 255, 0.3), inset 0 2px 0 rgba(255, 255, 255, 0.45);
+}
+
+/* Royal: a black card in a double gold frame with diamond corners, centred, on velvet. */
+.sl-royal {
+  --sa: #d8b25a;
+  --sfg: #f6eedd;
+  --sfg2: rgba(246, 238, 221, 0.84);
+  --salign: center;
+}
+.scrip.l-royal {
+  --sps: 86px;
+  --sss: 68px;
+}
+.l-royal .card {
+  --cbg: radial-gradient(ellipse at 50% 0%, #1c1713, #0b0908 70%);
+  --crad: 4px;
+  --cpy: 100px;
+  --cpx: 135px;
+  border: 3px solid #d8b25a;
+  outline: 1.5px solid rgba(216, 178, 90, 0.55);
+  outline-offset: -20px;
+  box-shadow: 0 40px 120px rgba(0, 0, 0, 0.65), 0 0 0 12px rgba(216, 178, 90, 0.07);
+}
+.l-royal .card > i {
+  display: block;
+  width: 26px;
+  height: 26px;
+  background: #d8b25a;
+  transform: rotate(45deg);
+  box-shadow: 0 0 18px rgba(216, 178, 90, 0.6);
+}
+.l-royal .d1 {
+  left: -15px;
+  top: -15px;
+}
+.l-royal .d2 {
+  right: -15px;
+  top: -15px;
+}
+.l-royal .d3 {
+  left: -15px;
+  bottom: -15px;
+}
+.l-royal .d4 {
+  right: -15px;
+  bottom: -15px;
+}
+
+/* Marble with a gold edge. */
+.sl-marble {
+  --sa: #8f6b22;
+  --sfg: #1e1c1a;
+  --sfg2: #47423c;
+  --sshadow: none;
+  --sdot: #c9a14a;
+}
+.l-marble .card {
+  --cbg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1600' height='900' viewBox='0 0 1600 900' preserveAspectRatio='none'%3E%3Cfilter id='m' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.0028 0.006' numOctaves='5' seed='11'/%3E%3CfeColorMatrix values='0 0 0 0 0.36 0 0 0 0 0.35 0 0 0 0 0.34 1 0 0 0 0'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='table' tableValues='0 0 0 0 0 0 0 0 0 0.12 0.5 0.12 0 0 0 0 0 0 0 0 0'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='1600' height='900' filter='url(%23m)'/%3E%3C/svg%3E") center / 100% 100% no-repeat,
+    radial-gradient(ellipse at 30% 20%, #fbfaf6, #ebe7e0 70%);
+  --crad: 6px;
+  border: 6px solid #c9a14a;
+  box-shadow: 0 50px 120px rgba(0, 0, 0, 0.7), inset 0 0 0 2px rgba(255, 255, 255, 0.55), 0 0 0 1px rgba(255, 220, 150, 0.4);
+}
+
+/* Cathedral: an arched window card with a small gold cross, stained-glass light behind. */
+.sl-cathedral {
+  --sa: #ffc46b;
+  --sfg: #fbf3e2;
+  --sfg2: rgba(251, 243, 226, 0.84);
+  --salign: center;
+}
+.scrip.l-cathedral {
+  --sl: 310px;
+  --sw: 1300px;
+  --sps: 78px;
+  --sss: 60px;
+}
+.l-cathedral .card {
+  --cbg: linear-gradient(180deg, #172a5c, #0b1430 70%);
+  border-radius: 650px 650px 26px 26px / 300px 300px 26px 26px;
+  padding: 190px 125px 76px;
+  box-shadow: 0 0 0 4px #c9a14a, 0 0 0 12px rgba(201, 161, 74, 0.18), 0 0 120px 20px rgba(255, 184, 77, 0.22), 0 40px 100px rgba(0, 0, 0, 0.6);
+}
+.l-cathedral .card > .d1,
+.l-cathedral .card > .d2 {
+  display: block;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #c9a14a;
+  box-shadow: 0 0 20px rgba(255, 196, 107, 0.6);
+}
+.l-cathedral .d1 {
+  top: 64px;
+  width: 7px;
+  height: 78px;
+}
+.l-cathedral .d2 {
+  top: 86px;
+  width: 48px;
+  height: 7px;
+}
+
+/* Starlight: a midnight card with a gold hairline under a sky of stars. */
+.sl-starlight {
+  --sa: #e9c46a;
+  --sfg: #f6f4ff;
+  --sfg2: rgba(230, 232, 255, 0.84);
+}
+.l-starlight .card {
+  --cbg: rgba(10, 16, 46, 0.62);
+  --crad: 22px;
+  box-shadow: 0 0 0 1.5px rgba(233, 196, 106, 0.5), 0 0 80px rgba(120, 140, 255, 0.18), 0 40px 100px rgba(0, 0, 0, 0.5);
+}
+
+/* Glory: rays of light behind a white card. */
+.sl-glory {
+  --sa: #b07214;
+  --sfg: #2a1d0e;
+  --sfg2: #57442f;
+  --sshadow: none;
+  --salign: center;
+  --sdot: #fff6dc;
+  --strack: rgba(255, 255, 255, 0.25);
+}
+.l-glory .card {
+  --cbg: #fffdf8;
+  --crad: 30px;
+  box-shadow: 0 0 0 1px rgba(176, 114, 20, 0.15), 0 40px 120px rgba(140, 70, 0, 0.45), 0 0 160px rgba(255, 240, 200, 0.6);
+}
+
+/* Jerusalem stone: a chiselled limestone block. */
+.sl-limestone {
+  --sa: #7a5a2e;
+  --sfg: #3f2c12;
+  --sfg2: #57421f;
+  --sshadow: 0 1px 0 rgba(255, 255, 255, 0.55);
+  --sdot: #5a3f1c;
+  --strack: rgba(90, 60, 20, 0.15);
+}
+.l-limestone .card {
+  --cbg: url("data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%27400%27%20height=%27400%27%3E%3Cfilter%20id=%27p%27%3E%3CfeTurbulence%20type=%27fractalNoise%27%20baseFrequency=%270.04%27%20numOctaves=%274%27%20stitchTiles=%27stitch%27/%3E%3CfeColorMatrix%20values=%270%200%200%200%20.55%20%200%200%200%200%20.5%20%200%200%200%200%20.45%20%200%200%200%20.5%200%27/%3E%3C/filter%3E%3Crect%20width=%27400%27%20height=%27400%27%20filter=%27url%28%23p%29%27/%3E%3C/svg%3E") 0 0 / 400px 400px,
+    linear-gradient(160deg, #ecdfc1, #d9c49a);
+  --crad: 6px;
+  box-shadow: inset 0 3px 0 rgba(255, 255, 255, 0.55), inset 0 -10px 18px rgba(110, 80, 35, 0.28), inset 12px 0 18px -12px rgba(255, 255, 255, 0.45),
+    inset -12px 0 18px -12px rgba(110, 80, 35, 0.3), 0 40px 80px rgba(70, 45, 15, 0.45);
+}
+
+/* Still waters: a calm teal card over deep water with moving light. */
+.sl-waters {
+  --sa: #7fe0d8;
+  --sfg: #effcfb;
+  --sfg2: rgba(220, 245, 243, 0.84);
+}
+.l-waters .card {
+  --cbg: linear-gradient(180deg, rgba(10, 50, 58, 0.62), rgba(4, 24, 30, 0.74));
+  --crad: 34px;
+  box-shadow: inset 0 1.5px 0 rgba(127, 224, 216, 0.55), 0 0 0 1px rgba(127, 224, 216, 0.15), 0 40px 100px rgba(0, 0, 0, 0.45);
+}
+
+/* Mountain: a pale card over misty mountains at first light. */
+.sl-mountain {
+  --sa: #4a6d93;
+  --sfg: #1f3550;
+  --sfg2: #3b4d66;
+  --sshadow: none;
+  --sdot: #2f4a68;
+  --strack: rgba(30, 50, 80, 0.15);
+}
+.l-mountain .card {
+  --cbg: rgba(250, 251, 253, 0.9);
+  --crad: 22px;
+  box-shadow: 0 30px 80px rgba(30, 50, 80, 0.3);
+}
+
+/* Refiner's fire: a charcoal card glowing at its edges, embers rising. */
+.sl-fire {
+  --sa: #ff9a4a;
+  --sfg: #fff3e6;
+  --sfg2: rgba(255, 228, 205, 0.84);
+}
+.l-fire .card {
+  --cbg: linear-gradient(180deg, #1b1411, #120d0b);
+  --crad: 18px;
+  box-shadow: 0 0 0 2px rgba(255, 122, 47, 0.65), 0 0 50px rgba(255, 90, 20, 0.35), 0 0 140px rgba(255, 60, 0, 0.18), inset 0 -60px 80px -50px rgba(255, 90, 20, 0.35);
+}
+
+/* Bold: a white card with a hard black shadow on sunny yellow. */
+.sl-bold {
+  --sa: #e8473a;
+  --sfg: #111111;
+  --sfg2: #2b2b2b;
+  --sshadow: none;
+  --sdot: #111111;
+  --strack: rgba(0, 0, 0, 0.15);
+}
+.l-bold .card {
+  --cbg: #ffffff;
+  --crad: 0;
+  border: 5px solid #111;
+  box-shadow: 22px 22px 0 #111;
+}
+.l-bold .ref {
+  display: inline-block;
+  padding: 8px 18px;
+  color: #ffffff;
+  background: #e8473a;
+}
+
+/* Split: an emerald panel with the book and chapter, the words beside it. */
+.sl-split {
+  --sa: #0f5c4a;
+  --sfg: #1d2a25;
+  --sfg2: #3b4842;
+  --sshadow: none;
+  --sdot: #8fd1b9;
+}
+.scrip.l-split {
+  --sl: 130px;
+  --sw: 1660px;
+  --sps: 80px;
+  --sss: 64px;
+}
+.l-split .card {
+  --cbg: #f6f1e4;
+  --crad: 26px;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  overflow: hidden;
+  box-shadow: 0 40px 100px rgba(0, 0, 0, 0.55);
+}
+.l-split .side {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 60px 30px;
+  color: #f3ecdc;
+  background: linear-gradient(160deg, #13705a, #0b4a3b);
+}
+.l-split .bk,
+.l-split .vv {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+.l-split .bk {
+  font-size: 30px;
+  opacity: 0.88;
+}
+.l-split .chn {
+  font-family: var(--sfam);
+  font-weight: 600;
+  font-size: 230px;
+  line-height: 1;
+  margin: 12px 0;
+}
+.l-split .vv {
+  font-size: 24px;
+  opacity: 0.78;
+}
+.l-split .card {
+  align-content: stretch;
+}
+.l-split .body {
+  display: grid;
+  align-content: center;
+  padding: 80px 95px;
+}
+
+/* Bookmark: a page with a crimson ribbon holding the verse number. */
+.sl-bookmark {
+  --sa: #a3162b;
+  --sfg: #2b2118;
+  --sfg2: #45382b;
+  --sshadow: none;
+  --sdot: #e3b75a;
+}
+.l-bookmark .card {
+  --cbg: linear-gradient(170deg, #f7eedb, #efe2c6);
+  --crad: 6px 16px 16px 6px;
+  padding: 90px 240px 90px 110px;
+  box-shadow: -6px 6px 0 #e6d7b6, -12px 12px 0 #d9c69f, 0 40px 100px rgba(0, 0, 0, 0.6);
+}
+.l-bookmark .card > .ribbon {
+  display: block;
+  top: -26px;
+  right: 92px;
+  width: 104px;
+  height: 360px;
+  background: linear-gradient(90deg, #8a1022, #b3192f 50%, #8a1022);
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 88%, 0 100%);
+}
+.l-bookmark .ribbon b {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 70px;
+  text-align: center;
+  font-family: var(--sfam);
+  font-weight: 600;
+  font-size: 54px;
+  color: #f3d38a;
+}
+
+/* Tablet: carved in a stone tablet, at dusk. */
+.sl-tablet {
+  --sa: #3b2d4f;
+  --sfg: #2a2622;
+  --sfg2: #36312c;
+  --sshadow: 0 2px 0 rgba(255, 255, 255, 0.28), 0 -1px 0 rgba(0, 0, 0, 0.35);
+  --salign: center;
+  --sdot: #f3d9b0;
+}
+.scrip.l-tablet {
+  --sl: 330px;
+  --sw: 1260px;
+  --sps: 80px;
+  --sss: 62px;
+}
+.l-tablet .card {
+  --cbg: url("data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%27320%27%20height=%27320%27%3E%3Cfilter%20id=%27n%27%3E%3CfeTurbulence%20type=%27fractalNoise%27%20baseFrequency=%270.9%27%20numOctaves=%272%27%20stitchTiles=%27stitch%27/%3E%3CfeColorMatrix%20values=%270%200%200%200%201%20%200%200%200%200%201%20%200%200%200%200%201%20%200%200%200%200.6%200%27/%3E%3C/filter%3E%3Crect%20width=%27320%27%20height=%27320%27%20filter=%27url%28%23n%29%27/%3E%3C/svg%3E") 0 0 / 320px 320px,
+    radial-gradient(ellipse at 40% 20%, #aca8a2, #87837d 60%, #6f6b66);
+  border-radius: 630px 630px 22px 22px / 230px 230px 22px 22px;
+  padding: 175px 105px 80px;
+  box-shadow: inset 0 4px 10px rgba(255, 255, 255, 0.25), inset 0 -16px 30px rgba(0, 0, 0, 0.3), 0 40px 90px rgba(10, 0, 20, 0.6);
+}
+.l-tablet .card {
+  --cmin: 700px;
+}
+.l-cathedral .card {
+  --cmin: 720px;
+}
+.l-tablet .card > .rule {
+  position: static;
+  display: block;
+  width: 180px;
+  height: 3px;
+  margin: calc(28px * var(--fs, 1)) auto 0;
+  background: rgba(40, 30, 50, 0.45);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+/* Epistle: a letter with a red margin and a wax seal. */
+.sl-epistle {
+  --sa: #9b1c1c;
+  --sfg: #2b2118;
+  --sfg2: #54453a;
+  --sshadow: none;
+  --ssi: italic;
+  --sdot: #e3b75a;
+}
+.scrip.l-epistle {
+  --sl: 210px;
+  --sw: 1500px;
+  --sps: 86px;
+  --sss: 68px;
+}
+.l-epistle .card {
+  --cbg: linear-gradient(175deg, #f6ecd6, #ecdcbc);
+  --crad: 3px;
+  padding: 90px 120px 120px 150px;
+  transform: rotate(-0.7deg);
+  box-shadow: 0 40px 100px rgba(0, 0, 0, 0.6);
+}
+.l-epistle .card > .d1 {
+  display: block;
+  left: 96px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: rgba(196, 90, 90, 0.45);
+}
+.l-epistle .card > .d2 {
+  display: block;
+  right: 70px;
+  bottom: -46px;
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 34%, #d23a3a, #9b1c1c 55%, #6e1010);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.45), inset 0 -6px 10px rgba(0, 0, 0, 0.3), 0 0 0 6px rgba(155, 28, 28, 0.35);
+}
+.l-epistle .card > .d2::after {
+  content: '✝';
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 64px;
+  color: rgba(60, 0, 0, 0.55);
+  text-shadow: 0 1px 0 rgba(255, 150, 150, 0.35);
+}
+
+/* Gallery: a small museum card under a spotlight, the reference as its caption. */
+.sl-gallery {
+  --sa: #8a6a1e;
+  --sfg: #1d1b18;
+  --sfg2: #4b463f;
+  --sshadow: none;
+  --sdot: #f2e6c8;
+}
+.scrip.l-gallery {
+  --sl: 370px;
+  --sw: 1180px;
+  --sps: 72px;
+  --sss: 58px;
+}
+.l-gallery .card {
+  --cbg: #fbfaf7;
+  --crad: 2px;
+  --cpy: 80px;
+  --cpx: 95px;
+  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.5), 0 2px 0 rgba(0, 0, 0, 0.2);
+}
+.l-gallery .caption {
+  display: inline-block;
+  margin-top: 40px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(255, 248, 235, 0.35);
+  font-family: 'Montserrat', sans-serif;
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(255, 248, 235, 0.86);
+}
+
+/* Aurora edge: a black card with a glowing colour edge. */
+.sl-aurora {
+  --sa: #c8a6ff;
+  --sfg: #f6f3ff;
+  --sfg2: rgba(232, 226, 255, 0.84);
+}
+.l-aurora .card {
+  --crad: 30px;
+  border: 3px solid transparent;
+  background: linear-gradient(#08080d, #08080d) padding-box,
+    conic-gradient(from 200deg, #ff6bd6, #b26bff, #6bc5ff, #6bffc8, #ffd36b, #ff6bd6) border-box;
+  box-shadow: 0 0 70px rgba(178, 107, 255, 0.32), 0 0 160px rgba(107, 197, 255, 0.16);
+}
+
+/* Papercut: a paper card on a second sheet, over layered paper hills. */
+.sl-papercut {
+  --sa: #1f5f5b;
+  --sfg: #173d3a;
+  --sfg2: #2c524e;
+  --sshadow: none;
+  --sdot: #1f5f5b;
+  --strack: rgba(20, 60, 50, 0.15);
+}
+.l-papercut .card {
+  --cbg: #fffefb;
+  --crad: 20px;
+  box-shadow: 0 18px 40px rgba(20, 60, 50, 0.25), 0 2px 0 rgba(0, 0, 0, 0.05);
+}
+.l-papercut .card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: #eaf4ef;
+  transform: rotate(2.2deg) translate(14px, 10px);
+  box-shadow: 0 18px 40px rgba(20, 60, 50, 0.2);
+}
+
+/* Lubugo: cream words on a panel of Ugandan barkcloth. */
+.sl-lubugo {
+  --sa: #f2b45a;
+  --sfg: #f7e6c4;
+  --sfg2: rgba(247, 230, 196, 0.86);
+}
+.l-lubugo .card {
+  --cbg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1600' height='900' viewBox='0 0 1600 900' preserveAspectRatio='none'%3E%3Cfilter id='b' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.004 0.06' numOctaves='3' seed='5'/%3E%3CfeColorMatrix values='0 0 0 0 0.85 0 0 0 0 0.55 0 0 0 0 0.3 0 0 0 0.55 -0.2'/%3E%3C/filter%3E%3Crect width='1600' height='900' filter='url(%23b)'/%3E%3C/svg%3E") center / 100% 100% no-repeat,
+    linear-gradient(180deg, rgba(64, 29, 11, 0.9), rgba(42, 18, 7, 0.94));
+  --crad: 10px;
+  border: 2px solid rgba(242, 215, 166, 0.35);
+  outline: 1px solid rgba(242, 215, 166, 0.22);
+  outline-offset: -16px;
+  box-shadow: 0 40px 100px rgba(0, 0, 0, 0.55);
+}
+
+/* ------------------------------------------------------------ card environments */
+
+.bg-s > i {
+  position: absolute;
+  display: block;
+}
+.bg-s > .grain {
+  inset: -4%;
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%27320%27%20height=%27320%27%3E%3Cfilter%20id=%27n%27%3E%3CfeTurbulence%20type=%27fractalNoise%27%20baseFrequency=%270.9%27%20numOctaves=%272%27%20stitchTiles=%27stitch%27/%3E%3CfeColorMatrix%20values=%270%200%200%200%201%20%200%200%200%200%201%20%200%200%200%200%201%20%200%200%200%200.6%200%27/%3E%3C/filter%3E%3Crect%20width=%27320%27%20height=%27320%27%20filter=%27url%28%23n%29%27/%3E%3C/svg%3E");
+  background-size: 320px 320px;
+  opacity: 0.22;
+  mix-blend-mode: overlay;
+}
+.bg-plum {
+  background: radial-gradient(ellipse 80% 70% at 30% 20%, #3b2350, #1a1022 70%, #100914);
+}
+.bg-plum .i1 {
+  right: -10%;
+  bottom: -20%;
+  width: 70%;
+  height: 80%;
+  background: radial-gradient(closest-side, rgba(227, 183, 90, 0.16), transparent);
+}
+.bg-deepteal {
+  background: radial-gradient(ellipse 80% 70% at 70% 30%, #12474f, #071d22 70%, #041114);
+}
+.bg-desk {
+  background: repeating-linear-gradient(92deg, rgba(0, 0, 0, 0.09) 0 3px, transparent 3px 23px), repeating-linear-gradient(88deg, rgba(255, 210, 160, 0.03) 0 2px, transparent 2px 41px),
+    linear-gradient(180deg, #3b2416, #1f120a);
+}
+.bg-desk .i1 {
+  inset: 0;
+  background: radial-gradient(ellipse 60% 55% at 50% 42%, rgba(255, 200, 130, 0.3), transparent 70%);
+}
+.bg-auroraglow {
+  background: #0d0a2a;
+}
+.bg-auroraglow .i1 {
+  left: -10%;
+  top: -20%;
+  width: 70%;
+  height: 85%;
+  background: radial-gradient(closest-side, rgba(126, 87, 255, 0.75), transparent);
+}
+.bg-auroraglow .i2 {
+  right: -10%;
+  top: 5%;
+  width: 60%;
+  height: 85%;
+  background: radial-gradient(closest-side, rgba(0, 200, 220, 0.55), transparent);
+}
+.bg-auroraglow .i3 {
+  left: 22%;
+  bottom: -35%;
+  width: 70%;
+  height: 75%;
+  background: radial-gradient(closest-side, rgba(255, 90, 170, 0.5), transparent);
+}
+.bg-velvet {
+  background: radial-gradient(ellipse 80% 70% at 50% 40%, #6b1426, #2a0610 75%, #16030a);
+}
+.bg-velvet .i1 {
+  inset: 0;
+  background: repeating-linear-gradient(100deg, rgba(255, 255, 255, 0.022) 0 2px, transparent 2px 6px);
+}
+.bg-charcoal {
+  background: #111111;
+}
+.bg-charcoal .i1 {
+  left: 15%;
+  right: 15%;
+  top: -15%;
+  height: 120%;
+  background: radial-gradient(ellipse 50% 60% at 50% 15%, rgba(255, 245, 225, 0.2), transparent 75%);
+}
+.bg-nave {
+  background: radial-gradient(ellipse 80% 70% at 50% 30%, #1d2a55, #070b1c 70%);
+}
+.bg-nave .i1 {
+  inset: 0;
+  background: repeating-conic-gradient(from 180deg at 50% -5%, rgba(255, 214, 150, 0) 0deg, rgba(255, 214, 150, 0.09) 2deg, rgba(255, 214, 150, 0) 4.5deg);
+  -webkit-mask-image: radial-gradient(ellipse 70% 90% at 50% 0%, #000, transparent 80%);
+  mask-image: radial-gradient(ellipse 70% 90% at 50% 0%, #000, transparent 80%);
+}
+.bg-nave .i2 {
+  inset: 0;
+  background: radial-gradient(circle at 36% 42%, rgba(220, 40, 60, 0.3), transparent 22%), radial-gradient(circle at 64% 38%, rgba(40, 110, 255, 0.32), transparent 24%),
+    radial-gradient(circle at 50% 74%, rgba(255, 180, 40, 0.24), transparent 26%);
+}
+.bg-stars {
+  background: radial-gradient(ellipse 80% 70% at 70% 20%, #1a2150, #070b22 60%, #03050f);
+}
+.bg-stars .i1,
+.bg-stars .i2 {
+  inset: 0;
+  background-image: radial-gradient(1.5px 1.5px at 20px 30px, #fff, transparent), radial-gradient(1px 1px at 120px 80px, #fff, transparent),
+    radial-gradient(2px 2px at 200px 150px, rgba(255, 255, 255, 0.9), transparent), radial-gradient(1px 1px at 300px 40px, #fff, transparent),
+    radial-gradient(1.5px 1.5px at 380px 200px, rgba(255, 240, 200, 0.9), transparent), radial-gradient(1px 1px at 60px 220px, #fff, transparent);
+  background-size: 420px 260px;
+  opacity: 0.8;
+}
+.bg-stars .i2 {
+  background-size: 690px 430px;
+  background-position: 130px 90px;
+  opacity: 0.55;
+  animation: ls-twinkle-s 7s ease-in-out infinite alternate;
+}
+.bg-stars .i3 {
+  inset: -20%;
+  background: linear-gradient(115deg, transparent 35%, rgba(150, 160, 255, 0.1) 47%, rgba(255, 220, 240, 0.07) 53%, transparent 65%);
+}
+@keyframes ls-twinkle-s {
+  to {
+    opacity: 0.15;
+  }
+}
+.bg-glory {
+  background: radial-gradient(circle at 50% 50%, #fff8e6 0%, #f7d48a 30%, #d9952e 65%, #8a4a10 100%);
+}
+.bg-glory .i1 {
+  inset: -30%;
+  background: repeating-conic-gradient(from 0deg at 50% 50%, rgba(255, 255, 255, 0) 0deg, rgba(255, 255, 255, 0.34) 5deg, rgba(255, 255, 255, 0) 10deg);
+  -webkit-mask-image: radial-gradient(circle at 50% 50%, transparent 0%, #000 18%, rgba(0, 0, 0, 0.4) 55%, transparent 80%);
+  mask-image: radial-gradient(circle at 50% 50%, transparent 0%, #000 18%, rgba(0, 0, 0, 0.4) 55%, transparent 80%);
+  animation: ls-spin 240s linear infinite;
+}
+.bg-glory .vig,
+.bg-mountains .vig,
+.bg-paperhills .vig,
+.bg-pop .vig,
+.bg-sand .vig {
+  display: none;
+}
+@keyframes ls-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.bg-sand {
+  background: linear-gradient(180deg, #ecd8ae 0%, #c8a670 100%);
+}
+.bg-sand .i1 {
+  inset: 0;
+  background: radial-gradient(ellipse 60% 50% at 50% 30%, rgba(255, 250, 235, 0.45), transparent 70%);
+}
+.bg-waters {
+  background: linear-gradient(180deg, #0e5562 0%, #072b33 55%, #031317 100%);
+}
+.bg-waters .i1 {
+  inset: 0 -40%;
+  background: linear-gradient(100deg, transparent 20%, rgba(160, 255, 240, 0.08) 30%, transparent 40%, transparent 55%, rgba(160, 255, 240, 0.06) 62%, transparent 72%);
+  animation: ls-water-light 26s ease-in-out infinite alternate;
+}
+.bg-waters .i2 {
+  inset: 0;
+  background: repeating-radial-gradient(ellipse 120% 40% at 50% 130%, rgba(127, 224, 216, 0.07) 0 2px, transparent 2px 46px);
+}
+@keyframes ls-water-light {
+  to {
+    transform: translateX(18%);
+  }
+}
+.bg-mountains {
+  background: linear-gradient(180deg, #f6e3d3 0%, #d9dfe8 45%, #b9c8d8 100%);
+}
+.bg-mountains .i1,
+.bg-mountains .i2 {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 62%;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1920 700' preserveAspectRatio='none'%3E%3Cpath d='M0 470 L200 330 L340 400 L540 220 L720 380 L880 300 L1060 430 L1280 210 L1460 360 L1640 280 L1920 420 L1920 700 L0 700Z' fill='%2394a9c0'/%3E%3C/svg%3E") bottom / 100% 100% no-repeat;
+}
+.bg-mountains .i2 {
+  height: 44%;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1920 500' preserveAspectRatio='none'%3E%3Cpath d='M0 300 L160 230 L380 330 L600 160 L820 300 L1000 240 L1200 340 L1420 190 L1640 310 L1920 220 L1920 500 L0 500Z' fill='%23667e99'/%3E%3C/svg%3E");
+}
+.bg-mountains .i3 {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 55%;
+  background: linear-gradient(to top, rgba(255, 255, 255, 0.6), transparent);
+}
+.bg-embers {
+  background: radial-gradient(ellipse 90% 60% at 50% 115%, rgba(255, 110, 30, 0.6), rgba(120, 30, 0, 0.25) 45%, transparent 70%), #0b0706;
+}
+.bg-embers .i1 {
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 200%;
+  background-image: radial-gradient(2.5px 2.5px at 10% 80%, #ffb36b, transparent), radial-gradient(2px 2px at 35% 40%, #ff8a3d, transparent),
+    radial-gradient(1.5px 1.5px at 62% 70%, #ffd29a, transparent), radial-gradient(2px 2px at 85% 25%, #ff7a2f, transparent),
+    radial-gradient(1.5px 1.5px at 50% 95%, #ffb36b, transparent);
+  background-size: 600px 540px;
+  opacity: 0.7;
+  animation: ls-sparks 22s linear infinite;
+}
+@keyframes ls-sparks {
+  to {
+    transform: translateY(-50%);
+  }
+}
+.bg-pop {
+  background: #f6c945;
+}
+.bg-pop .i1 {
+  inset: 0;
+  background: radial-gradient(rgba(0, 0, 0, 0.13) 2px, transparent 2.6px) 0 0 / 28px 28px;
+}
+.bg-pop > .grain {
+  opacity: 0.1;
+}
+.bg-forestdark {
+  background: radial-gradient(ellipse 80% 70% at 30% 30%, #18332b, #0a1411 70%);
+}
+.bg-leather {
+  background: radial-gradient(ellipse 80% 70% at 50% 40%, #4a2e1e, #24150d 75%);
+}
+.bg-leather > .grain {
+  opacity: 0.35;
+}
+.bg-dusk {
+  background: linear-gradient(180deg, #1f1733 0%, #4b2d4a 45%, #a3584a 80%, #d9895c 100%);
+}
+.bg-wall {
+  background: #3a3631;
+}
+.bg-wall .i1 {
+  left: 15%;
+  right: 15%;
+  top: -10%;
+  height: 115%;
+  background: radial-gradient(ellipse 50% 70% at 50% 0%, rgba(255, 240, 210, 0.42), rgba(255, 240, 210, 0.08) 60%, transparent 75%);
+}
+.bg-void {
+  background: #040406;
+}
+.bg-void .i1 {
+  left: 20%;
+  right: 20%;
+  bottom: -10%;
+  height: 60%;
+  background: radial-gradient(ellipse at 50% 60%, rgba(178, 107, 255, 0.14), transparent 65%);
+}
+.bg-paperhills {
+  background: linear-gradient(180deg, #f2f7f3, #d9eae2);
+}
+.bg-paperhills .i1,
+.bg-paperhills .i2,
+.bg-paperhills .i3 {
+  border-radius: 50%;
+  box-shadow: 0 -10px 30px rgba(0, 40, 30, 0.14);
+}
+.bg-paperhills .i1 {
+  left: -20%;
+  right: -20%;
+  height: 70%;
+  bottom: -38%;
+  background: #a8d2c2;
+}
+.bg-paperhills .i2 {
+  left: -45%;
+  right: 15%;
+  height: 70%;
+  bottom: -48%;
+  background: #74b09d;
+}
+.bg-paperhills .i3 {
+  left: 25%;
+  right: -35%;
+  height: 70%;
+  bottom: -55%;
+  background: #3f8574;
+}
+.bg-barkcloth {
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1920' height='1080' viewBox='0 0 1920 1080' preserveAspectRatio='none'%3E%3Cfilter id='b' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.003 0.07' numOctaves='3' seed='2'/%3E%3CfeColorMatrix values='0 0 0 0 0.25 0 0 0 0 0.1 0 0 0 0 0.03 0 0 0 0.9 -0.3'/%3E%3C/filter%3E%3Crect width='1920' height='1080' filter='url(%23b)'/%3E%3C/svg%3E") center / 100% 100% no-repeat,
+    radial-gradient(ellipse 80% 70% at 50% 40%, #8d4a23, #5e2c12 80%);
+}
+.calm .bg-glory .i1,
+.calm .bg-stars .i2,
+.calm .bg-waters .i1,
+.calm .bg-embers .i1,
+.still-bg .bg-glory .i1,
+.still-bg .bg-stars .i2,
+.still-bg .bg-waters .i1,
+.still-bg .bg-embers .i1 {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bg-glory .i1,
+  .bg-stars .i2,
+  .bg-waters .i1,
+  .bg-embers .i1 {
+    animation: none;
+  }
 }
