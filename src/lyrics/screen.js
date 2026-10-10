@@ -1,6 +1,6 @@
 // /lyrics/screen.html — an output: the hall TV, the ATEM (stream) feed, or an OBS browser source.
 //
-//   ?room=CODE        pairing code (otherwise one is made up and remembered on this device)
+//   ?room=NAME        another channel (default: the church's, from config.js)
 //   ?out=tv           the TV (default): full layout, backgrounds, logo, title cards
 //   ?out=stream       the stream feed for the ATEM: lower thirds on black by default (set from the remote)
 //   ?transparent=1    no background at all, for an OBS browser source
@@ -10,7 +10,8 @@
 
 import { html, render, useState, useEffect, useRef } from '../ui/h.js';
 import { Fit, Stage } from './stage.js';
-import { Link, newCode, normalizeCode } from './link.js';
+import { Link, normalizeCode } from './link.js';
+import { ROOM } from './config.js';
 import { emptyState, reduce } from './state.js';
 import { relayConfig } from './cloud.js';
 import { receiveCast } from './cast.js';
@@ -36,11 +37,7 @@ function storageSet(k, v) {
 }
 
 function roomCode() {
-  let room = normalizeCode(params.get('room'));
-  if (!room) room = normalizeCode(storageGet('ls-screen-room'));
-  if (!room) room = newCode();
-  storageSet('ls-screen-room', room);
-  return room;
+  return normalizeCode(params.get('room')) || normalizeCode(ROOM);
 }
 
 function cachedState(room) {
@@ -180,11 +177,10 @@ function Screen() {
     <//>
     ${showPair &&
     html`<div class="pair">
-      <div class="pair-code">${room.slice(0, 3)} ${room.slice(3)}</div>
       <div class="pair-text">
         ${info.cloud === 'off'
-          ? html`Open the remote in this browser and enter this code`
-          : html`On the laptop or phone open <b>${remoteUrl()}</b> and enter this code`}
+          ? html`Waiting for the remote in this browser`
+          : html`Waiting for the remote. On the laptop open <b>${remoteUrl()}</b>`}
       </div>
     </div>`}
     ${hint &&

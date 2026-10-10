@@ -94,17 +94,17 @@ On a laptop the remote is a console: songs, scripture and media on the left, the
 **Back** in the middle, and what the **TV** and the **stream** show on the right. Keys: Space or → next, ← back,
 **B** black, **C** clear, **L** logo.
 
-1. Open the link in Chrome or Edge and click **Start a session**.
+1. Open the link in Chrome or Edge. There is no code or password: the console opens straight away.
 2. Plug the laptop's **HDMI into the ATEM** (set Windows/macOS to *extend*, not mirror) and click **Stream feed**.
 3. Put the **TV** on wirelessly, then click **TV picture**:
    - Windows: press **Windows + K**, pick the TV, choose **Extend**.
    - Mac: **Control Centre → Screen Mirroring**, pick the TV, **Use As Separate Display**.
-   - Or **Cast…** to a Chromecast / Google TV, or open `…/lyrics/tv` on the TV's own browser and type the code.
+   - Or **Cast…** to a Chromecast / Google TV, or open `…/lyrics/tv` in the TV's own browser.
 
 When the laptop sees two extra displays, it asks which one is the TV and which is the ATEM, and opens each picture
 there (the browser asks once for permission to place windows). Click each picture once to make it fullscreen.
 Both outputs follow the laptop directly, so nothing depends on the internet. A phone can join as a second remote
-(**More ways** → scan the code); that one goes through the relay. On a narrow window or a phone the remote shows
+(**More ways** → scan the QR code); that one goes through the relay. On a narrow window or a phone the remote shows
 tabs instead of columns, with the same buttons under **Show on TV**.
 
 ## The stream feed (ATEM / Blackmagic)
@@ -179,9 +179,10 @@ and shares one library, and the project's Realtime replaces the public relay.
 ## How the relay works
 
 `src/lyrics/config.js` lists public MQTT brokers (EMQX, then HiveMQ as a fallback). The remote and every screen
-subscribe to `nrsc/lyric-slides/<code>`; the state is published as a retained message, so a late screen gets it
-immediately. Anyone who knows the code could push text to the screen, and nothing but the current slide travels,
-which is fine for lyrics. Set `RELAY_URLS` to `[]` to keep everything inside one browser. The relay was built to
+subscribe to one fixed channel, `nrsc/lyric-slides/<ROOM>` (`ROOM` in `config.js`), so nobody types a code. The
+state is published as a retained message, so a late screen gets it immediately. Anyone who knows the channel name
+could push text to the screens, and nothing but the current slide travels. To keep a session separate, add
+`?room=NAME` to both the remote and the screen links. Set `RELAY_URLS` to `[]` to keep everything inside one browser. The relay was built to
 the MQTT 3.1.1 spec and tested against a fake broker; the live brokers could not be reached from the build
 sandbox, so the first real test is yours.
 
