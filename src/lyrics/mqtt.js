@@ -1,5 +1,5 @@
 // A very small MQTT 3.1.1 client over WebSocket: connect, subscribe, publish (QoS 0, with retain),
-// ping. Enough for the public relay that lets a phone drive a TV without any account.
+// ping. Enough for the public relay that lets a laptop or phone drive a TV without any account.
 
 const enc = new TextEncoder();
 const dec = new TextDecoder();

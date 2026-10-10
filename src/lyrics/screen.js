@@ -184,7 +184,7 @@ function Screen() {
       <div class="pair-text">
         ${info.cloud === 'off'
           ? html`Open the remote in this browser and enter this code`
-          : html`On your phone open <b>${remoteUrl()}</b> and enter this code`}
+          : html`On the laptop or phone open <b>${remoteUrl()}</b> and enter this code`}
       </div>
     </div>`}
     ${hint &&

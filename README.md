@@ -88,20 +88,24 @@ are marked as estimates (`~117 BPM`). It never invents song titles or fingerprin
 Lyrics, scripture, pictures and video on the 86″ hall TV and on the livestream, in the Namasuba screen style: big,
 calm and readable from the back of the hall. Live at **https://jessesebutinde.github.io/nrsc-worship/lyrics/**.
 
-## Sunday, in three taps
+## Sunday on the laptop
 
-1. Open the link on your phone and tap **Start a session**.
-2. On the **Show on TV & stream** sheet pick how the TV gets the picture:
-   - **Cast to the TV**: a Chromecast, Google TV or Android TV on the same Wi-Fi (Chrome's device list opens).
-   - **TV on this computer**: the hall PC is on HDMI; the picture opens fullscreen on the second display.
-   - **The TV's own browser**: on a smart TV open `…/lyrics/tv` and type the six-letter code, or scan the QR code.
-3. Pick a song, a passage or a picture. **Next** / **Back**, swipe the preview, or tap any slide. **Clear**,
-   **Black** and **Logo** do what they say.
+On a laptop the remote is a console: songs, scripture and media on the left, the live slide with **Next** /
+**Back** in the middle, and what the **TV** and the **stream** show on the right. Keys: Space or → next, ← back,
+**B** black, **C** clear, **L** logo.
 
-The phone and the TV talk through a public relay (no account, nothing to install), so the TV can be any device
-with a browser. Within one browser they also talk directly, and a Cast connection carries the slides itself. The
-screen keeps the last picture through a refresh, and a TV that joins late gets the current slide at once. The
-screen's keyboard works too: Space or → next, ← back, **B** black, **C** clear, **L** logo, **V** background video.
+1. Open the link in Chrome or Edge and click **Start a session**.
+2. Plug the laptop's **HDMI into the ATEM** (set Windows/macOS to *extend*, not mirror) and click **Stream feed**.
+3. Put the **TV** on wirelessly, then click **TV picture**:
+   - Windows: press **Windows + K**, pick the TV, choose **Extend**.
+   - Mac: **Control Centre → Screen Mirroring**, pick the TV, **Use As Separate Display**.
+   - Or **Cast…** to a Chromecast / Google TV, or open `…/lyrics/tv` on the TV's own browser and type the code.
+
+When the laptop sees two extra displays, it asks which one is the TV and which is the ATEM, and opens each picture
+there (the browser asks once for permission to place windows). Click each picture once to make it fullscreen.
+Both outputs follow the laptop directly, so nothing depends on the internet. A phone can join as a second remote
+(**More ways** → scan the code); that one goes through the relay. On a narrow window or a phone the remote shows
+tabs instead of columns, with the same buttons under **Show on TV**.
 
 ## The stream feed (ATEM / Blackmagic)
 
