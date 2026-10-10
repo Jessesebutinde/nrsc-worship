@@ -6,7 +6,7 @@ import { html, render, useState, useEffect, useRef, useMemo } from '../ui/h.js';
 import { Fit, Stage } from './stage.js';
 import { Link, normalizeCode } from './link.js';
 import { ROOM } from './config.js';
-import { emptyState, reduce, songItem, mediaItem, BACKGROUNDS, BACKGROUND_INFO, PRESETS, PRESET_INFO, STREAM_LAYOUTS, ILLUSTRATION_SIZES, MARK_COLORS, lookOf, slideWords, markKey } from './state.js';
+import { emptyState, reduce, songItem, mediaItem, BACKGROUNDS, BACKGROUND_INFO, PRESETS, PRESET_INFO, STREAM_LAYOUTS, ILLUSTRATION_SIZES, MARK_COLORS, PLAY_LEVELS, lookOf, slideWords, markKey } from './state.js';
 import { loadSongs, saveSongs, visibleSongs, upsertSong, removeSong, searchSongs, mergeSongs, exportLibrary, importLibrary } from './library.js';
 import { parseRef } from './books.js';
 import { allVersions, importVersion, removeVersion, passageItem, BUILTIN_VERSIONS } from './bible.js';
@@ -486,6 +486,11 @@ function Live({ state, act, info, goTab, onOutputs, wide }) {
       ${PRESETS.map(
         (p) => html`<button class=${`chip ${state.look === p ? 'on' : ''}`} onClick=${() => act({ type: 'set', patch: { look: p } })} title=${PRESET_INFO[p].hint}>${PRESET_INFO[p].name}</button>`,
       )}
+      <span class="seg play" role="group" aria-label="How much the words play">
+        ${Object.entries(PLAY_LEVELS).map(
+          ([k, l]) => html`<button class=${(state.play || 'mid') === k ? 'on' : ''} onClick=${() => act({ type: 'set', patch: { play: k } })}>${l}</button>`,
+        )}
+      </span>
     </div>`}
     ${!connected &&
     !wide &&
@@ -914,6 +919,14 @@ function Settings({ state, act, info, prefs, setPrefs, songs, setSongs, session,
         <input type="checkbox" checked=${state.caps !== false} onChange=${(e) => act({ type: 'set', patch: { caps: e.target.checked } })} />
         <span>Capital letters for lyrics</span>
       </label>
+      <div class="field"><span>How much the words play</span>
+        <div class="seg">
+          ${Object.entries(PLAY_LEVELS).map(
+            ([k, l]) => html`<button class=${(state.play || 'mid') === k ? 'on' : ''} onClick=${() => act({ type: 'set', patch: { play: k } })}>${l}</button>`,
+          )}
+        </div>
+        <small class="muted">Gentle: short, soft entrances. Lively: the lyric-video motion. Playful: words travel further, bounce on arrival and wobble while they are up.</small>
+      </div>
       <label class="toggle">
         <input type="checkbox" checked=${state.lookBg !== 'mine'} onChange=${(e) => act({ type: 'set', patch: { lookBg: e.target.checked ? 'look' : 'mine' } })} />
         <span>Looks bring their own background (off: keep the TV background under every look)</span>

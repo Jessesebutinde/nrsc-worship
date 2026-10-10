@@ -1005,3 +1005,12 @@ div.out-btn {
 .word.mk-teal { color: #35e0d0; border-color: #35e0d0; }
 .word.mk-white { color: #fff; border-color: #fff; }
 .word.bend { transform: skewX(-12deg); }
+
+.looks .seg.play {
+  margin-left: auto;
+}
+.looks .seg.play button {
+  min-height: 36px;
+  padding: 4px 12px;
+  font-size: 0.85rem;
+}

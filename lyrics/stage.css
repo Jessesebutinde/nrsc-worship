@@ -1248,7 +1248,7 @@
   inset: -40% -60%;
   background: linear-gradient(105deg, transparent 42%, rgba(255, 255, 255, 0.07) 50%, transparent 58%);
   will-change: transform;
-  animation: ls-sweep 14s ease-in-out infinite;
+  animation: ls-sweep var(--sweep-s) ease-in-out infinite;
   pointer-events: none;
 }
 .bg-wood > .sweep,
@@ -1263,12 +1263,42 @@
 
 /* ------------------------------------------------------------ lyric-video motion: word by word (outputs; calm and still = crossfade) */
 
+/* How much the words play. --amp scales every entrance distance, --stag the stagger, --sway and --wob the
+   idle sway and wobble, --breath the block's breath; Playful also overshoots on arrival. */
+.stage {
+  --amp: 1;
+  --stag: 1;
+  --sway: 3px;
+  --wob: 0deg;
+  --breath: 1.015;
+  --sweep-s: 14s;
+}
+.stage.play-low {
+  --amp: 0.45;
+  --stag: 1.3;
+  --sway: 1px;
+  --breath: 1.008;
+  --sweep-s: 20s;
+}
+.stage.play-high {
+  --amp: 1.7;
+  --stag: 0.85;
+  --sway: 9px;
+  --wob: 2.5deg;
+  --breath: 1.035;
+  --sweep-s: 8s;
+  --enter-ease: cubic-bezier(0.2, 1.5, 0.3, 1);
+}
+.stage.play-high .frame.in .lyric .w {
+  animation-timing-function: cubic-bezier(0.2, 1.5, 0.3, 1);
+}
+
 /* Every word carries --wi (its number on the slide). Entrances stagger on it; the idle sway uses the
-   `translate` property so it composes with the entrance's transform. */
+   `translate` and `rotate` properties so they compose with the entrance's transform. */
 .frame.in .lyric .w {
   display: inline-block;
   animation: var(--enter, ls-word-rise) var(--enter-ms, 420ms) var(--enter-ease, var(--ease)) both;
-  animation-delay: calc(var(--d0, 80ms) + var(--wi, 0) * var(--wstag, 55ms));
+  animation-delay: calc(var(--d0, 80ms) + var(--wi, 0) * var(--wstag, 55ms) * var(--stag));
 }
 .frame.in .lyric .ln {
   animation: none;
@@ -1276,51 +1306,59 @@
 /* While a slide is up, the words sway a touch, each on its own phase, and the block breathes. */
 .stage:not(.calm):not(.still) .frame.in.k-song .lyric .w {
   translate: 0 0;
-  animation-name: var(--enter, ls-word-rise), ls-sway-word;
-  animation-duration: var(--enter-ms, 420ms), 5s;
-  animation-timing-function: var(--enter-ease, var(--ease)), ease-in-out;
-  animation-iteration-count: 1, infinite;
-  animation-direction: normal, alternate;
-  animation-fill-mode: both, none;
-  animation-delay: calc(var(--d0, 80ms) + var(--wi, 0) * var(--wstag, 55ms)), calc(var(--wi, 0) * -1.3s);
+  rotate: 0deg;
+  animation-name: var(--enter, ls-word-rise), ls-sway-word, ls-wobble-word;
+  animation-duration: var(--enter-ms, 420ms), 5s, 3.7s;
+  animation-timing-function: var(--enter-ease, var(--ease)), ease-in-out, ease-in-out;
+  animation-iteration-count: 1, infinite, infinite;
+  animation-direction: normal, alternate, alternate;
+  animation-fill-mode: both, none, none;
+  animation-delay: calc(var(--d0, 80ms) + var(--wi, 0) * var(--wstag, 55ms) * var(--stag)), calc(var(--wi, 0) * -1.3s), calc(var(--wi, 0) * -0.9s);
 }
 @keyframes ls-sway-word {
-  from { translate: 0 3px; }
-  to { translate: 0 -3px; }
+  from { translate: 0 var(--sway); }
+  to { translate: 0 calc(var(--sway) * -1); }
+}
+@keyframes ls-wobble-word {
+  from { rotate: var(--wob); }
+  to { rotate: calc(var(--wob) * -1); }
 }
 .stage:not(.calm):not(.still) .frame.in.k-song .lyric {
   animation: ls-breathe-y 7s ease-in-out infinite alternate;
 }
 @keyframes ls-breathe-y {
   from { scale: 1; }
-  to { scale: 1.015; }
+  to { scale: var(--breath); }
+}
+.stage.play-high .frame.in .lyric .w {
+  animation-timing-function: cubic-bezier(0.2, 1.5, 0.3, 1), ease-in-out, ease-in-out;
 }
 
 /* The entrances, one per look. */
 @keyframes ls-word-rise {
-  from { opacity: 0; transform: translateY(40px); }
+  from { opacity: 0; transform: translateY(calc(40px * var(--amp))); }
   to { opacity: 1; transform: none; }
 }
 @keyframes ls-word-rise-far {
-  from { opacity: 0; transform: translateY(90px); }
+  from { opacity: 0; transform: translateY(calc(90px * var(--amp))); }
   to { opacity: 1; transform: none; }
 }
 @keyframes ls-word-snap {
-  from { opacity: 0; transform: scale(1.25); }
+  from { opacity: 0; transform: scale(calc(1 + 0.25 * var(--amp))); }
   to { opacity: 1; transform: scale(1); }
 }
 @keyframes ls-word-slam {
-  0% { opacity: 0; transform: scale(1.6); }
+  0% { opacity: 0; transform: scale(calc(1 + 0.6 * var(--amp))); }
   70% { opacity: 1; transform: scale(0.96); }
   100% { opacity: 1; transform: scale(1); }
 }
 @keyframes ls-word-pop {
-  0% { opacity: 0; transform: scale(0.5); }
-  70% { opacity: 1; transform: scale(1.08); }
+  0% { opacity: 0; transform: scale(calc(1 - 0.5 * var(--amp))); }
+  70% { opacity: 1; transform: scale(calc(1 + 0.08 * var(--amp))); }
   100% { opacity: 1; transform: scale(1); }
 }
 @keyframes ls-word-track {
-  from { opacity: 0; transform: scaleX(1.5); letter-spacing: 0.4em; }
+  from { opacity: 0; transform: scaleX(calc(1 + 0.5 * var(--amp))); letter-spacing: 0.4em; }
   to { opacity: 1; transform: none; letter-spacing: inherit; }
 }
 @keyframes ls-word-flicker {
@@ -1340,20 +1378,20 @@
   to { opacity: 1; transform: none; filter: blur(0); }
 }
 @keyframes ls-word-left {
-  from { opacity: 0; transform: translateX(-90px) skewX(-8deg); }
+  from { opacity: 0; transform: translateX(calc(-90px * var(--amp))) skewX(-8deg); }
   to { opacity: 1; transform: skewX(-8deg); }
 }
 @keyframes ls-word-right {
-  from { opacity: 0; transform: translateX(90px) skewX(-8deg); }
+  from { opacity: 0; transform: translateX(calc(90px * var(--amp))) skewX(-8deg); }
   to { opacity: 1; transform: skewX(-8deg); }
 }
 @keyframes ls-word-tilt {
-  from { opacity: 0; transform: translateY(50px) rotate(-6deg); }
+  from { opacity: 0; transform: translateY(calc(50px * var(--amp))) rotate(calc(-6deg * var(--amp))); }
   to { opacity: 1; transform: none; }
 }
 @keyframes ls-word-drop {
-  0% { opacity: 0; transform: translateY(-60px); }
-  60% { opacity: 1; transform: translateY(8px); }
+  0% { opacity: 0; transform: translateY(calc(-60px * var(--amp))); }
+  60% { opacity: 1; transform: translateY(calc(8px * var(--amp))); }
   100% { opacity: 1; transform: none; }
 }
 
@@ -1444,6 +1482,7 @@
   animation: ls-fade-in 400ms ease both !important;
   animation-delay: 0ms !important;
   translate: none !important;
+  rotate: none !important;
 }
 .still .frame.in .lyric .ln,
 .still .frame.in .lyric .w {

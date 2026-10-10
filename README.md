@@ -155,7 +155,9 @@ open and each word slams down, Sunshine's words rise from under the shadow while
 stretches each word in, Beams flickers each word on like a lamp, Banner wipes from the left and the words drop in,
 Midnight pops them in, Pixel types them, Neon blurs each word into its glow and keeps the glow breathing, Grateful
 slides words in from alternate sides, Film tilts them in and draws its rule. While a slide is up the words sway a
-little on their own phases and the block breathes. Every background has film grain and a soft light sweeping
+little on their own phases and the block breathes. **How much the words play** (under the live slide and in
+Settings → Words) sets the amount: Gentle (short, soft entrances), Lively (the lyric-video motion) or Playful
+(words travel further, bounce on arrival, wobble while up, and the light sweeps faster). Every background has film grain and a soft light sweeping
 across every 14 s on top of its own motion. All of it is transforms and opacity on the outputs only; **Calm
 mode**, the system's reduced-motion setting and the console's side previews use plain crossfades (the live monitor
 shows the word motion over a still background).
