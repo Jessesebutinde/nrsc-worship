@@ -228,8 +228,8 @@ type, best first, with the reference in both languages and the matching words un
 pick one, **to end** shows from that verse to the end of the chapter. Old and modern English count as the same
 ("leads" finds "leadeth", "you" finds "thee"), and the **World English Bible** (modern English, public domain, also
 a third built-in version) is always searched too, so "love is patient, love is kind" finds 1 Corinthians 13:4. The
-search runs on the laptop; the books load in the
-background the first time (most-read first, all 66 in about two seconds on a good connection).
+search runs on the laptop; the books start loading in
+the background when the Scripture tab opens (most-read first; all 66 in a few seconds on a good connection).
 
 Press the **microphone** and speak: a reference ("Psalm twenty three verse one to four", "John three sixteen",
 "first John chapter one verse nine", "Zabbuli amakumi abiri mu ssatu olunyiriri olusooka") appears as **Heard …**
