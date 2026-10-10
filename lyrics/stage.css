@@ -919,11 +919,8 @@
 .stage.still-bg .bg-fill * {
   animation: none !important;
 }
-.stage.still-bg .bg-crowd .grain,
-.stage.still-bg .bg-bluestage .grain,
-.stage.still-bg .bg-forest .grain,
-.stage.still-bg .bg-mono .grain,
-.stage.still-bg .bg-film .grain {
+.stage.still-bg .bg-fill .grain,
+.stage.still-bg .bg-fill .sweep {
   display: none;
 }
 .stage.still-bg .bg-beams .beam {
@@ -1229,49 +1226,158 @@
   background: #f26b5b;
 }
 
-/* ------------------------------------------------------------ lyric-video motion (outputs only; calm and still = crossfade) */
 
-/* Every word carries --wi (its number on the slide); word-by-word entrances stagger on it. */
+/* ------------------------------------------------------------ texture and a light sweep on every environment */
+
+.bg-fill > .grain {
+  position: absolute;
+  inset: -4%;
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%27320%27%20height=%27320%27%3E%3Cfilter%20id=%27n%27%3E%3CfeTurbulence%20type=%27fractalNoise%27%20baseFrequency=%270.9%27%20numOctaves=%272%27%20stitchTiles=%27stitch%27/%3E%3CfeColorMatrix%20values=%270%200%200%200%201%20%200%200%200%200%201%20%200%200%200%200%201%20%200%200%200%200.6%200%27/%3E%3C/filter%3E%3Crect%20width=%27320%27%20height=%27320%27%20filter=%27url%28%23n%29%27/%3E%3C/svg%3E");
+  background-size: 320px 320px;
+  mix-blend-mode: overlay;
+  opacity: 0.3;
+  animation: ls-grain 0.7s steps(3) infinite;
+  pointer-events: none;
+}
+.bg-wood > .grain {
+  opacity: 0.18;
+}
+/* A soft diagonal light passing every 14 s, like a lamp swinging across a set. */
+.bg-fill > .sweep {
+  position: absolute;
+  inset: -40% -60%;
+  background: linear-gradient(105deg, transparent 42%, rgba(255, 255, 255, 0.07) 50%, transparent 58%);
+  will-change: transform;
+  animation: ls-sweep 14s ease-in-out infinite;
+  pointer-events: none;
+}
+.bg-wood > .sweep,
+.bg-bluestage > .sweep {
+  background: linear-gradient(105deg, transparent 42%, rgba(255, 255, 255, 0.14) 50%, transparent 58%);
+}
+@keyframes ls-sweep {
+  0% { transform: translateX(-45%); }
+  60% { transform: translateX(45%); }
+  100% { transform: translateX(45%); }
+}
+
+/* ------------------------------------------------------------ lyric-video motion: word by word (outputs; calm and still = crossfade) */
+
+/* Every word carries --wi (its number on the slide). Entrances stagger on it; the idle sway uses the
+   `translate` property so it composes with the entrance's transform. */
 .frame.in .lyric .w {
   display: inline-block;
+  animation: var(--enter, ls-word-rise) var(--enter-ms, 420ms) var(--enter-ease, var(--ease)) both;
+  animation-delay: calc(var(--d0, 80ms) + var(--wi, 0) * var(--wstag, 55ms));
 }
 .frame.in .lyric .ln {
   animation: none;
 }
-.frame.k-song.in .lyric .ln {
-  animation: ls-rise 350ms var(--ease) both;
-  animation-delay: calc(var(--d0) + var(--i, 0) * var(--stagger));
+/* While a slide is up, the words sway a touch, each on its own phase, and the block breathes. */
+.stage:not(.calm):not(.still) .frame.in.k-song .lyric .w {
+  translate: 0 0;
+  animation-name: var(--enter, ls-word-rise), ls-sway-word;
+  animation-duration: var(--enter-ms, 420ms), 5s;
+  animation-timing-function: var(--enter-ease, var(--ease)), ease-in-out;
+  animation-iteration-count: 1, infinite;
+  animation-direction: normal, alternate;
+  animation-fill-mode: both, none;
+  animation-delay: calc(var(--d0, 80ms) + var(--wi, 0) * var(--wstag, 55ms)), calc(var(--wi, 0) * -1.3s);
 }
-/* While a slide is up, the block breathes: a slow 6 px drift, transform only. */
+@keyframes ls-sway-word {
+  from { translate: 0 3px; }
+  to { translate: 0 -3px; }
+}
 .stage:not(.calm):not(.still) .frame.in.k-song .lyric {
   animation: ls-breathe-y 7s ease-in-out infinite alternate;
 }
 @keyframes ls-breathe-y {
-  from { translate: 0 0; }
-  to { translate: 0 -6px; }
-}
-/* The fill scale and the breath can't share transform, so looks below animate the words, not the block. */
-
-/* Worship: words drift up and in, 45 ms apart. */
-.frame.p-worship.in .lyric .ln {
-  animation: none;
-}
-.frame.p-worship.in .lyric .w {
-  animation: ls-rise 500ms var(--ease) both;
-  animation-delay: calc(120ms + var(--wi, 0) * 45ms);
+  from { scale: 1; }
+  to { scale: 1.015; }
 }
 
-/* Praise: the line snaps in from a touch larger, like a cut. */
-.frame.p-praise.in .lyric .ln {
-  animation: ls-snap 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  animation-delay: calc(var(--i, 0) * 40ms);
+/* The entrances, one per look. */
+@keyframes ls-word-rise {
+  from { opacity: 0; transform: translateY(40px); }
+  to { opacity: 1; transform: none; }
 }
-@keyframes ls-snap {
-  from { opacity: 0; transform: scale(1.08); }
+@keyframes ls-word-rise-far {
+  from { opacity: 0; transform: translateY(90px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes ls-word-snap {
+  from { opacity: 0; transform: scale(1.25); }
   to { opacity: 1; transform: scale(1); }
 }
+@keyframes ls-word-slam {
+  0% { opacity: 0; transform: scale(1.6); }
+  70% { opacity: 1; transform: scale(0.96); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes ls-word-pop {
+  0% { opacity: 0; transform: scale(0.5); }
+  70% { opacity: 1; transform: scale(1.08); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes ls-word-track {
+  from { opacity: 0; transform: scaleX(1.5); letter-spacing: 0.4em; }
+  to { opacity: 1; transform: none; letter-spacing: inherit; }
+}
+@keyframes ls-word-flicker {
+  0% { opacity: 0; }
+  20% { opacity: 0.8; }
+  35% { opacity: 0.2; }
+  50% { opacity: 1; }
+  65% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+@keyframes ls-word-type {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes ls-word-glow {
+  from { opacity: 0; transform: scale(1.1); filter: blur(10px); }
+  to { opacity: 1; transform: none; filter: blur(0); }
+}
+@keyframes ls-word-left {
+  from { opacity: 0; transform: translateX(-90px) skewX(-8deg); }
+  to { opacity: 1; transform: skewX(-8deg); }
+}
+@keyframes ls-word-right {
+  from { opacity: 0; transform: translateX(90px) skewX(-8deg); }
+  to { opacity: 1; transform: skewX(-8deg); }
+}
+@keyframes ls-word-tilt {
+  from { opacity: 0; transform: translateY(50px) rotate(-6deg); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes ls-word-drop {
+  0% { opacity: 0; transform: translateY(-60px); }
+  60% { opacity: 1; transform: translateY(8px); }
+  100% { opacity: 1; transform: none; }
+}
 
-/* Poster: the band wipes open, then each line slams down. */
+.frame.p-worship { --enter: ls-word-rise; --enter-ms: 480ms; --wstag: 50ms; }
+.frame.p-classic { --enter: ls-word-rise; --enter-ms: 400ms; --wstag: 45ms; --d0: 150ms; }
+.frame.p-praise { --enter: ls-word-snap; --enter-ms: 220ms; --wstag: 35ms; --d0: 0ms; --enter-ease: cubic-bezier(0.2, 0.8, 0.2, 1); }
+.frame.p-poster { --enter: ls-word-slam; --enter-ms: 300ms; --wstag: 70ms; --d0: 220ms; --enter-ease: cubic-bezier(0.2, 0.9, 0.3, 1.2); }
+.frame.p-sunshine { --enter: ls-word-rise-far; --enter-ms: 500ms; --wstag: 70ms; --enter-ease: cubic-bezier(0.2, 0.8, 0.2, 1); }
+.frame.p-lines { --enter: ls-word-track; --enter-ms: 650ms; --wstag: 80ms; --enter-ease: cubic-bezier(0.2, 0.8, 0.2, 1); }
+.frame.p-beams { --enter: ls-word-flicker; --enter-ms: 520ms; --wstag: 70ms; --enter-ease: steps(1); }
+.frame.p-banner { --enter: ls-word-drop; --enter-ms: 420ms; --wstag: 55ms; --d0: 260ms; --enter-ease: cubic-bezier(0.2, 0.8, 0.2, 1); }
+.frame.p-midnight { --enter: ls-word-pop; --enter-ms: 380ms; --wstag: 50ms; --enter-ease: cubic-bezier(0.2, 0.9, 0.3, 1.3); }
+.frame.p-pixel { --enter: ls-word-type; --enter-ms: 1ms; --wstag: 110ms; --d0: 0ms; --enter-ease: steps(1); }
+.frame.p-neon { --enter: ls-word-glow; --enter-ms: 600ms; --wstag: 90ms; --enter-ease: ease-out; }
+.frame.p-grateful { --enter: ls-word-left; --enter-ms: 420ms; --wstag: 60ms; --enter-ease: cubic-bezier(0.2, 0.8, 0.2, 1); }
+.frame.p-grateful .lyric .ln:nth-child(even) { --enter: ls-word-right; }
+.frame.p-film { --enter: ls-word-tilt; --enter-ms: 450ms; --wstag: 60ms; --enter-ease: cubic-bezier(0.2, 0.8, 0.2, 1); }
+
+/* The Grateful words keep their lean; the entrance above ends on the same skew. */
+.p-grateful .lyric .ln .w {
+  transform: skewX(-8deg);
+}
+
+/* Bands, shadows and rules that come in with the words. */
 .frame.p-poster.in .lyric {
   animation: ls-wipe 320ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
@@ -1279,23 +1385,12 @@
   from { clip-path: inset(0 50% 0 50%); }
   to { clip-path: inset(0 0 0 0); }
 }
-.frame.p-poster.in .lyric .ln {
-  animation: ls-slam 260ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
-  animation-delay: calc(180ms + var(--i, 0) * 90ms);
+.frame.p-banner.in .lyric {
+  animation: ls-wipe-left 380ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
-@keyframes ls-slam {
-  from { opacity: 0; transform: scale(1.35); }
-  to { opacity: 1; transform: scale(1); }
-}
-
-/* Sunshine: lines slide up from under their long shadow. */
-.frame.p-sunshine.in .lyric .ln {
-  animation: ls-rise-far 480ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  animation-delay: calc(100ms + var(--i, 0) * 120ms);
-}
-@keyframes ls-rise-far {
-  from { opacity: 0; transform: translateY(70px); }
-  to { opacity: 1; transform: none; }
+@keyframes ls-wipe-left {
+  from { clip-path: inset(0 100% 0 0); }
+  to { clip-path: inset(0 0 0 0); }
 }
 .frame.p-sunshine.in .lyric::before {
   animation: ls-diamond 700ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
@@ -1304,81 +1399,13 @@
   from { transform: translate(-50%, -50%) rotate(25deg) scale(0.3); opacity: 0; }
   to { transform: translate(-50%, -50%) rotate(45deg) scale(0.6); opacity: 1; }
 }
-
-/* Lines: letters track in from wide spacing. */
-.frame.p-lines.in .lyric .ln {
-  animation: ls-track 700ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  animation-delay: calc(var(--i, 0) * 140ms);
+.frame.p-film.in .lyric::after {
+  animation: ls-rule 500ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: 500ms;
 }
-@keyframes ls-track {
-  from { opacity: 0; letter-spacing: 0.5em; }
-  to { opacity: 1; letter-spacing: 0.14em; }
-}
-
-/* Beams: each word flickers on like a lamp. */
-.frame.p-beams.in .lyric .ln {
-  animation: none;
-}
-.frame.p-beams.in .lyric .w {
-  animation: ls-flicker 520ms steps(1) both;
-  animation-delay: calc(80ms + var(--wi, 0) * 70ms);
-}
-@keyframes ls-flicker {
-  0% { opacity: 0; }
-  20% { opacity: 0.8; }
-  35% { opacity: 0.2; }
-  50% { opacity: 1; }
-  65% { opacity: 0.5; }
-  100% { opacity: 1; }
-}
-
-/* Banner: the band wipes in from the left; text rises. */
-.frame.p-banner.in .lyric {
-  animation: ls-wipe-left 380ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
-}
-@keyframes ls-wipe-left {
-  from { clip-path: inset(0 100% 0 0); }
-  to { clip-path: inset(0 0 0 0); }
-}
-.frame.p-banner.in .lyric .ln {
-  animation: ls-rise 400ms var(--ease) both;
-  animation-delay: calc(220ms + var(--i, 0) * 80ms);
-}
-
-/* Midnight: words pop in, 50 ms apart. */
-.frame.p-midnight.in .lyric .ln {
-  animation: none;
-}
-.frame.p-midnight.in .lyric .w {
-  animation: ls-pop 380ms cubic-bezier(0.2, 0.9, 0.3, 1.3) both;
-  animation-delay: calc(60ms + var(--wi, 0) * 50ms);
-}
-@keyframes ls-pop {
-  from { opacity: 0; transform: scale(0.6); }
-  to { opacity: 1; transform: scale(1); }
-}
-
-/* Pixel: words type on, 110 ms apart. */
-.frame.p-pixel.in .lyric .ln {
-  animation: none;
-}
-.frame.p-pixel.in .lyric .w {
-  animation: ls-type 1ms steps(1) both;
-  animation-delay: calc(var(--wi, 0) * 110ms);
-}
-@keyframes ls-type {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-/* Neon: a glow that swells in, then keeps breathing. */
-.frame.p-neon.in .lyric .ln {
-  animation: ls-glow-in 600ms ease-out both;
-  animation-delay: calc(var(--i, 0) * 120ms);
-}
-@keyframes ls-glow-in {
-  from { opacity: 0; filter: blur(12px); }
-  to { opacity: 1; filter: blur(0); }
+@keyframes ls-rule {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
 }
 .stage:not(.calm):not(.still) .frame.in.p-neon .lyric {
   animation: ls-breathe-y 7s ease-in-out infinite alternate, ls-glow-breathe 3s ease-in-out infinite alternate;
@@ -1387,36 +1414,18 @@
   from { text-shadow: 0 0 18px #fff, 0 0 60px rgba(140, 235, 235, 0.75), 0 0 140px rgba(60, 200, 220, 0.5); }
   to { text-shadow: 0 0 22px #fff, 0 0 90px rgba(140, 235, 235, 0.95), 0 0 180px rgba(60, 200, 220, 0.7); }
 }
-
-/* Grateful: lines slide in from alternating sides. */
-.frame.p-grateful.in .lyric .ln {
-  animation: ls-from-left 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  animation-delay: calc(var(--i, 0) * 110ms);
+/* The Poster band holds the block (its own clip wipe); the breath would move its edges. */
+.stage .frame.in.p-poster .lyric,
+.stage .frame.in.p-banner .lyric {
+  animation-name: ls-wipe;
 }
-.frame.p-grateful.in .lyric .ln:nth-child(even) {
-  animation-name: ls-from-right;
+.stage .frame.in.p-banner .lyric {
+  animation-name: ls-wipe-left;
 }
-@keyframes ls-from-left {
-  from { opacity: 0; transform: translateX(-120px); }
-  to { opacity: 1; transform: none; }
-}
-@keyframes ls-from-right {
-  from { opacity: 0; transform: translateX(120px); }
-  to { opacity: 1; transform: none; }
-}
-
-/* Film: a projector flicker, with the rule drawing in. */
-.frame.p-film.in .lyric .ln {
-  animation: ls-flicker 400ms steps(1) both;
-  animation-delay: calc(var(--i, 0) * 60ms);
-}
-.frame.p-film.in .lyric::after {
-  animation: ls-rule 500ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  animation-delay: 400ms;
-}
-@keyframes ls-rule {
-  from { transform: scaleX(0); }
-  to { transform: scaleX(1); }
+/* The sub line (song title) fades in after the words. */
+.frame.in .lyric .sub {
+  animation: ls-fade-in 500ms ease both;
+  animation-delay: 700ms;
 }
 
 /* Calm mode, reduced motion and the console's still previews: plain crossfades, nothing else. */
@@ -1434,6 +1443,7 @@
 .still .frame.in .lyric .ln {
   animation: ls-fade-in 400ms ease both !important;
   animation-delay: 0ms !important;
+  translate: none !important;
 }
 .still .frame.in .lyric .ln,
 .still .frame.in .lyric .w {
@@ -1449,5 +1459,6 @@
   .frame.in .lyric .ln {
     animation: ls-fade-in 400ms ease both !important;
     animation-delay: 0ms !important;
+    translate: none !important;
   }
 }
