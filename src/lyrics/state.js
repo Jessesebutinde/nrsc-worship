@@ -69,6 +69,12 @@ export function emptyState() {
     lookBg: 'look',
     // How much the words play: 'low' (gentle), 'mid' (lively), 'high' (playful: further, bouncier, wobbling).
     play: 'mid',
+    // Word play: mixed fonts per word, and a "hero" word or line that swells (both can be on).
+    mixFonts: false,
+    hero: false,
+    // Where the words sit: 'center', 'alternate' (left / right / centre, slide by slide),
+    // 'lines' (first line left, second right), 'random'.
+    place: 'center',
     // Words the operator tapped for emphasis: { "<item id>:<slide index>": { "<field>:<word>": { c: 'gold', b: true } } }.
     marks: {},
   };
@@ -101,7 +107,8 @@ export function slideWords(item, slide) {
   return [];
 }
 
-export const PLAY_LEVELS = { low: 'Gentle', mid: 'Lively', high: 'Playful' };
+export const PLAY_LEVELS = { low: 'Gentle', mid: 'Lively', high: 'Playful', wild: 'Wild' };
+export const PLACES = { center: 'Centre', alternate: 'Alternate', lines: 'Left / right', random: 'Random' };
 
 export const ILLUSTRATION_SIZES = { small: 'Small', half: 'Half', large: 'Large' };
 

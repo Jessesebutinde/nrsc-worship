@@ -6,7 +6,7 @@ import { CHURCH_NAME } from './config.js';
 import { shownOn, lookOf, PRESET_INFO } from './state.js';
 import { idbGet } from './idb.js';
 import { splitAtPauses } from './split.js';
-import { lineWidth } from './measure.js';
+import { lineWidth, fontsReady as loadFonts } from './measure.js';
 
 const W = 1920;
 const H = 1080;
@@ -67,13 +67,14 @@ export function Fit({ children, class: cls = '', fill = false }) {
   </div>`;
 }
 
-// Fonts arrive after the first paint; text measured before that is measured in the wrong font.
-let fontsDone = typeof document === 'undefined' || !document.fonts ? true : document.fonts.status === 'loaded';
+// Every face the looks use is loaded up front (a face loads only when first used, so a look switched
+// to later would otherwise be measured in the fallback font); text is measured once they are in.
+let fontsDone = typeof document === 'undefined' || !document.fonts;
 function useFontsReady() {
   const [ready, setReady] = useState(fontsDone);
   useEffect(() => {
-    if (ready || !document.fonts) return;
-    document.fonts.ready.then(() => {
+    if (ready) return;
+    loadFonts().then(() => {
       fontsDone = true;
       setReady(true);
     });
@@ -111,24 +112,30 @@ function useFill(ref, { on, max, min = 1, availH, lines = false }, deps) {
       set(1);
       return;
     }
-    const fits = (s) => {
-      set(s);
-      return el.scrollHeight <= availH && (!lines || widestLine(el) <= 1);
-    };
-    if (!fits(min)) {
-      // Even the smallest size is too wide: let the lines wrap rather than cut them off.
-      set(min);
-      el.classList.add('squeeze');
-      return;
+    // Measured with the entrance animations suspended: a word mid-flight would inflate its line.
+    el.classList.add('measuring');
+    try {
+      const fits = (s) => {
+        set(s);
+        return el.scrollHeight <= availH && (!lines || widestLine(el) <= 1);
+      };
+      if (!fits(min)) {
+        // Even the smallest size is too wide: let the lines wrap rather than cut them off.
+        set(min);
+        el.classList.add('squeeze');
+        return;
+      }
+      let lo = min;
+      let hi = max;
+      for (let i = 0; i < 8; i++) {
+        const mid = (lo + hi) / 2;
+        if (fits(mid)) lo = mid;
+        else hi = mid;
+      }
+      set(Math.floor(lo * 100) / 100);
+    } finally {
+      el.classList.remove('measuring');
     }
-    let lo = min;
-    let hi = max;
-    for (let i = 0; i < 8; i++) {
-      const mid = (lo + hi) / 2;
-      if (fits(mid)) lo = mid;
-      else hi = mid;
-    }
-    set(Math.floor(lo * 100) / 100);
   }, deps);
 }
 
@@ -180,21 +187,52 @@ function BgLayer({ kind, video }) {
 // ------------------------------------------------------------------ frames
 
 /** The words of `text` as spans, numbered from `start` in `field`, with the operator's emphasis marks. */
-function Words({ text, field, start = 0, marks }) {
+// A fixed pseudo-random number per (slide, word), so every output draws the same picture.
+const hash = (a, b = 0) => {
+  let h = (a * 2654435761 + b * 40503 + 12345) >>> 0;
+  h ^= h >>> 15;
+  h = Math.imul(h, 2246822519) >>> 0;
+  h ^= h >>> 13;
+  return (h >>> 0) / 4294967296;
+};
+
+/**
+ * The words of `text` as spans, numbered from `start` in `field`, with the operator's emphasis marks.
+ * `seed` (the slide number) and `hero` (the word to swell) are for songs; each word also gets a font
+ * class and a fly-in direction that the Mix and Wild settings may use.
+ */
+function Words({ text, field, start = 0, marks, seed = 0, hero = -1 }) {
   const words = String(text || '').split(/\s+/).filter(Boolean);
   return words.map((w, i) => {
-    const m = marks && marks[`${field}:${start + i}`];
-    const cls = m ? `w mk-${m.c}${m.b ? ' bend' : ''}` : 'w';
-    return html`${i > 0 ? ' ' : ''}<span class=${cls} style=${`--wi:${start + i}`}>${w}</span>`;
+    const n = start + i;
+    const m = marks && marks[`${field}:${n}`];
+    const font = Math.floor(hash(seed, n) * 5) + 1;
+    const angle = hash(seed + 7, n) * Math.PI * 2;
+    const r = 700 + hash(seed + 13, n) * 500;
+    const fx = Math.round(Math.cos(angle) * r);
+    const fy = Math.round(Math.sin(angle) * r * 0.7);
+    const fr = Math.round((hash(seed + 29, n) - 0.5) * 80);
+    const cls = `w f${font}${n === hero ? ' hero' : ''}${m ? ` mk-${m.c}${m.b ? ' bend' : ''}` : ''}`;
+    return html`${i > 0 ? ' ' : ''}<span class=${cls} style=${`--wi:${n};--fx:${fx}px;--fy:${fy}px;--fr:${fr}deg`}>${w}</span>`;
   });
 }
 
+/** The word to swell: the longest word on the slide (ties: the later one). */
+function heroOf(lines) {
+  const words = lines.join(' ').split(/\s+/).filter(Boolean);
+  let best = -1;
+  words.forEach((w, i) => {
+    if (best < 0 || w.length >= words[best].length) best = i;
+  });
+  return best;
+}
+
 /** Song lines; the words are numbered straight through the slide, however the lines are broken. */
-function Lines({ lines, marks }) {
+function Lines({ lines, marks, seed = 0, hero = -1 }) {
   let start = 0;
   return lines.map((l, i) => {
     const n = String(l).split(/\s+/).filter(Boolean).length;
-    const el = html`<span class="ln" style=${`--i:${i}`}><${Words} text=${l} field="l" start=${start} marks=${marks} /></span>`;
+    const el = html`<span class="ln" style=${`--i:${i}`}><${Words} text=${l} field="l" start=${start} marks=${marks} seed=${seed} hero=${hero} /></span>`;
     start += n;
     return el;
   });
@@ -233,11 +271,12 @@ function bestLines(lines, preset, caps, textW) {
   return best;
 }
 
-function SongFrame({ item, index, lt, fill, caps, preset, textW, fontsReady, marks }) {
+function SongFrame({ item, index, lt, fill, caps, preset, textW, fontsReady, marks, hero = false, place = 'center', mix = false }) {
   const slide = item.slides[index];
   const box = useRef(null);
   const refill = fill && !lt;
-  const lines = slide ? (refill && fontsReady ? bestLines(slide.lines, preset, caps || UPPER.has(preset), textW) : slide.lines) : [];
+  // Re-breaking lines needs widths in one font; with mixed fonts or a hero word the DOM measure in useFill decides.
+  const lines = slide ? (refill && fontsReady && !mix && !hero ? bestLines(slide.lines, preset, caps || UPPER.has(preset), textW) : slide.lines) : [];
   // A line is never allowed to wrap into a third: wide display fonts may shrink to half the standard.
   useFill(box, { on: refill, max: maxLyric(preset), min: 0.5, availH: LYRIC_H, lines: true }, [
     lines.join('\n'),
@@ -246,13 +285,21 @@ function SongFrame({ item, index, lt, fill, caps, preset, textW, fontsReady, mar
     textW,
     preset,
     fontsReady,
+    hero,
+    place,
+    mix,
   ]);
   if (!slide) return null;
+  // Where this slide's words sit.
+  const side =
+    place === 'alternate' ? ['left', 'right', 'center'][index % 3] : place === 'random' ? ['left', 'center', 'right'][Math.floor(hash(index, 99) * 3)] : place === 'lines' ? 'lines' : 'center';
+  // The hero: with two lines the second line swells and the first takes the accent; with one, the longest word.
+  const heroWord = hero && lines.length < 2 ? heroOf(lines) : -1;
   if (lt)
     return html`<div class="lt-band"><div class="lt-lyric"><${Lines} lines=${slide.lines} marks=${marks} /></div></div>`;
   return html`<div class="safe">
-    <div class="lyric" ref=${box}>
-      <${Lines} lines=${lines} marks=${marks} />
+    <div class=${`lyric place-${side}${hero ? ' hero-on' : ''}${hero && lines.length > 1 ? ' hero-line' : ''}`} ref=${box}>
+      <${Lines} lines=${lines} marks=${marks} seed=${index} hero=${heroWord} />
       ${PRESET_INFO[preset].subtitle && html`<div class="sub">${item.title}</div>`}
     </div>
     ${preset === 'classic' && html`<div class="songtag">${item.title}</div>`}
@@ -434,6 +481,7 @@ export function Stage({ state, out = 'preview', layout = 'full', background = 'a
     background === 'none' ? 'is-transparent' : '',
     st.calm ? 'calm' : '',
     `play-${st.play || 'mid'}`,
+    st.mixFonts ? 'mix-fonts' : '',
     still === true ? 'still' : '',
     still ? 'still-bg' : '',
     st.caps !== false ? 'caps' : '',
@@ -448,7 +496,7 @@ export function Stage({ state, out = 'preview', layout = 'full', background = 'a
       const preset = kind === 'song' ? data.f.preset : kind;
       return html`<div key=${k} class=${`frame k-${kind} p-${preset} ${leaving ? 'out' : 'in'}`} style=${`--out:${o}ms`}>
         ${kind === 'song' &&
-        html`<${SongFrame} item=${data.item} index=${data.index} lt=${lowerThird} fill=${fill} caps=${st.caps !== false} preset=${data.f.preset} textW=${textW} fontsReady=${fontsReady} marks=${marksFor(st, data.item, data.index)} />`}
+        html`<${SongFrame} item=${data.item} index=${data.index} lt=${lowerThird} fill=${fill} caps=${st.caps !== false} preset=${data.f.preset} textW=${textW} fontsReady=${fontsReady} marks=${marksFor(st, data.item, data.index)} hero=${Boolean(st.hero)} place=${st.place || 'center'} mix=${Boolean(st.mixFonts)} />`}
         ${kind === 'scripture' &&
         html`<${ScriptureFrame} item=${data.item} index=${data.index} lt=${lowerThird} fill=${fill} textW=${textW} fontsReady=${fontsReady} marks=${marksFor(st, data.item, data.index)} />`}
         ${kind === 'media' && html`<${MediaFrame} item=${data.item} index=${data.index} live=${out !== 'preview' && !leaving} />`}

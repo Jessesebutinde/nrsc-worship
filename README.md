@@ -157,7 +157,11 @@ Midnight pops them in, Pixel types them, Neon blurs each word into its glow and 
 slides words in from alternate sides, Film tilts them in and draws its rule. While a slide is up the words sway a
 little on their own phases and the block breathes. **How much the words play** (under the live slide and in
 Settings → Words) sets the amount: Gentle (short, soft entrances), Lively (the lyric-video motion) or Playful
-(words travel further, bounce on arrival, wobble while up, and the light sweeps faster). Every background has film grain and a soft light sweeping
+(words travel further, bounce on arrival, wobble while up, and the light sweeps faster), or Wild (words fly in fast from all over the screen,
+spinning, and snap into place). Beside it: **Mixed fonts** (a different font on each word), **Hero word** (the longest
+word swells and keeps swelling; with two lines the second line swells and the first takes the accent colour, like
+GOD I'M JUST / GRATEFUL), and **Where the words sit** (centre; alternate left, right, centre slide by slide; first
+line left and second right; random). All three are also in Settings → Words. Every background has film grain and a soft light sweeping
 across every 14 s on top of its own motion. All of it is transforms and opacity on the outputs only; **Calm
 mode**, the system's reduced-motion setting and the console's side previews use plain crossfades (the live monitor
 shows the word motion over a still background).

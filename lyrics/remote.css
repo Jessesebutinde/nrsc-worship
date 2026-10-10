@@ -1014,3 +1014,16 @@ div.out-btn {
   padding: 4px 12px;
   font-size: 0.85rem;
 }
+
+.wordplay {
+  margin: -4px 0 12px;
+  gap: 8px;
+}
+.wordplay .seg button {
+  min-height: 36px;
+  padding: 4px 12px;
+  font-size: 0.85rem;
+}
+.looks .seg.play {
+  margin-left: 0;
+}
