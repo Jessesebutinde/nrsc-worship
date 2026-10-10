@@ -1,21 +1,24 @@
-// /lyrics/screen.html — the picture on the hall TV (or an OBS browser source).
+// /lyrics/screen.html — an output: the hall TV, the ATEM (stream) feed, or an OBS browser source.
 //
-//   ?room=CODE        pairing code (otherwise one is made up and remembered on this PC)
-//   ?transparent=1    no background, for OBS
-//   ?mode=lowerthird  livestream subtitles in a band at the bottom
+//   ?room=CODE        pairing code (otherwise one is made up and remembered on this device)
+//   ?out=tv           the TV (default): full layout, backgrounds, logo, title cards
+//   ?out=stream       the stream feed for the ATEM: lower thirds on black by default (set from the remote)
+//   ?transparent=1    no background at all, for an OBS browser source
 //
 // Keys: Space / → next, ← previous, B black, C clear, L logo, F fullscreen, V pick a background video.
+// A click or tap anywhere goes fullscreen.
 
 import { html, render, useState, useEffect, useRef } from '../ui/h.js';
 import { Fit, Stage } from './stage.js';
 import { Link, newCode, normalizeCode } from './link.js';
 import { emptyState, reduce } from './state.js';
-import { cloudConfig } from './cloud.js';
+import { relayConfig } from './cloud.js';
+import { receiveCast } from './cast.js';
 import { idbGet, idbSet } from './idb.js';
 
 const params = new URLSearchParams(location.search);
 const transparent = params.get('transparent') === '1';
-const lowerThird = params.get('mode') === 'lowerthird';
+const out = params.get('out') === 'stream' ? 'stream' : 'tv';
 
 function storageGet(k) {
   try {
@@ -48,9 +51,9 @@ function cachedState(room) {
   }
 }
 
-function remoteUrl(room) {
+function remoteUrl() {
   const u = new URL('./', location.href);
-  u.search = `?room=${room}`;
+  u.search = '';
   return u.href.replace(/^https?:\/\//, '');
 }
 
@@ -61,6 +64,7 @@ function Screen() {
   const [video, setVideo] = useState('');
   const [hint, setHint] = useState(true);
   const [idle, setIdle] = useState(false);
+  const [cast, setCast] = useState(false);
   const link = useRef(null);
   const stateRef = useRef(state);
   stateRef.current = state;
@@ -70,7 +74,7 @@ function Screen() {
       room,
       role: 'screen',
       state: stateRef.current,
-      cloud: cloudConfig(),
+      relay: relayConfig(),
       onState: (s) => {
         setState(s);
         storageSet(`ls-screen-state:${room}`, JSON.stringify(s));
@@ -78,6 +82,8 @@ function Screen() {
       onInfo: setInfo,
     });
     link.current = l;
+    // Shown through Google Cast: the remote talks to us over the Cast connection too.
+    if (receiveCast((conn) => l.addPort(conn))) setCast(true);
     return () => l.close();
   }, []);
 
@@ -142,7 +148,7 @@ function Screen() {
     };
     wake();
     document.addEventListener('visibilitychange', wake);
-    let t = setTimeout(() => setHint(false), 6000);
+    let t = setTimeout(() => setHint(false), 8000);
     const moved = () => {
       setIdle(false);
       clearTimeout(t);
@@ -159,27 +165,33 @@ function Screen() {
     };
   }, []);
 
-  const paired = info.peers.remote > 0;
-  const showPair = !transparent && !lowerThird && !paired && (!state.item || state.mode === 'logo');
-  const cloudOff = info.cloud === 'off';
+  const paired = info.peers.remote > 0 || cast;
+  const isTv = out === 'tv' && !transparent;
+  const showPair = isTv && !paired && (!state.item || state.mode === 'logo');
+  const layout = out === 'stream' ? state.streamLayout || 'lowerthird' : 'full';
+  const background = transparent ? 'none' : out === 'stream' && state.streamBg !== 'tv' ? 'key' : 'auto';
 
-  return html`<div class=${`screen ${idle ? 'idle' : ''} ${transparent || lowerThird ? 'clear-bg' : ''}`} onDblClick=${toggleFullscreen}>
+  return html`<div
+    class=${`screen ${idle ? 'idle' : ''} ${transparent ? 'clear-bg' : ''}`}
+    onClick=${() => !document.fullscreenElement && toggleFullscreen()}
+  >
     <${Fit} fill=${true}>
-      <${Stage} state=${state} transparent=${transparent} lowerThird=${lowerThird} titleCards=${true} video=${video} />
+      <${Stage} state=${state} out=${out} layout=${layout} background=${background} titleCards=${isTv} video=${video} />
     <//>
     ${showPair &&
     html`<div class="pair">
       <div class="pair-code">${room.slice(0, 3)} ${room.slice(3)}</div>
       <div class="pair-text">
-        ${cloudOff
-          ? html`Open the remote in this browser: <b>${remoteUrl(room)}</b>`
-          : html`On your phone open <b>${remoteUrl(room).replace(/\?room=.*/, '')}</b> and enter this code`}
+        ${info.cloud === 'off'
+          ? html`Open the remote in this browser and enter this code`
+          : html`On your phone open <b>${remoteUrl()}</b> and enter this code`}
       </div>
     </div>`}
     ${hint &&
     !transparent &&
-    !lowerThird &&
-    html`<div class="hint">F fullscreen · Space / → next · ← back · B black · C clear · L logo · V video</div>`}
+    html`<div class="hint">
+      ${out === 'stream' ? 'Stream feed · ' : ''}Click for fullscreen · Space / → next · ← back · B black · C clear · L logo · V video
+    </div>`}
     ${!transparent && info.cloud === 'closed' && html`<div class="offline">Reconnecting…</div>`}
   </div>`;
 }

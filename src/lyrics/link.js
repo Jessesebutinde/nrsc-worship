@@ -1,11 +1,17 @@
-// The link between the remote(s) and the screen(s) of one room (the pairing code).
+// The link between the remote(s) and the output(s) of one room (the pairing code).
 //
-// Two transports, used together: a BroadcastChannel (windows of one browser, e.g. the operator
-// laptop and its fullscreen TV window) and Supabase Realtime when configured (phone <-> hall PC).
+// Three transports, used together:
+// - a BroadcastChannel: windows of one browser (the operator laptop and its TV / ATEM windows);
+// - a relay: Supabase Realtime when src/lyrics/config.js has a project, else the public MQTT
+//   broker, so a phone can drive a TV or a PC anywhere with internet and no account;
+// - "ports": Cast (Presentation API) connections, added with addPort().
 // Messages: { t: 'hello' | 'here' | 'state', id, role, state? }.
 // Whoever has the newest state answers a 'hello', so a refreshed screen or remote catches up.
+// The relay also keeps the last state (an MQTT retained message), so a TV that opens the link
+// later shows the right thing at once.
 
 import { RealtimeChannel } from './realtime.js';
+import { MqttClient } from './mqtt.js';
 import { newer } from './state.js';
 
 const HERE_MS = 8000;
@@ -38,9 +44,9 @@ export class Link {
    * @param {object} [o.state]       last known state (e.g. from localStorage)
    * @param {(state) => void} o.onState
    * @param {(info) => void} [o.onInfo]  { peers: {screen, remote}, cloud: 'off'|'connecting'|'joined'|'closed', pending }
-   * @param {{url: string, key: string} | null} [o.cloud]
+   * @param {{kind: 'supabase', url, key} | {kind: 'mqtt', urls: string[]} | null} [o.relay]
    */
-  constructor({ room, role, state = null, onState, onInfo = () => {}, cloud = null, BroadcastChannelImpl, WebSocketImpl }) {
+  constructor({ room, role, state = null, onState, onInfo = () => {}, relay = null, BroadcastChannelImpl, WebSocketImpl }) {
     this.room = room;
     this.role = role;
     this.id = clientId();
@@ -48,29 +54,46 @@ export class Link {
     this.onState = onState;
     this.onInfo = onInfo;
     this.peers = new Map();
+    this.ports = new Set();
     this.pending = false;
-    this.cloudStatus = cloud ? 'connecting' : 'off';
+    this.cloudStatus = relay ? 'connecting' : 'off';
 
     const BC = BroadcastChannelImpl || globalThis.BroadcastChannel;
     if (BC) {
       this.bc = new BC(`lyric-slides:${room}`);
       this.bc.onmessage = (e) => this.receive(e.data);
     }
-    if (cloud && cloud.url && cloud.key) {
+    const onStatus = (s) => {
+      this.cloudStatus = s;
+      if (s === 'joined') {
+        this.post({ t: 'hello' });
+        if (this.pending && this.state) this.publish(this.state);
+      }
+      this.info();
+    };
+    if (relay && relay.kind === 'supabase') {
       this.rt = new RealtimeChannel({
-        url: cloud.url,
-        key: cloud.key,
+        url: relay.url,
+        key: relay.key,
         topic: `lyric-slides-${room}`,
         WebSocketImpl,
         onMessage: (m) => this.receive(m),
-        onStatus: (s) => {
-          this.cloudStatus = s;
-          if (s === 'joined') {
-            this.post({ t: 'hello' });
-            if (this.pending && this.state) this.post({ t: 'state', state: this.state });
+        onStatus,
+      });
+    } else if (relay && relay.kind === 'mqtt') {
+      this.topic = `nrsc/lyric-slides/${room}`;
+      this.mq = new MqttClient({
+        urls: relay.urls,
+        topics: [`${this.topic}/msg`, `${this.topic}/state`],
+        WebSocketImpl,
+        onMessage: (topic, payload) => {
+          try {
+            this.receive(JSON.parse(payload));
+          } catch {
+            /* not ours */
           }
-          this.info();
         },
+        onStatus,
       });
     }
     this.post({ t: 'hello' });
@@ -78,18 +101,52 @@ export class Link {
       this.post({ t: 'here' });
       this.info();
     }, HERE_MS);
-    this.onOnline = () => this.rt && this.rt.kick();
+    this.onOnline = () => {
+      if (this.rt) this.rt.kick();
+      if (this.mq) this.mq.kick();
+    };
     globalThis.addEventListener?.('online', this.onOnline);
+  }
+
+  /** A Cast connection (or anything with send(string) and onmessage). */
+  addPort(port) {
+    this.ports.add(port);
+    port.onmessage = (e) => {
+      try {
+        this.receive(JSON.parse(e.data));
+      } catch {
+        /* ignore */
+      }
+    };
+    port.onclose = () => {
+      this.ports.delete(port);
+      this.info();
+    };
+    port.onterminate = port.onclose;
+    this.post({ t: 'hello' });
+    if (this.state && this.state.rev) this.post({ t: 'state', state: this.state });
+    this.info();
   }
 
   post(msg) {
     const m = { ...msg, id: this.id, role: this.role };
     if (this.bc) this.bc.postMessage(m);
     if (this.rt) this.rt.send(m);
+    if (this.mq) {
+      const retain = m.t === 'state';
+      this.mq.publish(`${this.topic}/${retain ? 'state' : 'msg'}`, JSON.stringify(m), retain);
+    }
+    for (const p of this.ports) {
+      try {
+        p.send(JSON.stringify(m));
+      } catch {
+        this.ports.delete(p);
+      }
+    }
   }
 
   receive(m) {
-    if (!m || m.id === this.id) return;
+    if (!m || !m.id || m.id === this.id) return;
     this.peers.set(m.id, { role: m.role, at: Date.now() });
     if (m.t === 'hello') {
       this.post({ t: 'here' });
@@ -101,12 +158,17 @@ export class Link {
     this.info();
   }
 
-  /** Publish a new state (already applied locally). Kept and resent if the cloud link is down. */
+  get relayUp() {
+    if (this.rt) return this.rt.joined;
+    if (this.mq) return this.mq.joined;
+    return true;
+  }
+
+  /** Publish a new state (already applied locally). Kept and resent if the relay is down. */
   publish(state) {
     this.state = state;
-    const cloudUp = !this.rt || this.rt.joined;
     this.post({ t: 'state', state });
-    this.pending = !cloudUp;
+    this.pending = !this.relayUp;
     this.info();
   }
 
@@ -121,7 +183,7 @@ export class Link {
   }
 
   info() {
-    this.onInfo({ peers: this.counts(), cloud: this.cloudStatus, pending: this.pending });
+    this.onInfo({ peers: this.counts(), cloud: this.cloudStatus, pending: this.pending, ports: this.ports.size });
   }
 
   close() {
@@ -129,5 +191,13 @@ export class Link {
     globalThis.removeEventListener?.('online', this.onOnline);
     if (this.bc) this.bc.close();
     if (this.rt) this.rt.close();
+    if (this.mq) this.mq.close();
+    for (const p of this.ports) {
+      try {
+        p.close();
+      } catch {
+        /* already gone */
+      }
+    }
   }
 }

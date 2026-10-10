@@ -2,12 +2,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { parseRef, findBook, formatRef, bookByCode, BOOKS } from '../src/lyrics/books.js';
-import { parseBibleText, verseSlides, passageItem, LIMITS } from '../src/lyrics/bible.js';
+import { parseBibleText, splitVerse, paginate, passageItem, wrapCount, CHAR_FIT } from '../src/lyrics/bible.js';
 import { parseSlides, formatSlides, splitLyrics, lintSlides, wrapLine, splitAtPauses, labelOf } from '../src/lyrics/split.js';
 import { Dictionary, checkText, applyFix, wordsOf, distance } from '../src/lyrics/spell.js';
-import { emptyState, reduce, newer, songItem } from '../src/lyrics/state.js';
+import { emptyState, reduce, newer, songItem, mediaItem, shownOn } from '../src/lyrics/state.js';
 import { Link, normalizeCode, newCode, CODE_ALPHABET } from '../src/lyrics/link.js';
 import { RealtimeChannel } from '../src/lyrics/realtime.js';
+import { MqttClient, connectPacket, subscribePacket, publishPacket, parsePackets, parsePublish } from '../src/lyrics/mqtt.js';
 import { makeSong, mergeSongs, searchSongs, removeSong, visibleSongs, loadSongs, importLibrary, exportLibrary } from '../src/lyrics/library.js';
 import { SEED_SONGS } from '../src/lyrics/seed.js';
 
@@ -90,26 +91,48 @@ test('bundled Bibles: Luganda 1968 and KJV Psalm 23', () => {
   }
 });
 
-test('a long verse splits into a / b in both languages', () => {
+test('a long verse splits into a / b in both languages; flow packs short verses together', () => {
   const book = findBook('Psalm');
   const lg =
     "Era newakubadde nga ntambulira mu kiwonvu eky'ekisiikirize eky'olumbe, Siritya kabi konna; kubanga ggwe oli nange: Oluga lwo n'omuggo gwo bye binsanyusa.";
   const en =
     'Yea, though I walk through the valley of the shadow of death, I will fear no evil: for thou art with me; thy rod and thy staff they comfort me.';
-  const slides = verseSlides({ book, chapter: 23, verse: 4, primary: lg, secondary: en });
-  assert.equal(slides.length, 2);
-  assert.deepEqual(slides.map((s) => s.ref), ['Zabbuli 23 : 4a · Psalm 23 : 4a', 'Zabbuli 23 : 4b · Psalm 23 : 4b']);
-  assert.equal(slides.map((s) => s.primary).join(' '), lg);
-  assert.equal(slides.map((s) => s.secondary).join(' '), en);
-  for (const s of slides) {
-    assert.ok(s.primary.length <= LIMITS.primary, s.primary);
-    assert.ok(s.secondary.length <= LIMITS.secondary, s.secondary);
+  const parts = splitVerse(lg, en);
+  assert.equal(parts.length, 2);
+  assert.deepEqual(parts.map((p) => p.part), ['a', 'b']);
+  assert.equal(parts.map((p) => p.primary).join(' '), lg);
+  assert.equal(parts.map((p) => p.secondary).join(' '), en);
+  for (const p of parts) {
+    assert.ok(wrapCount(p.primary, CHAR_FIT.primary.width) <= 3, p.primary);
+    assert.ok(wrapCount(p.secondary, CHAR_FIT.secondary.width) <= 3, p.secondary);
   }
-  assert.match(slides[0].primary, /[,;:]$/, 'split at a pause');
+  assert.match(parts[0].primary, /[,;:]$/, 'split at a pause');
+  assert.deepEqual(splitVerse('Mukama ye musumba wange;', 'The LORD is my shepherd'), [
+    { part: '', primary: 'Mukama ye musumba wange;', secondary: 'The LORD is my shepherd' },
+  ]);
 
-  const short = verseSlides({ book, chapter: 23, verse: 1, primary: 'Mukama ye musumba wange; seetaagenga:', secondary: 'The LORD is my shepherd' });
-  assert.equal(short.length, 1);
-  assert.equal(short[0].ref, 'Zabbuli 23 : 1 · Psalm 23 : 1');
+  const verses = [
+    { verse: 1, primary: 'Mukama ye musumba wange;', secondary: 'The LORD is my shepherd;' },
+    { verse: 2, primary: 'Angalamiza mu ddundiro.', secondary: 'He maketh me to lie down.' },
+    { verse: 3, primary: lg, secondary: en },
+    { verse: 4, primary: 'Akomyawo emmeeme yange.', secondary: 'He restoreth my soul.' },
+  ];
+  const flow = paginate(verses, { book, chapter: 23 });
+  assert.deepEqual(flow.map((s) => s.ref), [
+    'Zabbuli 23 : 1-2 · Psalm 23 : 1-2',
+    'Zabbuli 23 : 3a · Psalm 23 : 3a',
+    'Zabbuli 23 : 3b · Psalm 23 : 3b',
+    'Zabbuli 23 : 4 · Psalm 23 : 4',
+  ]);
+  assert.equal(flow[0].primary, 'Mukama ye musumba wange; 2 Angalamiza mu ddundiro.');
+  assert.deepEqual(flow[0].verses.map((v) => v.verse), [1, 2]);
+  const perVerse = paginate(verses, { book, chapter: 23, flow: false });
+  assert.equal(perVerse.length, 5);
+  assert.equal(perVerse[0].ref, 'Zabbuli 23 : 1 · Psalm 23 : 1');
+  // With a wide screen (a generous fit) everything flows onto one slide.
+  const wide = { primary: { width: (t) => t.length / 400, lines: 3 }, secondary: { width: (t) => t.length / 400, lines: 3 } };
+  assert.equal(paginate(verses, { book, chapter: 23, fit: wide }).length, 1);
+  assert.equal(wrapCount('one two three four', (t) => t.length / 9), 3);
 });
 
 test('passage item from the built-in versions', async () => {
@@ -124,7 +147,7 @@ test('passage item from the built-in versions', async () => {
   assert.equal(item.slides[0].primary, 'Mukama ye musumba wange; seetaagenga:');
   assert.equal(item.secondaryLabel, 'KJV');
   // English alone shows at the large size, so verse 2 (107 characters) splits into 2a / 2b.
-  const whole = await passageItem({ ref: parseRef('Psalm 117'), primaryId: 'kjv', secondaryId: '', fetchImpl });
+  const whole = await passageItem({ ref: parseRef('Psalm 117'), primaryId: 'kjv', secondaryId: '', fetchImpl, flow: false });
   assert.deepEqual(whole.slides.map((s) => s.ref), ['Psalm 117 : 1', 'Psalm 117 : 2a', 'Psalm 117 : 2b']);
 });
 
@@ -364,4 +387,144 @@ test('splitter: measured sizes, and no lone line when a sung line breaks three w
   assert.deepEqual(lintSlides(parseSlides('Mukama wange nkutendereza'), 'worship', (s) => s.length / 21), [
     { index: 0, message: '“Mukama wange nkutendereza” is too wide and will wrap on the TV' },
   ]);
+});
+
+// ------------------------------------------------------------------ MQTT relay protocol
+
+test('mqtt packets', () => {
+  const c = connectPacket('abc', 30);
+  assert.deepEqual([...c.slice(0, 2)], [0x10, 15]);
+  assert.deepEqual([...c.slice(2, 8)], [0, 4, 77, 81, 84, 84]);
+  assert.deepEqual([...c.slice(8, 12)], [4, 2, 0, 30]);
+  const sub = subscribePacket(1, ['a/b']);
+  assert.deepEqual([...sub], [0x82, 8, 0, 1, 0, 3, 97, 47, 98, 0]);
+  const pub = publishPacket('t', 'hi', true);
+  assert.deepEqual([...pub], [0x31, 5, 0, 1, 116, 104, 105]);
+  const { packets, rest } = parsePackets(new Uint8Array([...pub, 0xd0, 0, 0x30, 9]));
+  assert.equal(packets.length, 2);
+  assert.deepEqual(parsePublish(packets[0].type, packets[0].body), { topic: 't', payload: 'hi', retain: true });
+  assert.deepEqual([...rest], [0x30, 9], 'an unfinished packet waits for more bytes');
+  // Long payloads use the multi-byte remaining length.
+  const big = publishPacket('t', 'x'.repeat(300));
+  assert.deepEqual([...big.slice(1, 3)], [((303 % 128) | 128), Math.floor(303 / 128)]);
+  assert.equal(parsePackets(big).packets[0].body.length, 303);
+});
+
+class FakeMqttWS {
+  static last = null;
+  constructor(url, protocols) {
+    this.url = url;
+    this.protocols = protocols;
+    this.sent = [];
+    this.readyState = 0;
+    FakeMqttWS.last = this;
+    queueMicrotask(() => {
+      this.readyState = 1;
+      this.onopen();
+    });
+  }
+  send(b) {
+    this.sent.push(new Uint8Array(b));
+  }
+  close() {
+    this.readyState = 3;
+    this.onclose && this.onclose();
+  }
+  serverSends(bytes) {
+    this.onmessage({ data: new Uint8Array(bytes).buffer });
+  }
+}
+
+test('mqtt client: connects, subscribes, publishes retained state, receives, falls over to the next broker', async () => {
+  const got = [];
+  const statuses = [];
+  const client = new MqttClient({
+    urls: ['wss://one/mqtt', 'wss://two/mqtt'],
+    topics: ['nrsc/lyric-slides/ABC234/msg', 'nrsc/lyric-slides/ABC234/state'],
+    WebSocketImpl: FakeMqttWS,
+    onMessage: (t, p, r) => got.push([t, p, r]),
+    onStatus: (s) => statuses.push(s),
+  });
+  await tick();
+  const ws = FakeMqttWS.last;
+  assert.deepEqual(ws.protocols, ['mqtt']);
+  assert.equal(ws.sent[0][0], 0x10, 'CONNECT first');
+  ws.serverSends([0x20, 2, 0, 0]);
+  assert.equal(ws.sent[1][0], 0x82, 'SUBSCRIBE after CONNACK');
+  assert.equal(client.publish('x', 'y'), false, 'not before SUBACK');
+  ws.serverSends([0x90, 3, 0, 1, 0]);
+  assert.equal(statuses.at(-1), 'joined');
+  assert.equal(client.publish('nrsc/lyric-slides/ABC234/state', '{"t":"state"}', true), true);
+  assert.equal(ws.sent.at(-1)[0], 0x31, 'retained');
+  ws.serverSends([...publishPacket('nrsc/lyric-slides/ABC234/msg', '{"t":"hello"}')]);
+  assert.deepEqual(got, [['nrsc/lyric-slides/ABC234/msg', '{"t":"hello"}', false]]);
+  // The broker refuses: the client tries again, and after two failures moves to the next broker.
+  ws.close();
+  await new Promise((r) => setTimeout(r, 600));
+  assert.equal(FakeMqttWS.last.url, 'wss://one/mqtt');
+  FakeMqttWS.last.close();
+  await new Promise((r) => setTimeout(r, 1300));
+  assert.equal(FakeMqttWS.last.url, 'wss://two/mqtt');
+  client.close();
+});
+
+test('link over the MQTT relay: state is retained for a screen that opens later', async () => {
+  // The fake broker keeps the retained message and hands it to the next subscriber.
+  let retained = null;
+  const sockets = [];
+  class BrokerWS extends FakeMqttWS {
+    constructor(url, protocols) {
+      super(url, protocols);
+      sockets.push(this);
+    }
+    send(b) {
+      super.send(b);
+      const bytes = new Uint8Array(b);
+      if (bytes[0] === 0x10) queueMicrotask(() => this.serverSends([0x20, 2, 0, 0]));
+      else if (bytes[0] === 0x82) {
+        queueMicrotask(() => {
+          this.serverSends([0x90, 3, 0, 1, 0]);
+          if (retained) this.serverSends([...retained]);
+        });
+      } else if ((bytes[0] & 0xf0) === 0x30) {
+        if (bytes[0] & 1) retained = bytes;
+        for (const s of sockets) if (s !== this && s.readyState === 1) queueMicrotask(() => s.serverSends([...bytes]));
+      }
+    }
+  }
+  const relay = { kind: 'mqtt', urls: ['wss://fake/mqtt'] };
+  const remote = new Link({ room: 'ABC234', role: 'remote', onState: () => {}, relay, BroadcastChannelImpl: null, WebSocketImpl: BrokerWS });
+  await tick();
+  await tick();
+  const s1 = reduce(emptyState(), { type: 'item', item: songItem(makeSong({ title: 'T', text: 'a' })) }, remote.id);
+  remote.publish(s1);
+  await tick();
+  const got = [];
+  const screen = new Link({ room: 'ABC234', role: 'screen', onState: (s) => got.push(s), relay, BroadcastChannelImpl: null, WebSocketImpl: BrokerWS });
+  await tick();
+  await tick();
+  assert.equal(got.at(-1).item.title, 'T', 'the screen got the retained state');
+  remote.close();
+  screen.close();
+});
+
+// ------------------------------------------------------------------ media and outputs
+
+test('media items go to the TV, the stream, or both', () => {
+  const pic = { id: 'f:a.jpg', title: 'a', type: 'image', src: 'media/a.jpg' };
+  const vid = { id: 'u:x', title: 'x', type: 'video', src: 'https://x/v.mp4' };
+  const both = mediaItem(pic);
+  assert.equal(both.slides.length, 1);
+  assert.ok(shownOn(both, 'tv') && shownOn(both, 'stream'));
+  const tvOnly = mediaItem([pic, vid], { to: 'tv', loop: true });
+  assert.equal(tvOnly.title, '2 pictures');
+  assert.ok(shownOn(tvOnly, 'tv'));
+  assert.ok(!shownOn(tvOnly, 'stream'));
+  assert.ok(shownOn(tvOnly, 'preview'));
+  assert.ok(shownOn(songItem(makeSong({ title: 's', text: 'a' })), 'stream'));
+});
+
+test('media folder index', () => {
+  const index = JSON.parse(fs.readFileSync(new URL('../lyrics/media/index.json', import.meta.url)));
+  assert.ok(index.some((f) => f.file === 'welcome.svg' && f.type === 'image'));
 });

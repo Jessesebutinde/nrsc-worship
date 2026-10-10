@@ -601,3 +601,162 @@ mark.sp {
   animation: sheet-in 200ms ease;
   max-width: calc(100vw - 32px);
 }
+
+/* ------------------------------------------------------------ outputs sheet (TV & stream) */
+
+.tabs {
+  grid-template-columns: repeat(5, 1fr);
+}
+.big-btn {
+  width: 100%;
+  min-height: 56px;
+  font-size: 1.05rem;
+}
+.note-btn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border-left: 3px solid var(--gold);
+  background: rgba(227, 183, 90, 0.1);
+  border-radius: 0 10px 10px 0;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  font-weight: 400;
+  font-size: 0.9rem;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+.outputs-body {
+  padding: 16px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+.out-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  margin-top: 8px;
+}
+.out-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  gap: 6px;
+  padding: 14px;
+  min-height: 120px;
+  font-weight: 400;
+  border-radius: 12px;
+}
+.out-btn b {
+  font-size: 1rem;
+}
+.out-btn.static {
+  cursor: default;
+}
+.out-ic {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+.qr {
+  background: #fff;
+  padding: 6px;
+  border-radius: 8px;
+  box-sizing: content-box;
+}
+.qr svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.outputs ol {
+  padding-left: 20px;
+  margin: 8px 0 0;
+}
+.outputs li {
+  margin: 6px 0;
+}
+.sheet-head .code,
+.settings .code {
+  letter-spacing: 0.12em;
+  color: var(--gold);
+}
+
+/* ------------------------------------------------------------ media tab */
+
+.sec-head {
+  margin: 18px 0 8px;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.toggle.compact {
+  margin-top: 0;
+  min-height: 36px;
+}
+.media-grid {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+}
+.media-card {
+  position: relative;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: var(--card);
+}
+.media-card.on {
+  border-color: var(--gold);
+  box-shadow: inset 0 0 0 1px var(--gold);
+}
+.media-card.picked {
+  border-color: var(--purple);
+  box-shadow: inset 0 0 0 2px var(--purple);
+}
+.media-card .media-main {
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+}
+.media-thumb {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  background: #000;
+}
+.media-thumb.video {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
+  color: var(--gold);
+}
+.media-title {
+  display: block;
+  padding: 6px 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.media-card > .ghost {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  min-height: 30px;
+  padding: 2px 8px;
+  background: rgba(0, 0, 0, 0.6);
+}

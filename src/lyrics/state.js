@@ -18,8 +18,28 @@ export const BACKGROUND_INFO = {
   key: 'Key (ATEM)',
 };
 
+export const STREAM_LAYOUTS = { lowerthird: 'Lower thirds', full: 'Full screen' };
+
 export function emptyState() {
-  return { rev: 0, by: '', item: null, index: 0, mode: 'logo', bg: 'glow', bgVideo: '', calm: false };
+  return {
+    rev: 0,
+    by: '',
+    item: null,
+    index: 0,
+    mode: 'logo',
+    bg: 'glow',
+    bgVideo: '',
+    calm: false,
+    // The stream (ATEM) output: its layout, and whether it shows the TV background or keys over the camera.
+    streamLayout: 'lowerthird',
+    streamBg: 'key',
+  };
+}
+
+/** Does this output show the item? Media can be sent to the TV only, the stream only, or both. */
+export function shownOn(item, out) {
+  if (!item || !out || out === 'preview') return true;
+  return !item.to || item.to === 'both' || item.to === out;
 }
 
 /** Is `b` newer than `a`? */
@@ -67,6 +87,20 @@ export function reduce(state, cmd, by) {
   s.rev = (state.rev || 0) + 1;
   s.by = by;
   return s;
+}
+
+/** Item for pictures or videos: one slide per file. `to` = 'both' | 'tv' | 'stream'. */
+export function mediaItem(files, { to = 'both', loop = false, sound = true } = {}) {
+  const list = Array.isArray(files) ? files : [files];
+  return {
+    kind: 'media',
+    id: `m-${list.map((f) => f.id || f.src).join('+')}`,
+    title: list.length === 1 ? list[0].title : `${list.length} pictures`,
+    to,
+    loop,
+    sound,
+    slides: list.map((f) => ({ type: f.type, src: f.src, title: f.title })),
+  };
 }
 
 /** Item for a song from the library. */

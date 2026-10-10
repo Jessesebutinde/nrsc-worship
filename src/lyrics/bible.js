@@ -229,36 +229,99 @@ export async function loadBook(versionId, bookNumber, { base = './bibles', fetch
 
 // ------------------------------------------------------------------ verse -> slides
 
-// Limits from the screen standard: scripture shows at most 3 lines per language.
-export const LIMITS = { primary: 34 * 3, secondary: 50 * 3 };
+// Sizes never shrink: a verse that does not fit is split, or continued on the next slide.
+// A "fit" measures text for one language: width(text) in screen widths (1 = the full line),
+// and the lines allowed. Without a browser font, lengths are counted in characters.
+export const LINES = 3;
+export const CHAR_FIT = {
+  primary: { width: (t) => t.length / 34, lines: LINES },
+  secondary: { width: (t) => t.length / 50, lines: LINES },
+};
+
+/** Lines `text` takes when wrapped at whole words (a word wider than the line still counts as one). */
+export function wrapCount(text, width) {
+  const words = String(text || '').split(/\s+/).filter(Boolean);
+  if (!words.length) return 0;
+  let lines = 1;
+  let line = '';
+  for (const w of words) {
+    const next = line ? `${line} ${w}` : w;
+    if (line && width(next) > 1) {
+      lines += 1;
+      line = w;
+    } else line = next;
+  }
+  return lines;
+}
+
+const fitsBoth = (p, s, fit) =>
+  wrapCount(p, fit.primary.width) <= fit.primary.lines && wrapCount(s, fit.secondary.width) <= fit.secondary.lines;
 
 /**
- * One slide per verse; a verse too long for the screen is split into 2a / 2b (or more),
- * with both languages split into the same number of parts at natural pauses.
+ * Splits one verse into the fewest parts that each fit a slide, both languages split into the
+ * same number of parts at natural pauses: [{ part, primary, secondary }] (part = '' | 'a' | 'b' …).
  */
-export function verseSlides({ book, chapter, verse, primary, secondary, primaryLang = 'lg', secondaryLang = 'en' }) {
+export function splitVerse(primary, secondary, fit = CHAR_FIT) {
   const p = primary || '';
   const s = secondary || '';
-  const parts = Math.max(1, Math.ceil(p.length / LIMITS.primary), Math.ceil(s.length / LIMITS.secondary));
-  const ps = p ? splitAtPauses(p, parts) : [];
-  const ss = s ? splitAtPauses(s, parts) : [];
-  const n = Math.max(ps.length, ss.length, 1);
-  const showLg = primaryLang === 'lg' || secondaryLang === 'lg';
-  const showEn = primaryLang === 'en' || secondaryLang === 'en' || !showLg;
-  return Array.from({ length: n }, (_, i) => {
-    const part = n > 1 ? String.fromCharCode(97 + i) : '';
-    return {
-      verse,
-      part,
-      ref: formatRef(book, chapter, verse, { lg: showLg, en: showEn, part }),
-      primary: ps[i] || '',
-      secondary: ss[i] || '',
-    };
-  });
+  for (let k = 1; k <= 12; k++) {
+    const ps = p ? splitAtPauses(p, k) : [];
+    const ss = s ? splitAtPauses(s, k) : [];
+    const n = Math.max(ps.length, ss.length, 1);
+    const ok = Array.from({ length: n }, (_, i) => fitsBoth(ps[i] || '', ss[i] || '', fit)).every(Boolean);
+    if (ok || n < k)
+      return Array.from({ length: n }, (_, i) => ({ part: n > 1 ? String.fromCharCode(97 + i) : '', primary: ps[i] || '', secondary: ss[i] || '' }));
+  }
+  return [{ part: '', primary: p, secondary: s }];
+}
+
+const joinSegs = (segs, key) =>
+  segs
+    .filter((g) => g[key])
+    .map((g) => (g.part && g.part !== 'a' ? g[key] : `${g.verse} ${g[key]}`))
+    .join(' ');
+
+function slideOf(segs, book, chapter, { lg, en }) {
+  const first = segs[0];
+  const last = segs[segs.length - 1];
+  const one = segs.length === 1;
+  const range = first.verse === last.verse ? `${first.verse}` : `${first.verse}-${last.verse}`;
+  return {
+    verses: segs.map(({ verse, part, primary, secondary }) => ({ verse, part, primary, secondary })),
+    ref: formatRef(book, chapter, range, { lg, en, part: one ? first.part : '' }),
+    primary: joinSegs(segs, 'primary').replace(/^\d+ /, ''),
+    secondary: joinSegs(segs, 'secondary').replace(/^\d+ /, ''),
+  };
+}
+
+/**
+ * Verses -> slides. `flow` packs as many whole verses (or verse parts) as fit on each slide and
+ * continues at the same size until the passage ends; otherwise it is one verse per slide.
+ * verses = [{ verse, primary, secondary }].
+ */
+export function paginate(verses, { book, chapter, fit = CHAR_FIT, flow = true, primaryLang = 'lg', secondaryLang = 'en' }) {
+  const lg = primaryLang === 'lg' || secondaryLang === 'lg';
+  const en = primaryLang === 'en' || secondaryLang === 'en' || !lg;
+  const langs = { lg, en };
+  const slides = [];
+  let cur = [];
+  for (const v of verses) {
+    for (const part of splitVerse(v.primary, v.secondary, fit)) {
+      const seg = { verse: v.verse, ...part };
+      if (flow && cur.length && fitsBoth(joinSegs([...cur, seg], 'primary'), joinSegs([...cur, seg], 'secondary'), fit)) {
+        cur.push(seg);
+        continue;
+      }
+      if (cur.length) slides.push(slideOf(cur, book, chapter, langs));
+      cur = [seg];
+    }
+  }
+  if (cur.length) slides.push(slideOf(cur, book, chapter, langs));
+  return slides;
 }
 
 /** Builds the scripture item sent to the screen for a passage. */
-export async function passageItem({ ref, primaryId, secondaryId, base, fetchImpl }) {
+export async function passageItem({ ref, primaryId, secondaryId, flow = true, fit = CHAR_FIT, base, fetchImpl }) {
   const { book, chapter } = ref;
   const pv = versionById(primaryId);
   const sv = secondaryId ? versionById(secondaryId) : null;
@@ -272,28 +335,23 @@ export async function passageItem({ ref, primaryId, secondaryId, base, fetchImpl
   if (!count) throw new Error(`${book.lg} ${chapter} / ${book.en} ${chapter} isn't in the chosen Bible versions.`);
   const from = Math.min(ref.from || 1, count);
   const to = Math.min(ref.to || count, count);
-  const slides = [];
-  for (let v = from; v <= to; v++) {
-    slides.push(
-      ...verseSlides({
-        book,
-        chapter,
-        verse: v,
-        primary: pCh[v - 1],
-        secondary: sCh[v - 1],
-        primaryLang: pv ? pv.lang : 'lg',
-        secondaryLang: sv ? sv.lang : '',
-      }),
-    );
-  }
+  const verses = [];
+  for (let v = from; v <= to; v++) verses.push({ verse: v, primary: pCh[v - 1] || '', secondary: sCh[v - 1] || '' });
+  const slides = paginate(verses, {
+    book,
+    chapter,
+    fit,
+    flow,
+    primaryLang: pv ? pv.lang : 'lg',
+    secondaryLang: sv ? sv.lang : '',
+  });
   const range = from === to ? `${from}` : `${from}-${to}`;
   return {
     kind: 'scripture',
-    id: `${book.code}.${chapter}.${range}.${primaryId}.${secondaryId || ''}`,
+    id: `${book.code}.${chapter}.${range}.${primaryId}.${secondaryId || ''}.${flow ? 'f' : 'v'}`,
     title: formatRef(book, chapter, range),
     versions: [pv && pv.label, sv && sv.label].filter(Boolean),
     secondaryLabel: sv ? sv.label : '',
     slides,
   };
 }
-

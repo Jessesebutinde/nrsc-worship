@@ -31,3 +31,16 @@ export function lineWidth(text, preset = 'worship') {
 
 /** Line size for the splitter: 1 = exactly the width inside the safe area. */
 export const sizer = (preset) => (text) => lineWidth(text, preset) / LINE_WIDTH;
+
+// Scripture on the TV: Luganda 92 px SemiBold and English 64 px Medium, in a block 84% wide
+// with the gold bar's 56 px taken off; the number before a verse is counted as text.
+const SCRIP_WIDTH = 1613 - 56;
+function textWidth(text, weight, size) {
+  if (!ctx) ctx = document.createElement('canvas').getContext('2d');
+  ctx.font = `${weight} ${size}px Montserrat`;
+  return ctx.measureText(text).width;
+}
+export const scriptureFit = () => ({
+  primary: { width: (t) => textWidth(t, 600, 92) / SCRIP_WIDTH, lines: 3 },
+  secondary: { width: (t) => textWidth(t, 500, 64) / SCRIP_WIDTH, lines: 3 },
+});

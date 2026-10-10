@@ -1,14 +1,16 @@
-// The screen picture: a fixed 1920x1080 canvas scaled to fit its box. Used by the screen page
-// and by every preview in the remote, so what the operator sees is what the hall sees.
+// The screen picture: a fixed 1920x1080 canvas scaled to fit its box. Used by the TV and stream
+// outputs and by every preview in the remote, so what the operator sees is what the hall sees.
 
 import { html, useState, useEffect, useRef, useLayoutEffect } from '../ui/h.js';
 import { CHURCH_NAME } from './config.js';
+import { shownOn } from './state.js';
+import { idbGet } from './idb.js';
 
 const W = 1920;
 const H = 1080;
 
 // How long a frame takes to fade out, by what it shows.
-const OUT_MS = { worship: 400, praise: 200, classic: 250, scripture: 250, title: 300, logo: 400, none: 400 };
+const OUT_MS = { worship: 400, praise: 200, classic: 250, scripture: 250, title: 300, logo: 400, media: 600, none: 400 };
 
 /** Keeps the outgoing frame mounted (with .out) while it fades, so changes cross over smoothly. */
 function useSwap(key, data, outMs, toNone) {
@@ -25,7 +27,7 @@ function useSwap(key, data, outMs, toNone) {
     const t = setTimeout(() => {
       timers.current.delete(t);
       setFrames((fs) => fs.filter((f) => !f.leaving));
-    }, 650);
+    }, 850);
     timers.current.add(t);
   }, [key]);
   // The current frame always renders the latest data (e.g. a song edited while it is up).
@@ -54,17 +56,19 @@ export function Fit({ children, class: cls = '', fill = false }) {
   </div>`;
 }
 
-function Background({ bg, video, transparent }) {
+// ------------------------------------------------------------------ backgrounds
+
+function Background({ bg, video }) {
   const kind = bg === 'video' && !video ? 'glow' : bg;
-  const frames = useSwap(transparent ? `t-${kind === 'key' ? 'key' : 'none'}` : kind, { kind, video }, 800);
+  const frames = useSwap(kind, { kind, video }, 800);
   return frames.map(
-    (f) => html`<div key=${f.key} class=${`bg ${f.leaving ? 'bg-out' : 'bg-in'}`}>
-      ${transparent ? f.data.kind === 'key' && html`<div class="bg-keyband"></div>` : html`<${BgLayer} ...${f.data} />`}
-    </div>`,
+    (f) => html`<div key=${f.key} class=${`bg ${f.leaving ? 'bg-out' : 'bg-in'}`}><${BgLayer} ...${f.data} /></div>`,
   );
 }
 
 function BgLayer({ kind, video }) {
+  if (kind === 'none') return null;
+  if (kind === 'black') return html`<div class="bg-fill bg-black"></div>`;
   if (kind === 'video')
     return html`<div class="bg-fill bg-video">
       <video src=${video} autoplay muted loop playsinline></video><div class="bg-dim"></div><div class="vig"></div>
@@ -78,6 +82,8 @@ function BgLayer({ kind, video }) {
     return html`<div class="bg-fill bg-leaks"><i class="l0"></i><i class="l1"></i><i class="l2"></i><div class="vig"></div></div>`;
   return html`<div class="bg-fill bg-glow"><div class="glow"></div><div class="vig"></div></div>`;
 }
+
+// ------------------------------------------------------------------ frames
 
 const Lines = ({ lines }) => lines.map((l, i) => html`<span class="ln" style=${`--i:${i}`}>${l}</span>`);
 
@@ -94,23 +100,85 @@ function SongFrame({ item, index, lt }) {
   </div>`;
 }
 
+/** The verses on one slide, with a small number where a new verse starts (only when there are several). */
+function Verses({ slide, field }) {
+  const segs = (slide.verses || [{ verse: slide.verse, part: slide.part, primary: slide.primary, secondary: slide.secondary }]).filter(
+    (g) => g[field],
+  );
+  const many = new Set(segs.map((g) => g.verse)).size > 1;
+  return segs.map(
+    (g, i) => html`${i > 0 ? ' ' : ''}${many && (!g.part || g.part === 'a') && html`<sup class="vn">${g.verse}</sup>`}${g[field]}`,
+  );
+}
+
 function ScriptureFrame({ item, index, lt }) {
   const s = item.slides[index];
   if (!s) return null;
+  const more = index < item.slides.length - 1;
   if (lt)
     return html`<div class="lt-band lt-scrip">
-      <div class="ln ref" style="--i:0">${s.ref}</div>
-      ${s.primary && html`<div class="ln pri" style="--i:1">${s.primary}</div>`}
-      ${s.secondary && html`<div class="ln sec" style="--i:2">${s.secondary}</div>`}
+      <div class="ln ref" style="--i:0"><span class="tab">${s.ref}</span>${more && html`<span class="more">continues ›</span>`}</div>
+      ${s.primary && html`<div class="ln pri" style="--i:1"><${Verses} slide=${s} field="primary" /></div>`}
+      ${s.secondary && html`<div class="ln sec" style="--i:2"><${Verses} slide=${s} field="secondary" /></div>`}
     </div>`;
   return html`<div class="scrip">
     <div class="bar"></div>
     <div class="ln ref" style="--i:0">${s.ref}</div>
-    ${s.primary && html`<div class="ln pri" style="--i:1">${s.primary}</div>`}
+    ${s.primary && html`<div class="ln pri" style="--i:1"><${Verses} slide=${s} field="primary" /></div>`}
     ${s.secondary &&
     html`<div class="ln sec" style="--i:2">
-      ${item.secondaryLabel && s.primary && html`<span class="ver">${item.secondaryLabel}</span>`}${s.secondary}
+      ${item.secondaryLabel && s.primary && html`<span class="ver">${item.secondaryLabel}</span>`}<${Verses} slide=${s} field="secondary" />
     </div>`}
+  </div>`;
+}
+
+// Pictures and videos kept on this device (src "idb:<key>") become object URLs once.
+const urlCache = new Map();
+function useMediaUrl(src) {
+  const [url, setUrl] = useState(() => (src.startsWith('idb:') ? urlCache.get(src) || '' : src));
+  useEffect(() => {
+    if (!src.startsWith('idb:')) {
+      setUrl(src);
+      return;
+    }
+    if (urlCache.has(src)) {
+      setUrl(urlCache.get(src));
+      return;
+    }
+    idbGet('files', src.slice(4))
+      .then((blob) => {
+        if (!blob) return;
+        const u = URL.createObjectURL(blob);
+        urlCache.set(src, u);
+        setUrl(u);
+      })
+      .catch(() => {});
+  }, [src]);
+  return url;
+}
+
+function MediaFrame({ item, index, live }) {
+  const slide = item.slides[index];
+  const url = useMediaUrl(slide ? slide.src : '');
+  const vid = useRef(null);
+  useEffect(() => {
+    const v = vid.current;
+    if (!v || !live) return;
+    v.muted = !item.sound;
+    v.play().catch(() => {
+      // Autoplay with sound needs a click on the page first: play silently rather than not at all.
+      v.muted = true;
+      v.play().catch(() => {});
+    });
+  }, [url, live]);
+  if (!slide || !url) return null;
+  if (slide.type === 'video')
+    return html`<div class="mf">
+      <video ref=${vid} src=${url} class="mf-main" autoplay=${live} loop=${item.loop} playsinline muted=${!live || !item.sound}></video>
+    </div>`;
+  return html`<div class="mf">
+    <img src=${url} class="mf-blur" alt="" aria-hidden="true" />
+    <img src=${url} class="mf-main" alt=${slide.title || ''} />
   </div>`;
 }
 
@@ -127,27 +195,30 @@ const LogoFrame = () => html`<div class="logo">
   <div class="ln logo-sub" style="--i:2">Society Church · Kampala</div>
 </div>`;
 
-/** Which frame the state shows: { key, kind, preset }. */
-export function frameOf(state, { titleFor = null } = {}) {
+/** Which frame the state shows on an output: { key, kind, preset }. */
+export function frameOf(state, { titleFor = null, out = 'preview' } = {}) {
   const { item, index = 0, mode } = state || {};
   if (!state || mode === 'black' || mode === 'clear') return { key: 'none', kind: 'none' };
   if (mode === 'logo' || !item) return { key: 'logo', kind: 'logo' };
+  if (!shownOn(item, out)) return { key: 'none', kind: 'none' };
   if (item.kind === 'song' && titleFor === item.id && index === 0) return { key: `title:${item.id}`, kind: 'title' };
-  const kind = item.kind === 'scripture' ? 'scripture' : 'song';
-  return { key: `${item.id}:${index}`, kind, preset: kind === 'song' ? item.preset || 'worship' : 'scripture' };
+  const kind = item.kind === 'scripture' ? 'scripture' : item.kind === 'media' ? 'media' : 'song';
+  return { key: `${item.id}:${index}`, kind, preset: kind === 'song' ? item.preset || 'worship' : kind };
 }
 
 /**
  * @param {object} p
- * @param {object} p.state         screen state
- * @param {boolean} [p.lowerThird] livestream lower-third layout
- * @param {boolean} [p.transparent] no background (OBS browser source)
- * @param {boolean} [p.titleCards] show the 2 s song title card (the real screen only)
- * @param {string} [p.video]       background video URL
- * @param {boolean} [p.safe]       draw the 5% safe margin
+ * @param {object} p.state           screen state
+ * @param {'tv'|'stream'|'preview'} [p.out]  which output this is (media can be sent to one of them)
+ * @param {'full'|'lowerthird'} [p.layout]
+ * @param {'auto'|'key'|'none'} [p.background]  auto = the TV background from the state; key = black for the ATEM; none = transparent (OBS)
+ * @param {boolean} [p.titleCards]   show the 2 s song title card (the real TV only)
+ * @param {string} [p.video]         background video URL chosen on this PC
+ * @param {boolean} [p.safe]         draw the 5% safe margin
  */
-export function Stage({ state, lowerThird = false, transparent = false, titleCards = false, video = '', safe = false }) {
+export function Stage({ state, out = 'preview', layout = 'full', background = 'auto', titleCards = false, video = '', safe = false }) {
   const st = state || {};
+  const lowerThird = layout === 'lowerthird';
   const [titleFor, setTitleFor] = useState(null);
   const seen = useRef(st.item && st.item.id);
   const itemId = st.item && st.item.kind === 'song' ? st.item.id : null;
@@ -160,32 +231,34 @@ export function Stage({ state, lowerThird = false, transparent = false, titleCar
     return () => clearTimeout(t);
   }, [itemId, titleCards]);
 
-  const f = frameOf(st, { titleFor: lowerThird ? null : titleFor });
-  const showLogo = !(lowerThird || transparent);
+  const f = frameOf(st, { titleFor: lowerThird ? null : titleFor, out });
+  const showLogo = out !== 'stream' && background !== 'none';
   const key = f.kind === 'logo' && !showLogo ? 'none' : f.key;
   const outMs = OUT_MS[f.kind === 'song' ? f.preset : f.kind] || 300;
   const frames = useSwap(key, { f, item: st.item, index: st.index || 0 }, outMs, key === 'none');
 
+  const bg = background === 'none' ? 'none' : background === 'key' ? (lowerThird ? 'black' : 'key') : st.bg;
   const cls = [
     'stage',
     lowerThird ? 'is-lt' : '',
-    transparent ? 'is-transparent' : '',
+    background === 'none' ? 'is-transparent' : '',
     st.calm ? 'calm' : '',
     safe ? 'show-safe' : '',
   ].join(' ');
   return html`<div class=${cls}>
-    ${!lowerThird && html`<${Background} bg=${st.bg} video=${st.bgVideo || video} transparent=${transparent} />`}
+    <${Background} bg=${bg} video=${st.bgVideo || video} />
     ${frames.map(({ key: k, data, leaving, outMs: o }) => {
       const kind = data.f.kind;
       const preset = kind === 'song' ? data.f.preset : kind;
       return html`<div key=${k} class=${`frame k-${kind} p-${preset} ${leaving ? 'out' : 'in'}`} style=${`--out:${o}ms`}>
         ${kind === 'song' && html`<${SongFrame} item=${data.item} index=${data.index} lt=${lowerThird} />`}
         ${kind === 'scripture' && html`<${ScriptureFrame} item=${data.item} index=${data.index} lt=${lowerThird} />`}
+        ${kind === 'media' && html`<${MediaFrame} item=${data.item} index=${data.index} live=${out !== 'preview' && !leaving} />`}
         ${kind === 'title' && html`<${TitleFrame} item=${data.item} />`}
         ${kind === 'logo' && html`<${LogoFrame} />`}
       </div>`;
     })}
-    ${!transparent && !lowerThird && html`<div class=${`blackout ${st.mode === 'black' ? 'on' : ''}`}></div>`}
+    ${background !== 'none' && html`<div class=${`blackout ${st.mode === 'black' ? 'on' : ''}`}></div>`}
     <div class="safe-guide"></div>
   </div>`;
 }

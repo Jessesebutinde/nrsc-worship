@@ -1,11 +1,17 @@
 // Supabase sign-in (email magic link) and the shared song table, over plain fetch.
 // Only used when src/lyrics/config.js has a project; everything else works without it.
 
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js';
+import { SUPABASE_URL, SUPABASE_ANON_KEY, RELAY_URLS } from './config.js';
 
 const LS_SESSION = 'ls-session';
 export const cloudConfigured = () => Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
-export const cloudConfig = () => (cloudConfigured() ? { url: SUPABASE_URL, key: SUPABASE_ANON_KEY } : null);
+
+/** The relay the Link uses between devices: Supabase when configured, else the public broker, else none. */
+export function relayConfig() {
+  if (cloudConfigured()) return { kind: 'supabase', url: SUPABASE_URL, key: SUPABASE_ANON_KEY };
+  if (RELAY_URLS && RELAY_URLS.length) return { kind: 'mqtt', urls: RELAY_URLS };
+  return null;
+}
 
 async function call(path, { method = 'GET', body, token, headers = {} } = {}) {
   let res;

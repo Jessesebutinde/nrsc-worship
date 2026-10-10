@@ -38,6 +38,7 @@ jobs:
         env:
           TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          node scripts/build-media.mjs
           mkdir _site
           cp -r index.html styles.css manifest.webmanifest icon.svg icon-192.png icon-512.png src vendor lyrics _site/
           touch _site/.nojekyll
