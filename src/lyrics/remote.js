@@ -471,7 +471,7 @@ function Live({ state, act, info, goTab, onOutputs, wide }) {
 
   return html`<div class="live">
     <div class="preview" onPointerDown=${onDown} onPointerUp=${onUp}>
-      <${Fit}><${Stage} state=${state} still=${true} /><//>
+      <${Fit}><${Stage} state=${state} still="bg" /><//>
       <span class="preview-tag">${state.mode === 'show' ? 'LIVE' : state.mode.toUpperCase()}</span>
     </div>
     <div class="nav">

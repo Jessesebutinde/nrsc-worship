@@ -393,6 +393,7 @@ export function frameOf(state, { titleFor = null, out = 'preview' } = {}) {
  * @param {boolean} [p.safe]         draw the 5% safe margin
  */
 export function Stage({ state, out = 'preview', layout = 'full', background = 'auto', titleCards = false, video = '', safe = false, still = false }) {
+  // still: true = a still picture (the side previews); 'bg' = the environment still but the words move (the live monitor).
   const st = state || {};
   const lowerThird = layout === 'lowerthird';
   const fontsReady = useFontsReady();
@@ -429,7 +430,8 @@ export function Stage({ state, out = 'preview', layout = 'full', background = 'a
     lowerThird ? 'is-lt' : '',
     background === 'none' ? 'is-transparent' : '',
     st.calm ? 'calm' : '',
-    still ? 'still' : '',
+    still === true ? 'still' : '',
+    still ? 'still-bg' : '',
     st.caps !== false ? 'caps' : '',
     fill ? 'fill' : '',
     illus ? 'with-illus' : '',

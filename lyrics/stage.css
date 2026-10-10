@@ -915,14 +915,18 @@
 
 /* ------------------------------------------------------------ still previews (the console): no motion, no blur */
 
-.stage.still .bg-fill,
-.stage.still .bg-fill * {
+.stage.still-bg .bg-fill,
+.stage.still-bg .bg-fill * {
   animation: none !important;
 }
-.stage.still .bg-crowd .grain {
+.stage.still-bg .bg-crowd .grain,
+.stage.still-bg .bg-bluestage .grain,
+.stage.still-bg .bg-forest .grain,
+.stage.still-bg .bg-mono .grain,
+.stage.still-bg .bg-film .grain {
   display: none;
 }
-.stage.still .bg-beams .beam {
+.stage.still-bg .bg-beams .beam {
   filter: none;
 }
 .stage.still .bg,
