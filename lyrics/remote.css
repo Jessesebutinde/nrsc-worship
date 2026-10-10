@@ -944,3 +944,16 @@ div.out-btn {
   display: flex;
   flex-direction: column;
 }
+
+/* ------------------------------------------------------------ looks */
+
+.looks {
+  margin: -6px 0 12px;
+}
+.seg {
+  flex-wrap: wrap;
+}
+.editor .seg button {
+  min-height: 40px;
+  padding: 6px 12px;
+}

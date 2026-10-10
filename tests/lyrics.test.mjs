@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { parseRef, findBook, formatRef, bookByCode, BOOKS } from '../src/lyrics/books.js';
 import { parseBibleText, splitVerse, paginate, passageItem, wrapCount, CHAR_FIT } from '../src/lyrics/bible.js';
-import { parseSlides, formatSlides, splitLyrics, lintSlides, wrapLine, splitAtPauses, labelOf } from '../src/lyrics/split.js';
+import { parseSlides, formatSlides, splitLyrics, splitShort, lintSlides, wrapLine, splitAtPauses, labelOf } from '../src/lyrics/split.js';
 import { Dictionary, checkText, applyFix, wordsOf, distance } from '../src/lyrics/spell.js';
-import { emptyState, reduce, newer, songItem, mediaItem, shownOn } from '../src/lyrics/state.js';
+import { emptyState, reduce, newer, songItem, mediaItem, shownOn, lookOf, PRESETS, PRESET_INFO, BACKGROUNDS } from '../src/lyrics/state.js';
 import { Link, normalizeCode, newCode, CODE_ALPHABET } from '../src/lyrics/link.js';
 import { RealtimeChannel } from '../src/lyrics/realtime.js';
 import { MqttClient, connectPacket, subscribePacket, publishPacket, parsePackets, parsePublish } from '../src/lyrics/mqtt.js';
@@ -527,4 +527,21 @@ test('media items go to the TV, the stream, or both', () => {
 test('media folder index', () => {
   const index = JSON.parse(fs.readFileSync(new URL('../lyrics/media/index.json', import.meta.url)));
   assert.ok(index.some((f) => f.file === 'welcome.svg' && f.type === 'image'));
+});
+
+test('big slides: two words per slide, a pause ends a slide early', () => {
+  const out = splitShort('[Chorus]\nAlle alle alleluia, alle alleluia\nSing to the Lord', 2);
+  assert.deepEqual(parseSlides(out).map((s) => s.lines[0]), ['Alle alle', 'alleluia,', 'alle alleluia', 'Sing to', 'the Lord']);
+  assert.equal(parseSlides(out)[0].label, 'Chorus');
+  assert.deepEqual(parseSlides(splitShort('one two three', 1)).map((s) => s.lines[0]), ['one', 'two', 'three']);
+});
+
+test('looks: every look has sizes, a known environment, and the override wins', () => {
+  for (const p of PRESETS) assert.ok(PRESET_INFO[p].name, p);
+  for (const p of PRESETS) if (PRESET_INFO[p].env) assert.ok(BACKGROUNDS.includes(PRESET_INFO[p].env), p);
+  const song = { preset: 'sunshine' };
+  assert.equal(lookOf(emptyState(), song), 'sunshine');
+  assert.equal(lookOf({ ...emptyState(), look: 'poster' }, song), 'poster');
+  assert.equal(lookOf({ ...emptyState(), look: 'nonsense' }, song), 'sunshine');
+  assert.equal(lookOf(emptyState(), null), 'worship');
 });

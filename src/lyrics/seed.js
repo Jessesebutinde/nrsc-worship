@@ -5,7 +5,7 @@ export const SEED_SONGS = [
     id: 'seed-tukutendereza',
     title: 'Tukutendereza Yesu',
     language: 'mixed',
-    preset: 'worship',
+    preset: 'poster',
     tags: ['revival', 'luganda'],
     text: `[Chorus]
 Tukutendereza Yesu,
@@ -83,7 +83,7 @@ we'd first begun`,
     id: 'seed-blessed-assurance',
     title: 'Blessed Assurance',
     language: 'en',
-    preset: 'worship',
+    preset: 'sunshine',
     tags: ['hymn'],
     text: `[Verse 1]
 Blessed assurance,
@@ -128,7 +128,7 @@ whispers of love`,
     id: 'seed-what-a-friend',
     title: 'What a Friend We Have in Jesus',
     language: 'en',
-    preset: 'praise',
+    preset: 'beams',
     tags: ['hymn'],
     text: `[Verse 1]
 What a friend

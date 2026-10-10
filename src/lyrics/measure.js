@@ -5,6 +5,10 @@ const SIZES = {
   classic: { weight: 600, size: 140, spacing: 0, upper: false },
   worship: { weight: 500, size: 130, spacing: -0.005, upper: false },
   praise: { weight: 800, size: 125, spacing: 0.02, upper: true },
+  poster: { weight: 400, size: 200, spacing: 0.01, upper: true, family: 'Anton' },
+  sunshine: { weight: 900, size: 150, spacing: 0.06, upper: true },
+  lines: { weight: 300, size: 120, spacing: 0.14, upper: true },
+  beams: { weight: 500, size: 140, spacing: 0.08, upper: true },
 };
 export const LINE_WIDTH = 1920 - 2 * 96; // inside the 5% safe area
 
@@ -15,7 +19,7 @@ let ready = null;
 export function fontsReady() {
   if (!ready) {
     ready = Promise.all(
-      [500, 600, 800].map((w) => document.fonts.load(`${w} 100px Montserrat`, 'AaŋŊ')),
+      [...[300, 500, 600, 800, 900].map((w) => document.fonts.load(`${w} 100px Montserrat`, 'AaŋŊ')), document.fonts.load('400 100px Anton', 'Aa')],
     ).catch(() => null);
   }
   return ready;
@@ -24,7 +28,7 @@ export function fontsReady() {
 export function lineWidth(text, preset = 'worship') {
   const s = SIZES[preset] || SIZES.worship;
   if (!ctx) ctx = document.createElement('canvas').getContext('2d');
-  ctx.font = `${s.weight} ${s.size}px Montserrat`;
+  ctx.font = `${s.weight} ${s.size}px ${s.family || 'Montserrat'}`;
   const t = s.upper ? text.toUpperCase() : text;
   return ctx.measureText(t).width + s.spacing * s.size * t.length;
 }

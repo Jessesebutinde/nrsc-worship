@@ -119,6 +119,30 @@ be cut off. A lyric slide whose long lines hold it back is re-broken into three 
 makes the letters clearly bigger. Lyrics show in **capital letters**; scripture keeps sentence case. Both are
 switches in Settings → Words. The stream feed keeps its fixed lower-third sizes.
 
+## Looks
+
+A song shows with one of seven looks. The first three are the Namasuba standard on the TV background; the other
+four bring their own moving environment and type, after the lyric videos the team likes:
+
+| Look | Type | Environment |
+| --- | --- | --- |
+| Worship | Montserrat Medium, mixed case | the TV background |
+| Praise | Montserrat ExtraBold capitals | the TV background |
+| Classic | Montserrat SemiBold, gold song tag | the TV background |
+| Poster | chunky coral capitals (Anton) on a cream band, edge to edge | a grainy stage: warm and cool light, haze, film grain |
+| Sunshine | white block capitals with a long shadow, a green diamond behind, the title in spaced caps | sunny woodgrain drifting, a teal corner |
+| Lines | light teal capitals, wide spacing | teal line-art curves breathing on navy |
+| Beams | glowing cyan capitals | cyan light beams sweeping, scanlines, a lit floor |
+
+Pick a look per song in the editor, or force one for every song with the chips under the live slide (**Song's
+own** goes back). The four environments are also in Settings → TV background, so scripture can use them too.
+By default a look brings its environment; Settings → Words can keep the TV background under every look instead.
+The stream feed ignores looks and keeps its lower third.
+
+For the "two words on the screen" style, the editor's **Big slides** button breaks a song into one short burst
+per slide (1, 2 or 3 words; a comma or full stop ends a slide early). With fill mode the burst grows to the
+width of the screen.
+
 ## Illustrations beside the words
 
 In **Media**, **Beside the words** puts a picture or video next to the lyrics or scripture on the TV: a map, a
@@ -208,7 +232,7 @@ sandbox, so the first real test is yours.
 # Running and deploying
 
 There's no build step: it's static HTML plus ES modules, with Preact and htm vendored in `vendor/`. Lyric Slides
-bundles Montserrat (SIL Open Font License) in `lyrics/fonts/`, so the screen works offline.
+bundles Montserrat and Anton (both SIL Open Font License) in `lyrics/fonts/`, so the screen works offline.
 
 ```sh
 npm start        # serves on http://localhost:8080

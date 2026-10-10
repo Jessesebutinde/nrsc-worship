@@ -14,6 +14,10 @@ export const PRESET_LIMITS = {
   classic: { target: 22, max: 26 },
   worship: { target: 24, max: 28 },
   praise: { target: 18, max: 22 },
+  poster: { target: 24, max: 28 },
+  sunshine: { target: 18, max: 22 },
+  lines: { target: 18, max: 22 },
+  beams: { target: 20, max: 24 },
 };
 
 /**
@@ -189,6 +193,24 @@ export function splitLyrics(text, preset = 'classic', size = null) {
     const prev = out[out.length - 1];
     if (cur.length === 1 && isChorus(slide.label) && prev && prev.label === slide.label && prev.lines.length === 2)
       prev.lines.push(...cur.splice(0));
+    flush();
+  }
+  return formatSlides(out);
+}
+
+/**
+ * Big slides: a short burst of up to `words` words per slide, one line each ("ALLE ALLE" / "ALLELUIA").
+ * A comma, full stop or other pause ends a slide early. Labels are kept.
+ */
+export function splitShort(text, words = 2) {
+  const out = [];
+  for (const slide of parseSlides(text)) {
+    let cur = [];
+    const flush = () => cur.length && out.push({ label: slide.label, lines: [cur.splice(0).join(' ')] });
+    for (const w of slide.lines.join(' ').split(/\s+/).filter(Boolean)) {
+      cur.push(w);
+      if (cur.length >= words || /[,;:.!?]["”’)]?$/.test(w)) flush();
+    }
     flush();
   }
   return formatSlides(out);
