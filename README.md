@@ -111,6 +111,16 @@ first click. Both outputs follow the laptop directly, so nothing depends on the 
 second remote (**More ways** → scan the QR code); that one goes through the relay. On a narrow window or a phone
 the remote shows tabs instead of columns, with the same buttons under **Show on TV**.
 
+## This console
+
+**Settings → This console** sets how the laptop's own screen looks; the TV and the stream never change with it.
+**Theme**: Midnight (the church purple, the default), Studio (graphite and amber, the least glare in a dark
+hall), Daylight (light, for bright rooms and rehearsals) or Kampala (bark brown, terracotta and gold). The ☀ / ☾
+button in the header switches to Daylight and back. **Layout** (laptop-wide windows): Console (library, live and
+outputs side by side), Focus (a big live picture with Next / Back; the library and the outputs open from slim side
+rails, Esc closes them) or Compact (tuned for 1366 × 768: the live picture beside Next / Back, a narrow outputs
+column). **Font**: Montserrat, System (the laptop's own) or Serif. The choice is kept on this laptop only.
+
 ## Words that use the screen
 
 By default the words **grow to fill the TV**: each slide is measured in the real font and sized as large as fits

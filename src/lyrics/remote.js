@@ -38,6 +38,103 @@ const write = (k, v) => {
   }
 };
 
+// ------------------------------------------------------------------ this console: theme, layout, font
+
+// Per laptop, never sent to the screens. Kept as { theme, layout, font, dark } under ls-ui and applied as
+// data-theme / data-layout / data-font on <html>; the inline script in index.html applies it before the first paint.
+const LS_UI = 'ls-ui';
+const THEMES = {
+  midnight: { name: 'Midnight', hint: 'The church purple on near-black. Calm in a dim hall.', sw: ['#0f0c15', '#6b47a8', '#e3b75a'], bar: '#0e0b14' },
+  studio: { name: 'Studio', hint: 'Graphite and amber, like broadcast software. The least glare in a dark hall.', sw: ['#18191b', '#8a5a1a', '#dca24a'], bar: '#111213' },
+  daylight: { name: 'Daylight', hint: 'Light, for bright rooms and rehearsals. High contrast throughout.', sw: ['#f3f1ec', '#5a3a94', '#8a5a00'], bar: '#f3f1ec' },
+  kampala: { name: 'Kampala', hint: 'Bark brown, terracotta and gold, after barkcloth and kitenge.', sw: ['#1f1711', '#a94e28', '#e2ae50'], bar: '#16100b' },
+};
+const LAYOUTS = {
+  console: { name: 'Console', hint: 'Library, live slide and outputs side by side.' },
+  focus: { name: 'Focus', hint: 'A big live picture for running Next and Back. The library and the outputs open from the side rails (Esc closes them).' },
+  compact: { name: 'Compact', hint: 'Tighter, for a 1366 × 768 laptop: the live picture beside Next and Back, a narrow outputs column.' },
+};
+const FONTS = {
+  montserrat: { name: 'Montserrat', hint: 'The church type, as on the TV.', family: "'Montserrat', sans-serif" },
+  system: { name: 'System', hint: "The laptop's own type (Segoe UI, San Francisco): crisp and compact.", family: "system-ui, -apple-system, 'Segoe UI', sans-serif" },
+  serif: { name: 'Serif', hint: 'Source Serif, like a printed Bible.', family: "'Source Serif 4', Georgia, serif" },
+};
+const one = (map, k, d) => (typeof k === 'string' && Object.prototype.hasOwnProperty.call(map, k) ? k : d);
+const uiOf = (u) => ({
+  theme: one(THEMES, u && u.theme, 'midnight'),
+  layout: one(LAYOUTS, u && u.layout, 'console'),
+  font: one(FONTS, u && u.font, 'montserrat'),
+  // The dark theme the light switch in the header goes back to.
+  dark: u && u.dark !== 'daylight' ? one(THEMES, u.dark, 'midnight') : 'midnight',
+});
+const applyUi = (ui) => {
+  const d = document.documentElement;
+  d.dataset.theme = ui.theme;
+  d.dataset.layout = ui.layout;
+  d.dataset.font = ui.font;
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.content = THEMES[ui.theme].bar;
+};
+function useUi() {
+  const [ui, setRaw] = useState(() => uiOf(read(LS_UI, {})));
+  const setUi = (patch) => {
+    const next = uiOf({ ...ui, ...patch });
+    setRaw(next);
+    write(LS_UI, next);
+    applyUi(next);
+  };
+  return [ui, setUi];
+}
+
+// Line icons for the rails and the light switch (stroke follows the text colour); fresh each call.
+const icon = (d) => html`<svg class="ic" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+const ICONS = {
+  songs: () => icon(html`<path d="M9 18V6l11-2v12" /><circle cx="6" cy="18" r="3" /><circle cx="17" cy="16" r="3" />`),
+  scripture: () => icon(html`<path d="M12 6.5C9 4.6 6 4.4 3 5.4v13.2c3-1 6-.8 9 1.1 3-1.9 6-2.1 9-1.1V5.4c-3-1-6-.8-9 1.1z" /><path d="M12 6.5v13.2" />`),
+  media: () => icon(html`<rect x="3" y="4.5" width="18" height="15" rx="2" /><circle cx="9" cy="10" r="1.8" /><path d="M21 15.5l-5-5-9.5 9" />`),
+  settings: () => icon(html`<path d="M4 7h9M17 7h3M4 17h3M11 17h9" /><circle cx="15" cy="7" r="2" /><circle cx="9" cy="17" r="2" />`),
+  tv: () => icon(html`<rect x="3" y="4.5" width="18" height="12" rx="2" /><path d="M8.5 20.5h7M12 16.5v4" />`),
+  stream: () => icon(html`<circle cx="12" cy="12" r="1.8" /><path d="M8.3 8.3a5.2 5.2 0 0 0 0 7.4M15.7 8.3a5.2 5.2 0 0 1 0 7.4M5.4 5.4a9.3 9.3 0 0 0 0 13.2M18.6 5.4a9.3 9.3 0 0 1 0 13.2" />`),
+  sun: () => icon(html`<circle cx="12" cy="12" r="4" /><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4" />`),
+  moon: () => icon(html`<path d="M20 14.6A8 8 0 0 1 9.4 4a8 8 0 1 0 10.6 10.6z" />`),
+};
+
+/** The header's light switch: Daylight, or back to the dark theme used before. */
+function LightSwitch({ ui, setUi }) {
+  const light = ui.theme === 'daylight';
+  const label = light ? `Back to ${THEMES[ui.dark].name}` : 'Daylight theme, for a bright room';
+  return html`<button class="icon-btn" onClick=${() => setUi(light ? { theme: ui.dark } : { theme: 'daylight', dark: ui.theme })} title=${label} aria-label=${label}>
+    ${light ? ICONS.moon() : ICONS.sun()}
+  </button>`;
+}
+
+/** Settings → This console: theme, layout and font for this laptop. */
+function ThisConsole({ ui, setUi, wide }) {
+  const seg = (key, map, label, inner) => html`<div class=${`ui-seg ui-${key}`} role="group" aria-label=${label}>
+    ${Object.entries(map).map(
+      ([k, v]) => html`<button class=${ui[key] === k ? 'on' : ''} aria-pressed=${ui[key] === k} onClick=${() => setUi({ [key]: k })}>${inner ? inner(k, v) : v.name}</button>`,
+    )}
+  </div>`;
+  return html`<section class="card this-console">
+    <h2>This console <span class="muted small">· this laptop only; the TV and the stream stay as they are</span></h2>
+    <div class="field">
+      <span>Theme</span>
+      ${seg('theme', THEMES, 'Theme', (k, v) => html`<i class="theme-sw" style=${`--s1:${v.sw[0]};--s2:${v.sw[1]};--s3:${v.sw[2]}`}></i>${v.name}`)}
+      <small class="muted">${THEMES[ui.theme].hint}</small>
+    </div>
+    <div class="field">
+      <span>Layout</span>
+      ${seg('layout', LAYOUTS, 'Layout')}
+      <small class="muted">${LAYOUTS[ui.layout].hint}${wide ? '' : ' Layouts apply on a laptop-wide window; a phone keeps its tabs.'}</small>
+    </div>
+    <div class="field">
+      <span>Font</span>
+      ${seg('font', FONTS, 'Font', (k, v) => html`<span style=${`font-family:${v.family}`}>${v.name}</span>`)}
+      <small class="muted">${FONTS[ui.font].hint}</small>
+    </div>
+  </section>`;
+}
+
 // The church's own channel needs nothing in the address; any other is carried as ?room=.
 const roomQuery = (room) => (room === normalizeCode(ROOM) ? '' : `room=${room}`);
 const screenUrl = (room, extra = '') => {
@@ -578,7 +675,10 @@ function Live({ state, act, info, goTab, onOutputs, wide, setLook }) {
   const modeBtn = (mode, label) =>
     html`<button class=${`mode ${state.mode === mode ? 'on' : ''}`} onClick=${() => act({ type: 'mode', mode })}>${label}</button>`;
 
+  // live-top (picture, Next / Back, modes) and live-rest are plain blocks in the Console layout;
+  // Focus and Compact pin the top and scroll the rest (see the end of remote.css).
   return html`<div class="live">
+    <div class="live-top">
     <div class="preview" onPointerDown=${onDown} onPointerUp=${onUp}>
       <${Fit}><${Stage} state=${state} still="bg" /><//>
       <span class="preview-tag">${state.mode === 'show' ? 'LIVE' : state.mode.toUpperCase()}</span>
@@ -588,6 +688,8 @@ function Live({ state, act, info, goTab, onOutputs, wide, setLook }) {
       <button class="big primary" onClick=${() => act({ type: 'next' })} aria-label="Next slide">Next ›</button>
     </div>
     <div class="modes">${modeBtn('clear', 'Clear')}${modeBtn('black', 'Black')}${modeBtn('logo', 'Logo')}</div>
+    </div>
+    <div class="live-rest">
     ${item &&
     item.kind === 'song' &&
     html`<div class="looks chips" role="group" aria-label="Look">
@@ -661,6 +763,7 @@ function Live({ state, act, info, goTab, onOutputs, wide, setLook }) {
             <button onClick=${() => goTab('media')}>Pictures & video</button>
           </div>
         </div>`}
+    </div>
   </div>`;
 }
 
@@ -905,7 +1008,7 @@ function Media({ onShow, onIllustrate, illustration, liveId, relayOn }) {
 
 // ------------------------------------------------------------------ settings
 
-function Settings({ state, act, info, prefs, setPrefs, songs, setSongs, session, setSession, onOutputs, setLook }) {
+function Settings({ state, act, info, prefs, setPrefs, songs, setSongs, session, setSession, onOutputs, setLook, ui, setUi, wide }) {
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState('');
@@ -983,6 +1086,8 @@ function Settings({ state, act, info, prefs, setPrefs, songs, setSongs, session,
         ${info.pending ? ' · last change waiting to send' : ''}
       </p>
     </section>
+
+    <${ThisConsole} ui=${ui} setUi=${setUi} wide=${wide} />
 
     <section class="card">
       <h2>Stream feed (ATEM)</h2>
@@ -1166,6 +1271,9 @@ function App() {
   const [songs, setSongsRaw] = useState(() => loadSongs());
   const [editing, setEditing] = useState(null);
   const [outputs, setOutputs] = useState(false);
+  const [ui, setUi] = useUi();
+  // Focus layout: the library ('lib') or the outputs ('out') drawn over the live picture.
+  const [drawer, setDrawer] = useState(null);
   const [prefs, setPrefsRaw] = useState(() => ({ primary: 'lug68', secondary: 'kjv', perVerse: false, ...read(LS_PREFS, {}) }));
   const [session, setSession] = useState(() => loadSession());
   const link = useRef(null);
@@ -1237,9 +1345,19 @@ function App() {
     return () => removeEventListener('keydown', onKey);
   }, [editing, outputs, room]);
 
+  // Focus: Esc closes an open drawer.
+  useEffect(() => {
+    if (!drawer) return undefined;
+    const onKey = (e) => e.key === 'Escape' && !editing && !outputs && setDrawer(null);
+    addEventListener('keydown', onKey);
+    return () => removeEventListener('keydown', onKey);
+  }, [drawer, editing, outputs]);
+
   const showItem = (item, index = 0) => {
     act({ type: 'item', item, index });
     if (!wide) setTab('live');
+    // Picked from a Focus drawer: close it so the live picture is in view.
+    setDrawer(null);
   };
   const showSong = (song, index = 0) => showItem(songItem(song), index);
 
@@ -1331,14 +1449,25 @@ function App() {
     setSession=${setSession}
     onOutputs=${() => setOutputs(true)}
     setLook=${setLook}
+    ui=${ui}
+    setUi=${setUi}
+    wide=${wide}
   />`;
-  const livePane = html`<${Live} state=${state} act=${act} info=${info} wide=${wide} goTab=${wide ? setLibTab : setTab} onOutputs=${() => setOutputs(true)} setLook=${setLook} />`;
+  // A library tab; in Focus it opens the library drawer (again on the open tab: closes it).
+  const openLib = (k) => {
+    setLibTab(k);
+    if (ui.layout === 'focus') setDrawer(drawer === 'lib' && libTab === k ? null : 'lib');
+  };
+  const livePane = html`<${Live} state=${state} act=${act} info=${info} wide=${wide} goTab=${wide ? openLib : setTab} onOutputs=${() => setOutputs(true)} setLook=${setLook} />`;
   const header = html`<header class="top">
     <div class="brand"><span class="cross">✝</span> Lyric Slides</div>
     ${wide && html`<span class="muted small keys">Space / → next · ← back · B black · C clear · L logo</span>`}
-    <button class=${`pill ${connected ? 'ok' : 'warn'}`} onClick=${() => setOutputs(true)}>
-      ${connected ? 'TV ✓' : 'Show on TV'}${info.pending ? ' · waiting' : ''}
-    </button>
+    <div class="row top-end">
+      <${LightSwitch} ui=${ui} setUi=${setUi} />
+      <button class=${`pill ${connected ? 'ok' : 'warn'}`} onClick=${() => setOutputs(true)}>
+        ${connected ? 'TV ✓' : 'Show on TV'}${info.pending ? ' · waiting' : ''}
+      </button>
+    </div>
   </header>`;
   const sheets = html`
     ${outputs && link.current && html`<${Outputs} room=${room} link=${link.current} info=${info} onClose=${() => setOutputs(false)} />`}
@@ -1356,7 +1485,8 @@ function App() {
     />`}
     <${Toast} />`;
 
-  // Laptop: library | live | outputs, all on one screen.
+  // Laptop: library | live | outputs, all on one screen (Settings → This console → Layout).
+  // Console and Compact show the three columns; Focus shows the rails and opens either side as a drawer.
   if (wide) {
     const libTabs = [
       ['songs', 'Songs'],
@@ -1364,10 +1494,22 @@ function App() {
       ['media', 'Media'],
       ['settings', 'Settings'],
     ];
+    // Either rail button opens the outputs drawer, scrolled to that output (again: closes it).
+    const openOut = (which) => {
+      setDrawer(drawer === 'out' ? null : 'out');
+      const pane = document.querySelector('.pane.out-pane');
+      const sec = document.querySelector(`.out-panel > section:nth-child(${which === 'stream' ? 2 : 1})`);
+      if (pane && sec && drawer !== 'out') pane.scrollTop += sec.getBoundingClientRect().top - pane.getBoundingClientRect().top - 12;
+    };
+    const railBtn = (on, ic, label, onClick) =>
+      html`<button class=${`rail-btn ${on ? 'on' : ''}`} onClick=${onClick} title=${label} aria-pressed=${on}>${ic}<span>${label}</span></button>`;
     return html`<div class="app console">
       ${header}
       <div class="console-grid">
-        <aside class="pane lib">
+        <nav class="rail lib-rail" aria-label="Library">
+          ${libTabs.map(([k, label]) => railBtn(drawer === 'lib' && libTab === k, ICONS[k](), label, () => openLib(k)))}
+        </nav>
+        <aside class=${`pane lib ${drawer === 'lib' ? 'open' : ''}`}>
           <nav class="lib-tabs">
             ${libTabs.map(([k, label]) => html`<button class=${libTab === k ? 'on' : ''} onClick=${() => setLibTab(k)}>${label}</button>`)}
           </nav>
@@ -1376,9 +1518,15 @@ function App() {
           </div>
         </aside>
         <main class="pane live-pane">${livePane}</main>
-        <aside class="pane out-pane">
+        <aside class=${`pane out-pane ${drawer === 'out' ? 'open' : ''}`}>
           ${link.current && html`<${OutputsPanel} room=${room} link=${link.current} info=${info} state=${state} act=${act} onMore=${() => setOutputs(true)} />`}
         </aside>
+        <nav class="rail out-rail" aria-label="Outputs">
+          ${railBtn(drawer === 'out', ICONS.tv(), 'TV', () => openOut('tv'))}
+          ${railBtn(drawer === 'out', ICONS.stream(), 'Stream', () => openOut('stream'))}
+          <span class=${`rail-dot ${connected ? 'ok' : ''}`} title=${connected ? 'A TV is connected' : 'No TV connected yet'}></span>
+        </nav>
+        ${drawer && html`<div class="scrim" onClick=${() => setDrawer(null)}></div>`}
       </div>
       ${sheets}
     </div>`;
