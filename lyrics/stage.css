@@ -1224,3 +1224,226 @@
   margin: 0.08em auto 0;
   background: #f26b5b;
 }
+
+/* ------------------------------------------------------------ lyric-video motion (outputs only; calm and still = crossfade) */
+
+/* Every word carries --wi (its number on the slide); word-by-word entrances stagger on it. */
+.frame.in .lyric .w {
+  display: inline-block;
+}
+.frame.in .lyric .ln {
+  animation: none;
+}
+.frame.k-song.in .lyric .ln {
+  animation: ls-rise 350ms var(--ease) both;
+  animation-delay: calc(var(--d0) + var(--i, 0) * var(--stagger));
+}
+/* While a slide is up, the block breathes: a slow 6 px drift, transform only. */
+.stage:not(.calm):not(.still) .frame.in.k-song .lyric {
+  animation: ls-breathe-y 7s ease-in-out infinite alternate;
+}
+@keyframes ls-breathe-y {
+  from { translate: 0 0; }
+  to { translate: 0 -6px; }
+}
+/* The fill scale and the breath can't share transform, so looks below animate the words, not the block. */
+
+/* Worship: words drift up and in, 45 ms apart. */
+.frame.p-worship.in .lyric .ln {
+  animation: none;
+}
+.frame.p-worship.in .lyric .w {
+  animation: ls-rise 500ms var(--ease) both;
+  animation-delay: calc(120ms + var(--wi, 0) * 45ms);
+}
+
+/* Praise: the line snaps in from a touch larger, like a cut. */
+.frame.p-praise.in .lyric .ln {
+  animation: ls-snap 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: calc(var(--i, 0) * 40ms);
+}
+@keyframes ls-snap {
+  from { opacity: 0; transform: scale(1.08); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* Poster: the band wipes open, then each line slams down. */
+.frame.p-poster.in .lyric {
+  animation: ls-wipe 320ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes ls-wipe {
+  from { clip-path: inset(0 50% 0 50%); }
+  to { clip-path: inset(0 0 0 0); }
+}
+.frame.p-poster.in .lyric .ln {
+  animation: ls-slam 260ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+  animation-delay: calc(180ms + var(--i, 0) * 90ms);
+}
+@keyframes ls-slam {
+  from { opacity: 0; transform: scale(1.35); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* Sunshine: lines slide up from under their long shadow. */
+.frame.p-sunshine.in .lyric .ln {
+  animation: ls-rise-far 480ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: calc(100ms + var(--i, 0) * 120ms);
+}
+@keyframes ls-rise-far {
+  from { opacity: 0; transform: translateY(70px); }
+  to { opacity: 1; transform: none; }
+}
+.frame.p-sunshine.in .lyric::before {
+  animation: ls-diamond 700ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes ls-diamond {
+  from { transform: translate(-50%, -50%) rotate(25deg) scale(0.3); opacity: 0; }
+  to { transform: translate(-50%, -50%) rotate(45deg) scale(0.6); opacity: 1; }
+}
+
+/* Lines: letters track in from wide spacing. */
+.frame.p-lines.in .lyric .ln {
+  animation: ls-track 700ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: calc(var(--i, 0) * 140ms);
+}
+@keyframes ls-track {
+  from { opacity: 0; letter-spacing: 0.5em; }
+  to { opacity: 1; letter-spacing: 0.14em; }
+}
+
+/* Beams: each word flickers on like a lamp. */
+.frame.p-beams.in .lyric .ln {
+  animation: none;
+}
+.frame.p-beams.in .lyric .w {
+  animation: ls-flicker 520ms steps(1) both;
+  animation-delay: calc(80ms + var(--wi, 0) * 70ms);
+}
+@keyframes ls-flicker {
+  0% { opacity: 0; }
+  20% { opacity: 0.8; }
+  35% { opacity: 0.2; }
+  50% { opacity: 1; }
+  65% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
+/* Banner: the band wipes in from the left; text rises. */
+.frame.p-banner.in .lyric {
+  animation: ls-wipe-left 380ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes ls-wipe-left {
+  from { clip-path: inset(0 100% 0 0); }
+  to { clip-path: inset(0 0 0 0); }
+}
+.frame.p-banner.in .lyric .ln {
+  animation: ls-rise 400ms var(--ease) both;
+  animation-delay: calc(220ms + var(--i, 0) * 80ms);
+}
+
+/* Midnight: words pop in, 50 ms apart. */
+.frame.p-midnight.in .lyric .ln {
+  animation: none;
+}
+.frame.p-midnight.in .lyric .w {
+  animation: ls-pop 380ms cubic-bezier(0.2, 0.9, 0.3, 1.3) both;
+  animation-delay: calc(60ms + var(--wi, 0) * 50ms);
+}
+@keyframes ls-pop {
+  from { opacity: 0; transform: scale(0.6); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* Pixel: words type on, 110 ms apart. */
+.frame.p-pixel.in .lyric .ln {
+  animation: none;
+}
+.frame.p-pixel.in .lyric .w {
+  animation: ls-type 1ms steps(1) both;
+  animation-delay: calc(var(--wi, 0) * 110ms);
+}
+@keyframes ls-type {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Neon: a glow that swells in, then keeps breathing. */
+.frame.p-neon.in .lyric .ln {
+  animation: ls-glow-in 600ms ease-out both;
+  animation-delay: calc(var(--i, 0) * 120ms);
+}
+@keyframes ls-glow-in {
+  from { opacity: 0; filter: blur(12px); }
+  to { opacity: 1; filter: blur(0); }
+}
+.stage:not(.calm):not(.still) .frame.in.p-neon .lyric {
+  animation: ls-breathe-y 7s ease-in-out infinite alternate, ls-glow-breathe 3s ease-in-out infinite alternate;
+}
+@keyframes ls-glow-breathe {
+  from { text-shadow: 0 0 18px #fff, 0 0 60px rgba(140, 235, 235, 0.75), 0 0 140px rgba(60, 200, 220, 0.5); }
+  to { text-shadow: 0 0 22px #fff, 0 0 90px rgba(140, 235, 235, 0.95), 0 0 180px rgba(60, 200, 220, 0.7); }
+}
+
+/* Grateful: lines slide in from alternating sides. */
+.frame.p-grateful.in .lyric .ln {
+  animation: ls-from-left 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: calc(var(--i, 0) * 110ms);
+}
+.frame.p-grateful.in .lyric .ln:nth-child(even) {
+  animation-name: ls-from-right;
+}
+@keyframes ls-from-left {
+  from { opacity: 0; transform: translateX(-120px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes ls-from-right {
+  from { opacity: 0; transform: translateX(120px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Film: a projector flicker, with the rule drawing in. */
+.frame.p-film.in .lyric .ln {
+  animation: ls-flicker 400ms steps(1) both;
+  animation-delay: calc(var(--i, 0) * 60ms);
+}
+.frame.p-film.in .lyric::after {
+  animation: ls-rule 500ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: 400ms;
+}
+@keyframes ls-rule {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+/* Calm mode, reduced motion and the console's still previews: plain crossfades, nothing else. */
+.calm .frame.in .lyric,
+.still .frame.in .lyric,
+.calm .frame.in .lyric::before,
+.still .frame.in .lyric::before,
+.calm .frame.in .lyric::after,
+.still .frame.in .lyric::after {
+  animation: none !important;
+}
+.calm .frame.in .lyric .w,
+.still .frame.in .lyric .w,
+.calm .frame.in .lyric .ln,
+.still .frame.in .lyric .ln {
+  animation: ls-fade-in 400ms ease both !important;
+  animation-delay: 0ms !important;
+}
+.still .frame.in .lyric .ln,
+.still .frame.in .lyric .w {
+  animation-duration: 0s !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .frame.in .lyric,
+  .frame.in .lyric::before,
+  .frame.in .lyric::after {
+    animation: none !important;
+  }
+  .frame.in .lyric .w,
+  .frame.in .lyric .ln {
+    animation: ls-fade-in 400ms ease both !important;
+    animation-delay: 0ms !important;
+  }
+}

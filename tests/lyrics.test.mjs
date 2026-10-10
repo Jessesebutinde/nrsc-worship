@@ -177,9 +177,9 @@ test('splitter: 2 lines per slide, no line over the limit, words whole, idempote
     const words = (t) => t.replace(/\[[^\]]*\]|Chorus:/g, '').split(/\s+/).filter(Boolean);
     assert.deepEqual(words(out), words(raw), 'same words in the same order');
   }
-  // A chorus keeps a lone last line on the slide before.
+  // Never more than two lines, a chorus included.
   const chorus = parseSlides(splitLyrics(raw)).filter((s) => s.label === 'Chorus');
-  assert.deepEqual(chorus.map((s) => s.lines.length), [2, 3]);
+  assert.deepEqual(chorus.map((s) => s.lines.length), [2, 2, 1]);
 });
 
 test('splitter prefers breaking at commas and never on little words', () => {
@@ -196,7 +196,7 @@ test('splitter prefers breaking at commas and never on little words', () => {
 
 test('lint flags long lines and too many lines', () => {
   const lint = lintSlides(parseSlides('A\nB\nC\n\n[Chorus]\nA\nB\nC\n\nThis line is far too long for the screen'), 'classic');
-  assert.deepEqual(lint.map((l) => l.index), [0, 2]);
+  assert.deepEqual(lint.map((l) => l.index), [0, 1, 2]);
 });
 
 test('seed songs fit the screen rules', () => {
@@ -566,4 +566,16 @@ test('emphasis: tap a word to mark it, tap again to clear, new item clears all',
   assert.deepEqual(s.marks, {});
   const scrip = { kind: 'scripture', id: 'x', versions: ['Luganda 1968', 'KJV'], secondaryLabel: 'KJV', slides: [{ verses: [{ verse: 1, primary: 'Mukama ye', secondary: 'The LORD is' }, { verse: 2, primary: 'musumba', secondary: 'my shepherd' }] }] };
   assert.deepEqual(slideWords(scrip, scrip.slides[0]).map((g) => [g.field, g.words.length]), [['p', 3], ['s', 5]]);
+});
+
+test('cutting wisely: joiners stay with the next word, repeats and closing words stay together', () => {
+  const two = (t) => splitAtPauses(t, 2);
+  assert.deepEqual(two('Holy holy holy is the Lord God Almighty'), ['Holy holy holy', 'is the Lord God Almighty']);
+  for (const piece of two('I will sing of the goodness of God forever')) assert.ok(!/\b(of|the)$/.test(piece), piece);
+  assert.deepEqual(wrapLine('Great is thy faithfulness, O God my Father', { target: 22, max: 26 }), ['Great is thy faithfulness,', 'O God my Father']);
+  for (const piece of wrapLine('Mukama wange nkutendereza mu bulamu bwange bwonna', { target: 22, max: 26 })) {
+    assert.ok(!/\b(mu|nga|ne|ku)$/.test(piece), piece);
+  }
+  const out = splitLyrics('[Chorus]\nAlleluia alleluia alleluia alleluia alleluia alleluia alleluia alleluia');
+  for (const s of parseSlides(out)) assert.ok(s.lines.length <= 2, out);
 });

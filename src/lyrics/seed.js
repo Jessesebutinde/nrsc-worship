@@ -20,6 +20,7 @@ glory, glory to the Lamb!
 
 Oh, the cleansing blood
 has reached me,
+
 glory, glory to the Lamb!`,
   },
   {

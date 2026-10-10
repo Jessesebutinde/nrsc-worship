@@ -182,7 +182,7 @@ function Words({ text, field, start = 0, marks }) {
   return words.map((w, i) => {
     const m = marks && marks[`${field}:${start + i}`];
     const cls = m ? `w mk-${m.c}${m.b ? ' bend' : ''}` : 'w';
-    return html`${i > 0 ? ' ' : ''}<span class=${cls}>${w}</span>`;
+    return html`${i > 0 ? ' ' : ''}<span class=${cls} style=${`--wi:${start + i}`}>${w}</span>`;
   });
 }
 
@@ -206,8 +206,8 @@ const LYRIC_H = SAFE_H * 0.88;
 const UPPER = new Set(['praise', 'poster', 'sunshine', 'lines', 'beams', 'banner', 'midnight', 'pixel', 'neon', 'grateful', 'film']);
 
 /**
- * Fill mode: the slide's words re-broken into 3 or 4 shorter lines when that makes the letters
- * clearly bigger than the lines as written (a long line is held back by the screen's width).
+ * Fill mode: a one-line slide re-broken into two when that makes the letters clearly bigger
+ * (a long line is held back by the screen's width). Never more than two lines.
  */
 function bestLines(lines, preset, caps, textW) {
   const base = BASE[preset];
@@ -218,7 +218,7 @@ function bestLines(lines, preset, caps, textW) {
   let best = lines;
   let bestSize = size(lines);
   const words = lines.join(' ');
-  for (let k = lines.length + 1; k <= 4; k++) {
+  for (let k = lines.length + 1; k <= 2; k++) {
     const c = splitAtPauses(words, k);
     if (c.length !== k) break;
     const sz = size(c);
@@ -235,7 +235,8 @@ function SongFrame({ item, index, lt, fill, caps, preset, textW, fontsReady, mar
   const box = useRef(null);
   const refill = fill && !lt;
   const lines = slide ? (refill && fontsReady ? bestLines(slide.lines, preset, caps || UPPER.has(preset), textW) : slide.lines) : [];
-  useFill(box, { on: refill, max: maxLyric(preset), min: 0.7, availH: LYRIC_H, lines: true }, [
+  // A line is never allowed to wrap into a third: wide display fonts may shrink to half the standard.
+  useFill(box, { on: refill, max: maxLyric(preset), min: 0.5, availH: LYRIC_H, lines: true }, [
     lines.join('\n'),
     fill,
     caps,
