@@ -163,7 +163,26 @@ function BgLayer({ kind, video }) {
 
 // ------------------------------------------------------------------ frames
 
-const Lines = ({ lines }) => lines.map((l, i) => html`<span class="ln" style=${`--i:${i}`}>${l}</span>`);
+/** The words of `text` as spans, numbered from `start` in `field`, with the operator's emphasis marks. */
+function Words({ text, field, start = 0, marks }) {
+  const words = String(text || '').split(/\s+/).filter(Boolean);
+  return words.map((w, i) => {
+    const m = marks && marks[`${field}:${start + i}`];
+    const cls = m ? `w mk-${m.c}${m.b ? ' bend' : ''}` : 'w';
+    return html`${i > 0 ? ' ' : ''}<span class=${cls}>${w}</span>`;
+  });
+}
+
+/** Song lines; the words are numbered straight through the slide, however the lines are broken. */
+function Lines({ lines, marks }) {
+  let start = 0;
+  return lines.map((l, i) => {
+    const n = String(l).split(/\s+/).filter(Boolean).length;
+    const el = html`<span class="ln" style=${`--i:${i}`}><${Words} text=${l} field="l" start=${start} marks=${marks} /></span>`;
+    start += n;
+    return el;
+  });
+}
 
 const BASE = { classic: 140, worship: 130, praise: 125, poster: 200, sunshine: 150, lines: 120, beams: 140 };
 const LINE_H = { classic: 1.18, worship: 1.15, praise: 1.08, poster: 0.98, sunshine: 1.05, lines: 1.15, beams: 1.1 };
@@ -198,7 +217,7 @@ function bestLines(lines, preset, caps, textW) {
   return best;
 }
 
-function SongFrame({ item, index, lt, fill, caps, preset, textW, fontsReady }) {
+function SongFrame({ item, index, lt, fill, caps, preset, textW, fontsReady, marks }) {
   const slide = item.slides[index];
   const box = useRef(null);
   const refill = fill && !lt;
@@ -213,10 +232,10 @@ function SongFrame({ item, index, lt, fill, caps, preset, textW, fontsReady }) {
   ]);
   if (!slide) return null;
   if (lt)
-    return html`<div class="lt-band"><div class="lt-lyric"><${Lines} lines=${slide.lines} /></div></div>`;
+    return html`<div class="lt-band"><div class="lt-lyric"><${Lines} lines=${slide.lines} marks=${marks} /></div></div>`;
   return html`<div class="safe">
     <div class="lyric" ref=${box}>
-      <${Lines} lines=${lines} />
+      <${Lines} lines=${lines} marks=${marks} />
       ${PRESET_INFO[preset].subtitle && html`<div class="sub">${item.title}</div>`}
     </div>
     ${preset === 'classic' && html`<div class="songtag">${item.title}</div>`}
@@ -225,17 +244,26 @@ function SongFrame({ item, index, lt, fill, caps, preset, textW, fontsReady }) {
 }
 
 /** The verses on one slide, with a small number where a new verse starts (only when there are several). */
-function Verses({ slide, field }) {
+function Verses({ slide, field, marks }) {
   const segs = (slide.verses || [{ verse: slide.verse, part: slide.part, primary: slide.primary, secondary: slide.secondary }]).filter(
     (g) => g[field],
   );
   const many = new Set(segs.map((g) => g.verse)).size > 1;
-  return segs.map(
-    (g, i) => html`${i > 0 ? ' ' : ''}${many && (!g.part || g.part === 'a') && html`<sup class="vn">${g.verse}</sup>`}${g[field]}`,
-  );
+  const key = field === 'primary' ? 'p' : 's';
+  let start = 0;
+  return segs.map((g, i) => {
+    const el = html`${i > 0 ? ' ' : ''}${many && (!g.part || g.part === 'a') && html`<sup class="vn">${g.verse}</sup>`}<${Words}
+        text=${g[field]}
+        field=${key}
+        start=${start}
+        marks=${marks}
+      />`;
+    start += String(g[field]).split(/\s+/).filter(Boolean).length;
+    return el;
+  });
 }
 
-function ScriptureFrame({ item, index, lt, fill, textW, fontsReady }) {
+function ScriptureFrame({ item, index, lt, fill, textW, fontsReady, marks }) {
   const s = item.slides[index];
   const box = useRef(null);
   useFill(box, { on: fill && !lt, max: 1.8, min: 0.8, availH: SAFE_H * 0.92 }, [s && s.ref, s && s.primary, s && s.secondary, fill, textW, fontsReady]);
@@ -244,16 +272,16 @@ function ScriptureFrame({ item, index, lt, fill, textW, fontsReady }) {
   if (lt)
     return html`<div class="lt-band lt-scrip">
       <div class="ln ref" style="--i:0"><span class="tab">${s.ref}</span>${more && html`<span class="more">continues ›</span>`}</div>
-      ${s.primary && html`<div class="ln pri" style="--i:1"><${Verses} slide=${s} field="primary" /></div>`}
-      ${s.secondary && html`<div class="ln sec" style="--i:2"><${Verses} slide=${s} field="secondary" /></div>`}
+      ${s.primary && html`<div class="ln pri" style="--i:1"><${Verses} slide=${s} field="primary" marks=${marks} /></div>`}
+      ${s.secondary && html`<div class="ln sec" style="--i:2"><${Verses} slide=${s} field="secondary" marks=${marks} /></div>`}
     </div>`;
   return html`<div class="scrip" ref=${box}>
     <div class="bar"></div>
     <div class="ln ref" style="--i:0">${s.ref}</div>
-    ${s.primary && html`<div class="ln pri" style="--i:1"><${Verses} slide=${s} field="primary" /></div>`}
+    ${s.primary && html`<div class="ln pri" style="--i:1"><${Verses} slide=${s} field="primary" marks=${marks} /></div>`}
     ${s.secondary &&
     html`<div class="ln sec" style="--i:2">
-      ${item.secondaryLabel && s.primary && html`<span class="ver">${item.secondaryLabel}</span>`}<${Verses} slide=${s} field="secondary" />
+      ${item.secondaryLabel && s.primary && html`<span class="ver">${item.secondaryLabel}</span>`}<${Verses} slide=${s} field="secondary" marks=${marks} />
     </div>`}
   </div>`;
 }
@@ -327,6 +355,8 @@ const LogoFrame = () => html`<div class="logo">
   <div class="ln logo-sub" style="--i:2">Society Church · Kampala</div>
 </div>`;
 
+const marksFor = (st, item, index) => (st.marks && item ? st.marks[`${item.id}:${index}`] : null) || null;
+
 /** Which frame the state shows on an output: { key, kind, preset } (preset = the song's look). */
 export function frameOf(state, { titleFor = null, out = 'preview' } = {}) {
   const { item, index = 0, mode } = state || {};
@@ -348,7 +378,7 @@ export function frameOf(state, { titleFor = null, out = 'preview' } = {}) {
  * @param {string} [p.video]         background video URL chosen on this PC
  * @param {boolean} [p.safe]         draw the 5% safe margin
  */
-export function Stage({ state, out = 'preview', layout = 'full', background = 'auto', titleCards = false, video = '', safe = false }) {
+export function Stage({ state, out = 'preview', layout = 'full', background = 'auto', titleCards = false, video = '', safe = false, still = false }) {
   const st = state || {};
   const lowerThird = layout === 'lowerthird';
   const fontsReady = useFontsReady();
@@ -385,6 +415,7 @@ export function Stage({ state, out = 'preview', layout = 'full', background = 'a
     lowerThird ? 'is-lt' : '',
     background === 'none' ? 'is-transparent' : '',
     st.calm ? 'calm' : '',
+    still ? 'still' : '',
     st.caps !== false ? 'caps' : '',
     fill ? 'fill' : '',
     illus ? 'with-illus' : '',
@@ -397,9 +428,9 @@ export function Stage({ state, out = 'preview', layout = 'full', background = 'a
       const preset = kind === 'song' ? data.f.preset : kind;
       return html`<div key=${k} class=${`frame k-${kind} p-${preset} ${leaving ? 'out' : 'in'}`} style=${`--out:${o}ms`}>
         ${kind === 'song' &&
-        html`<${SongFrame} item=${data.item} index=${data.index} lt=${lowerThird} fill=${fill} caps=${st.caps !== false} preset=${data.f.preset} textW=${textW} fontsReady=${fontsReady} />`}
+        html`<${SongFrame} item=${data.item} index=${data.index} lt=${lowerThird} fill=${fill} caps=${st.caps !== false} preset=${data.f.preset} textW=${textW} fontsReady=${fontsReady} marks=${marksFor(st, data.item, data.index)} />`}
         ${kind === 'scripture' &&
-        html`<${ScriptureFrame} item=${data.item} index=${data.index} lt=${lowerThird} fill=${fill} textW=${textW} fontsReady=${fontsReady} />`}
+        html`<${ScriptureFrame} item=${data.item} index=${data.index} lt=${lowerThird} fill=${fill} textW=${textW} fontsReady=${fontsReady} marks=${marksFor(st, data.item, data.index)} />`}
         ${kind === 'media' && html`<${MediaFrame} item=${data.item} index=${data.index} live=${out !== 'preview' && !leaving} />`}
         ${kind === 'title' && html`<${TitleFrame} item=${data.item} />`}
         ${kind === 'logo' && html`<${LogoFrame} />`}

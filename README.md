@@ -143,6 +143,20 @@ For the "two words on the screen" style, the editor's **Big slides** button brea
 per slide (1, 2 or 3 words; a comma or full stop ends a slide early). With fill mode the burst grows to the
 width of the screen.
 
+## Emphasis: tap a word
+
+Under the live slide, **Emphasis** lists every word on the current slide (Luganda and English for scripture).
+Pick a pen (gold, coral, teal or white, and **Bend** to slant the word) and tap a word: it changes on the TV
+and in the stream's lower third at once. Tapping it again with the same pen takes the mark off; **Clear slide**
+and **Clear all** remove them. Marks stay while you step back and forth through the passage and go when a new
+song or passage is shown.
+
+## Light on the laptop
+
+The console's three previews are still pictures: no environment motion, no blur. Motion runs only on the TV and
+stream windows, where it is rendered on the graphics chip (transforms only; the light beams are blurred at a
+quarter of the size and scaled up). **Calm mode** in Settings turns motion off on the outputs as well.
+
 ## Illustrations beside the words
 
 In **Media**, **Beside the words** puts a picture or video next to the lyrics or scripture on the TV: a map, a

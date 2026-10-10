@@ -5,7 +5,7 @@ import { parseRef, findBook, formatRef, bookByCode, BOOKS } from '../src/lyrics/
 import { parseBibleText, splitVerse, paginate, passageItem, wrapCount, CHAR_FIT } from '../src/lyrics/bible.js';
 import { parseSlides, formatSlides, splitLyrics, splitShort, lintSlides, wrapLine, splitAtPauses, labelOf } from '../src/lyrics/split.js';
 import { Dictionary, checkText, applyFix, wordsOf, distance } from '../src/lyrics/spell.js';
-import { emptyState, reduce, newer, songItem, mediaItem, shownOn, lookOf, PRESETS, PRESET_INFO, BACKGROUNDS } from '../src/lyrics/state.js';
+import { emptyState, reduce, newer, songItem, mediaItem, shownOn, lookOf, slideWords, markKey, PRESETS, PRESET_INFO, BACKGROUNDS } from '../src/lyrics/state.js';
 import { Link, normalizeCode, newCode, CODE_ALPHABET } from '../src/lyrics/link.js';
 import { RealtimeChannel } from '../src/lyrics/realtime.js';
 import { MqttClient, connectPacket, subscribePacket, publishPacket, parsePackets, parsePublish } from '../src/lyrics/mqtt.js';
@@ -544,4 +544,26 @@ test('looks: every look has sizes, a known environment, and the override wins', 
   assert.equal(lookOf({ ...emptyState(), look: 'poster' }, song), 'poster');
   assert.equal(lookOf({ ...emptyState(), look: 'nonsense' }, song), 'sunshine');
   assert.equal(lookOf(emptyState(), null), 'worship');
+});
+
+test('emphasis: tap a word to mark it, tap again to clear, new item clears all', () => {
+  const song = makeSong({ title: 'X', text: 'Amazing grace\nhow sweet' });
+  let s = reduce(emptyState(), { type: 'item', item: songItem(song) }, 'r');
+  const slide = s.item.slides[0];
+  assert.deepEqual(slideWords(s.item, slide), [{ field: 'l', label: '', words: ['Amazing', 'grace', 'how', 'sweet'] }]);
+  const key = markKey(s.item, 0);
+  s = reduce(s, { type: 'mark', slide: key, word: 'l:1', mark: { c: 'gold', b: false } }, 'r');
+  assert.deepEqual(s.marks[key], { 'l:1': { c: 'gold', b: false } });
+  s = reduce(s, { type: 'mark', slide: key, word: 'l:1', mark: { c: 'gold', b: true } }, 'r');
+  assert.deepEqual(s.marks[key]['l:1'], { c: 'gold', b: true }, 'a different pen replaces the mark');
+  s = reduce(s, { type: 'mark', slide: key, word: 'l:1', mark: { c: 'gold', b: true } }, 'r');
+  assert.deepEqual(s.marks[key], {}, 'the same pen again clears it');
+  s = reduce(s, { type: 'mark', slide: key, word: 'l:0', mark: { c: 'teal' } }, 'r');
+  s = reduce(s, { type: 'unmark', slide: key }, 'r');
+  assert.deepEqual(s.marks, { });
+  s = reduce(s, { type: 'mark', slide: key, word: 'l:0', mark: { c: 'teal' } }, 'r');
+  s = reduce(s, { type: 'item', item: songItem(song) }, 'r');
+  assert.deepEqual(s.marks, {});
+  const scrip = { kind: 'scripture', id: 'x', versions: ['Luganda 1968', 'KJV'], secondaryLabel: 'KJV', slides: [{ verses: [{ verse: 1, primary: 'Mukama ye', secondary: 'The LORD is' }, { verse: 2, primary: 'musumba', secondary: 'my shepherd' }] }] };
+  assert.deepEqual(slideWords(scrip, scrip.slides[0]).map((g) => [g.field, g.words.length]), [['p', 3], ['s', 5]]);
 });
