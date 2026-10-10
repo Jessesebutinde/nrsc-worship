@@ -5,7 +5,7 @@ import { parseRef, findBook, formatRef, bookByCode, BOOKS } from '../src/lyrics/
 import { parseBibleText, splitVerse, paginate, passageItem, wrapCount, CHAR_FIT } from '../src/lyrics/bible.js';
 import { parseSlides, formatSlides, splitLyrics, splitShort, lintSlides, wrapLine, splitAtPauses, labelOf } from '../src/lyrics/split.js';
 import { Dictionary, checkText, applyFix, wordsOf, distance } from '../src/lyrics/spell.js';
-import { emptyState, reduce, newer, songItem, mediaItem, shownOn, lookOf, slideWords, markKey, PRESETS, PRESET_INFO, BACKGROUNDS } from '../src/lyrics/state.js';
+import { emptyState, reduce, newer, songItem, mediaItem, shownOn, lookOf, slideWords, markKey, stepsOf, scriptureLookOf, PRESETS, PRESET_INFO, BACKGROUNDS, SCRIPTURE_LOOKS, SCRIPTURE_INFO } from '../src/lyrics/state.js';
 import { Link, normalizeCode, newCode, CODE_ALPHABET } from '../src/lyrics/link.js';
 import { RealtimeChannel } from '../src/lyrics/realtime.js';
 import { MqttClient, connectPacket, subscribePacket, publishPacket, parsePackets, parsePublish } from '../src/lyrics/mqtt.js';
@@ -578,4 +578,75 @@ test('cutting wisely: joiners stay with the next word, repeats and closing words
   }
   const out = splitLyrics('[Chorus]\nAlleluia alleluia alleluia alleluia alleluia alleluia alleluia alleluia');
   for (const s of parseSlides(out)) assert.ok(s.lines.length <= 2, out);
+});
+
+test('scripture looks: eleven, each with a name, hint and environment; Ink & stone is the default', () => {
+  assert.equal(SCRIPTURE_LOOKS.length, 11);
+  for (const k of SCRIPTURE_LOOKS) {
+    const i = SCRIPTURE_INFO[k];
+    assert.ok(i && i.name && i.hint && i.env, k);
+  }
+  assert.equal(scriptureLookOf(emptyState()), 'ink');
+  assert.equal(scriptureLookOf({ sLook: 'nope' }), 'ink');
+  assert.equal(scriptureLookOf({ sLook: 'kitenge' }), 'kitenge');
+});
+
+test('verse by verse: Next reveals the verses of a slide one at a time, then turns the page; Back retraces', () => {
+  const item = {
+    kind: 'scripture',
+    id: 'x',
+    versions: ['Luganda 1968'],
+    slides: [
+      { verses: [{ verse: 1, primary: 'a' }, { verse: 2, primary: 'b' }, { verse: 3, primary: 'c' }] },
+      { verses: [{ verse: 4, primary: 'd' }] },
+      { verses: [{ verse: 5, primary: 'e' }, { verse: 6, primary: 'f' }] },
+    ],
+  };
+  let s = reduce(emptyState(), { type: 'item', item }, 'r');
+  assert.equal(s.reveal, true);
+  assert.deepEqual([s.index, s.sub, stepsOf(s)], [0, 0, 3]);
+  s = reduce(s, { type: 'next' }, 'r');
+  assert.deepEqual([s.index, s.sub], [0, 1]);
+  s = reduce(s, { type: 'next' }, 'r');
+  s = reduce(s, { type: 'next' }, 'r');
+  assert.deepEqual([s.index, s.sub], [1, 0], 'after the last verse the page turns');
+  s = reduce(s, { type: 'next' }, 'r');
+  assert.deepEqual([s.index, s.sub], [2, 0]);
+  s = reduce(s, { type: 'next' }, 'r');
+  s = reduce(s, { type: 'next' }, 'r');
+  assert.deepEqual([s.index, s.sub], [2, 1], 'stops at the end');
+  s = reduce(s, { type: 'prev' }, 'r');
+  assert.deepEqual([s.index, s.sub], [2, 0]);
+  s = reduce(s, { type: 'prev' }, 'r');
+  assert.deepEqual([s.index, s.sub], [1, 0]);
+  s = reduce(s, { type: 'prev' }, 'r');
+  assert.deepEqual([s.index, s.sub], [0, 2], 'back to the previous page with all its verses up');
+  s = reduce(s, { type: 'goto', index: 2 }, 'r');
+  assert.deepEqual([s.index, s.sub], [2, 0]);
+  // Reveal off: a page per step, whatever it holds.
+  s = reduce(s, { type: 'set', patch: { reveal: false, index: 0 } }, 'r');
+  assert.equal(stepsOf(s), 1);
+  s = reduce(s, { type: 'next' }, 'r');
+  assert.deepEqual([s.index, s.sub], [1, 0]);
+  // Songs never step inside a slide.
+  const song = songItem({ id: 's', title: 'T', slides: [{ lines: ['a', 'b'] }, { lines: ['c'] }] });
+  s = reduce(s, { type: 'item', item: song }, 'r');
+  assert.equal(stepsOf(s), 1);
+  s = reduce(s, { type: 'next' }, 'r');
+  assert.deepEqual([s.index, s.sub], [1, 0]);
+});
+
+test('a passage item remembers its reference for the title card and for laying it out again, and still shows on every output', async () => {
+  const fetchImpl = async (url) => {
+    const m = url.match(/(lug68|kjv)\/(\d+)\.json$/);
+    if (!m) return { ok: false, status: 404 };
+    const n = Number(m[2]);
+    const p = `lyrics/bibles/${m[1]}/${n}.json`;
+    if (!fs.existsSync(p)) return { ok: false, status: 404 };
+    return { ok: true, status: 200, json: async () => JSON.parse(fs.readFileSync(p, 'utf8')) };
+  };
+  const item = await passageItem({ ref: parseRef('Zabbuli 23:1-3'), primaryId: 'lug68', secondaryId: 'kjv', fetchImpl });
+  assert.deepEqual([item.book.lg, item.book.en, item.book.code, item.chapter, item.v1, item.v2, item.primaryId, item.secondaryId, item.flow], ['Zabbuli', 'Psalms', 'PSA', 23, 1, 3, 'lug68', 'kjv', true]);
+  assert.equal(item.to, undefined, 'the verse range must not look like media routing');
+  assert.ok(shownOn(item, 'tv') && shownOn(item, 'stream'));
 });

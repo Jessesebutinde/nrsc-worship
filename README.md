@@ -203,11 +203,42 @@ background instead of black. OBS gets a transparent browser-source link.
 ## Scripture
 
 Type `Zabbuli 23:1-4`, `Psalm 23`, `Yk 3:16` or `1 Yokaana 1:9`; Luganda and English book names and short forms all
-work. The TV stacks the two languages: reference in gold caps, Luganda large, English smaller and dimmed below, a
-thin gold bar at the left. By default the text **continues across slides at the same size until it ends**: short
-verses share a slide (with small verse numbers), and a verse too long for three lines splits at a natural pause,
-both languages at the same point (23 : 4a, 23 : 4b). Every slide is measured in the real font at the real size, so
-nothing ever shrinks or wraps. Turn **Continue the text** off for one verse per slide.
+work. The TV shows the two languages in a serif (Source Serif 4, or Montserrat with the **Sans** switch): the
+reference in small caps, the language read aloud large, the other smaller below. By default the text **continues
+across slides at the same size until it ends**: short verses share a slide (with small verse numbers), and a verse
+too long for the look's lines splits at a natural pause, both languages at the same point (23 : 4a, 23 : 4b). Every
+slide is measured in the real font at the real size for the look that is up, so nothing ever shrinks or wraps. Turn
+**Continue the text** off for one verse per slide.
+
+### Scripture looks
+
+Scripture has eleven looks of its own, each with its own page and layout (chips under the live slide, and in
+Settings → Scripture). Changing the look lays the passage out again for it and stays on the verse being read.
+
+| Look | Page | Layout |
+| --- | --- | --- |
+| **Ink & stone** (default) | dark stone, film grain | stacked, gold bar at the left |
+| **Parchment** | aged paper | two columns: Luganda left, English right |
+| **Manuscript** | black with a warm glow | book and chapter above, an illuminated drop cap, an ornament below |
+| **Linen card** | navy linen weave | the language read aloud on a cream card, the other on a band below |
+| **Dawn** | sunrise sky | stacked, gold bar |
+| **Watercolour** | light wash with paper grain | dark ink, rust reference; mornings, children, weddings |
+| **Chalk & slate** | green board with a chalk frame | centred chalk, a short underline between the languages |
+| **Kitenge** | woven bands in Ugandan colours top and bottom | stacked, gold bar |
+| **Candlelight** | one warm pool of light | centred, italic English; evening, prayer, communion |
+| **Blueprint** | navy with fine ruling and engraved circles | light serif, sans English; youth, conferences |
+| **Scroll** | night, a parchment ribbon across the middle | one verse big, the reference below; the memory verse |
+
+A look always brings its page (a light page is the look); on the keyed stream output the light looks turn their ink
+white. The TV shows a 2 s **title card** before a passage (book in both languages, chapter and verses) in the look's
+type. A small **continues ›** marks a slide that goes on. The lower third on the stream keeps its band and takes the
+serif.
+
+**Verse by verse** (on by default): with several verses on a slide, **Next** reveals them one at a time; the verse
+being read is full, the ones already read dim, the ones still to come wait unseen in their place, so nothing moves
+when they arrive. **Back** retraces, and goes back to the previous slide with all its verses up. The **progress
+bar** is a thin line along the bottom of the TV that fills through the passage (off in Settings → Scripture). The
+status under the live slide reads "3/8 · verse 2 of 3" while a slide is being revealed.
 
 Two versions are built in: **Luganda 1968** and the **KJV**. They are stored as one small JSON file per book in
 `lyrics/bibles/`, so the remote downloads only the book it needs. Other versions can be imported in Settings (VPL
@@ -273,7 +304,7 @@ sandbox, so the first real test is yours.
 # Running and deploying
 
 There's no build step: it's static HTML plus ES modules, with Preact and htm vendored in `vendor/`. Lyric Slides
-bundles Montserrat, Anton, VT323 and Archivo Black (all SIL Open Font License) in `lyrics/fonts/`, so the screen works offline.
+bundles Montserrat, Source Serif 4, Anton, VT323 and Archivo Black (all SIL Open Font License) in `lyrics/fonts/`, so the screen works offline.
 
 ```sh
 npm start        # serves on http://localhost:8080

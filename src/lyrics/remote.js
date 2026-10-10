@@ -6,9 +6,9 @@ import { html, render, useState, useEffect, useRef, useMemo } from '../ui/h.js';
 import { Fit, Stage } from './stage.js';
 import { Link, normalizeCode } from './link.js';
 import { ROOM } from './config.js';
-import { emptyState, reduce, songItem, mediaItem, BACKGROUNDS, BACKGROUND_INFO, PRESETS, PRESET_INFO, STREAM_LAYOUTS, ILLUSTRATION_SIZES, MARK_COLORS, PLAY_LEVELS, PLACES, lookOf, slideWords, markKey } from './state.js';
+import { emptyState, reduce, songItem, mediaItem, BACKGROUNDS, BACKGROUND_INFO, PRESETS, PRESET_INFO, STREAM_LAYOUTS, ILLUSTRATION_SIZES, MARK_COLORS, PLAY_LEVELS, PLACES, SCRIPTURE_LOOKS, SCRIPTURE_INFO, scriptureLookOf, stepsOf, lookOf, slideWords, markKey } from './state.js';
 import { loadSongs, saveSongs, visibleSongs, upsertSong, removeSong, searchSongs, mergeSongs, exportLibrary, importLibrary } from './library.js';
-import { parseRef } from './books.js';
+import { parseRef, bookByCode } from './books.js';
 import { allVersions, importVersion, removeVersion, passageItem, BUILTIN_VERSIONS } from './bible.js';
 import { relayConfig, cloudConfigured, loadSession, captureSession, sendMagicLink, signOut, pullSongs, pushSongs } from './cloud.js';
 import { canCast, castTo, displayPermission, extraDisplays, openOn, displayOf, platform } from './cast.js';
@@ -446,7 +446,29 @@ function Emphasis({ state, act }) {
 
 // ------------------------------------------------------------------ live
 
-function Live({ state, act, info, goTab, onOutputs, wide }) {
+/** The scripture look chips and the reading switches (under the live slide and in Settings). */
+function ScriptureControls({ state, act, setLook, hints = false }) {
+  const look = scriptureLookOf(state);
+  return html`<div class="looks chips" role="group" aria-label="Scripture look">
+      ${SCRIPTURE_LOOKS.map(
+        (k) => html`<button class=${`chip ${look === k ? 'on' : ''}`} onClick=${() => setLook({ sLook: k })} title=${SCRIPTURE_INFO[k].hint}>${SCRIPTURE_INFO[k].name}</button>`,
+      )}
+    </div>
+    <div class="wordplay row wrap">
+      <span class="seg" role="group" aria-label="Type">
+        <button class=${state.sFont !== 'sans' ? 'on' : ''} onClick=${() => setLook({ sFont: 'serif' })} title="Source Serif, like a printed Bible">Serif</button>
+        <button class=${state.sFont === 'sans' ? 'on' : ''} onClick=${() => setLook({ sFont: 'sans' })} title="Montserrat, like the lyrics">Sans</button>
+      </span>
+      <span class="seg" role="group" aria-label="Reading">
+        <button class=${state.reveal !== false ? 'on' : ''} onClick=${() => act({ type: 'set', patch: { reveal: state.reveal === false } })} title="Next brings the next verse; verses already read dim">Verse by verse</button>
+        <button class=${state.progress !== false ? 'on' : ''} onClick=${() => act({ type: 'set', patch: { progress: state.progress === false } })} title="A thin bar along the bottom shows how far through the passage you are">Progress bar</button>
+      </span>
+    </div>
+    ${hints &&
+    html`<small class="muted">Every look brings its own page: Ink & stone (the default), Parchment and Linen card for reading, Manuscript and Scroll for one verse, Chalk & slate for teaching, Kitenge for Kampala, Candlelight for evenings, Watercolour for mornings, Blueprint for youth, Dawn for sunrise. Verse by verse: with several verses on a slide, Next reveals them one at a time and dims the ones already read. The progress bar is a thin line along the bottom of the TV.</small>`}`;
+}
+
+function Live({ state, act, info, goTab, onOutputs, wide, setLook }) {
   const item = state.item;
   const list = useRef(null);
   const swipe = useRef(null);
@@ -503,6 +525,7 @@ function Live({ state, act, info, goTab, onOutputs, wide }) {
         )}
       </span>
     </div>`}
+    ${item && item.kind === 'scripture' && html`<${ScriptureControls} state=${state} act=${act} setLook=${setLook} />`}
     ${!connected &&
     !wide &&
     html`<button class="note-btn" onClick=${onOutputs}>
@@ -524,7 +547,7 @@ function Live({ state, act, info, goTab, onOutputs, wide }) {
             <div>
               <b>${item.title}</b>
               <span class="muted small">
-                ${`${item.kind === 'song' ? PRESET_INFO[lookOf(state, item)].name : item.kind === 'scripture' ? item.versions.join(' + ') : { both: 'TV + stream', tv: 'TV only', stream: 'Stream only' }[item.to || 'both']} · ${state.index + 1}/${item.slides.length}`}
+                ${`${item.kind === 'song' ? PRESET_INFO[lookOf(state, item)].name : item.kind === 'scripture' ? `${SCRIPTURE_INFO[scriptureLookOf(state)].name} · ${item.versions.join(' + ')}` : { both: 'TV + stream', tv: 'TV only', stream: 'Stream only' }[item.to || 'both']} · ${state.index + 1}/${item.slides.length}${stepsOf(state) > 1 ? ` · verse ${(state.sub || 0) + 1} of ${stepsOf(state)}` : ''}`}
               </span>
             </div>
           </div>
@@ -585,7 +608,7 @@ function Songs({ songs, onShow, onEdit, onNew, liveId }) {
 
 // ------------------------------------------------------------------ scripture
 
-function Scripture({ prefs, setPrefs, onShow }) {
+function Scripture({ prefs, setPrefs, onShow, look = 'ink', font = 'serif' }) {
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
@@ -604,7 +627,7 @@ function Scripture({ prefs, setPrefs, onShow }) {
     try {
       // Measured in the real font, so a slide holds exactly what fits at the fixed size.
       const loaded = await Promise.race([fontsReady(), new Promise((res) => setTimeout(() => res(null), 3000))]);
-      const fit = loaded !== null && document.fonts.check('600 92px Montserrat') ? scriptureFit() : undefined;
+      const fit = loaded !== null && document.fonts.check('600 92px Montserrat') ? scriptureFit(look, font) : undefined;
       const item = await passageItem({ ref: r, primaryId: prefs.primary, secondaryId: prefs.secondary, flow: !prefs.perVerse, fit });
       onShow(item);
       const label = t.trim();
@@ -795,7 +818,7 @@ function Media({ onShow, onIllustrate, illustration, liveId, relayOn }) {
 
 // ------------------------------------------------------------------ settings
 
-function Settings({ state, act, info, prefs, setPrefs, songs, setSongs, session, setSession, onOutputs }) {
+function Settings({ state, act, info, prefs, setPrefs, songs, setSongs, session, setSession, onOutputs, setLook }) {
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState('');
@@ -958,6 +981,11 @@ function Settings({ state, act, info, prefs, setPrefs, songs, setSongs, session,
         <span>Looks bring their own background (off: keep the TV background under every look)</span>
       </label>
       <p class="muted small">Poster, Sunshine, Lines and Beams are looks with their own environment. Pick one per song in the editor, or force one for every song from the chips under the live slide.</p>
+    </section>
+
+    <section class="card">
+      <h2>Scripture</h2>
+      <${ScriptureControls} state=${state} act=${act} setLook=${setLook} hints=${true} />
     </section>
 
     <section class="card">
@@ -1128,6 +1156,44 @@ function App() {
   };
   const showSong = (song, index = 0) => showItem(songItem(song), index);
 
+  // A scripture look (or type) change: the passage up on the screen is laid out again for it,
+  // staying on the verse being read.
+  const setLook = async (patch) => {
+    const cur = stateRef.current;
+    const next = { ...cur, ...patch };
+    const it = cur.item;
+    if (!it || it.kind !== 'scripture' || !it.book) {
+      act({ type: 'set', patch });
+      return;
+    }
+    try {
+      const slide = it.slides[cur.index] || it.slides[0];
+      const verse = slide && slide.verses ? slide.verses[Math.min(cur.sub || 0, slide.verses.length - 1)].verse : it.v1;
+      await Promise.race([fontsReady(), new Promise((res) => setTimeout(() => res(null), 3000))]);
+      const item = await passageItem({
+        ref: { book: bookByCode(it.book.code) || it.book, chapter: it.chapter, from: it.v1, to: it.v2 },
+        primaryId: it.primaryId,
+        secondaryId: it.secondaryId,
+        flow: it.flow,
+        fit: scriptureFit(scriptureLookOf(next), next.sFont),
+      });
+      let index = 0;
+      let sub = 0;
+      item.slides.forEach((s, i) =>
+        (s.verses || []).forEach((v, j) => {
+          if (v.verse <= verse && (!v.part || v.part === 'a' || v.verse < verse)) {
+            index = i;
+            sub = j;
+          }
+        }),
+      );
+      act({ type: 'set', patch: { ...patch, item, index, sub: next.reveal === false ? 0 : sub, marks: {} } });
+    } catch (e) {
+      act({ type: 'set', patch });
+      showToast(e.message);
+    }
+  };
+
   const saveSong = (song) => {
     setSongs(upsertSong(songs, song));
     setEditing(null);
@@ -1154,7 +1220,7 @@ function App() {
     onEdit=${(s) => setEditing(s)}
     onNew=${() => setEditing('new')}
   />`;
-  const scripturePane = html`<${Scripture} prefs=${prefs} setPrefs=${setPrefs} onShow=${showItem} />`;
+  const scripturePane = html`<${Scripture} prefs=${prefs} setPrefs=${setPrefs} onShow=${showItem} look=${scriptureLookOf(state)} font=${state.sFont} />`;
   const mediaPane = html`<${Media}
     onShow=${showItem}
     illustration=${state.illustration}
@@ -1177,8 +1243,9 @@ function App() {
     session=${session}
     setSession=${setSession}
     onOutputs=${() => setOutputs(true)}
+    setLook=${setLook}
   />`;
-  const livePane = html`<${Live} state=${state} act=${act} info=${info} wide=${wide} goTab=${wide ? setLibTab : setTab} onOutputs=${() => setOutputs(true)} />`;
+  const livePane = html`<${Live} state=${state} act=${act} info=${info} wide=${wide} goTab=${wide ? setLibTab : setTab} onOutputs=${() => setOutputs(true)} setLook=${setLook} />`;
   const header = html`<header class="top">
     <div class="brand"><span class="cross">✝</span> Lyric Slides</div>
     ${wide && html`<span class="muted small keys">Space / → next · ← back · B black · C clear · L logo</span>`}

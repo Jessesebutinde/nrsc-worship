@@ -45,6 +45,26 @@ export const lookOf = (state, item) => (state && state.look && PRESET_INFO[state
 
 export const STREAM_LAYOUTS = { lowerthird: 'Lower thirds', full: 'Full screen' };
 
+// Looks for scripture: each brings its own environment and layout; the type is a serif.
+export const SCRIPTURE_LOOKS = ['ink', 'parchment', 'manuscript', 'linen', 'dawn', 'water', 'chalk', 'kitenge', 'candle', 'blueprint', 'scroll'];
+
+export const SCRIPTURE_INFO = {
+  ink: { name: 'Ink & stone', hint: 'Stacked on dark stone, gold bar at the left (the default)', env: 'stone', light: false },
+  parchment: { name: 'Parchment', hint: 'Two columns on aged paper, Luganda left and English right', env: 'parchment', light: true },
+  manuscript: { name: 'Manuscript', hint: 'An illuminated drop cap, book and chapter above', env: 'vellum', light: false },
+  linen: { name: 'Linen card', hint: 'The top language on a cream card, the other on a band below', env: 'linen', light: false },
+  dawn: { name: 'Dawn', hint: 'Stacked over a sunrise sky', env: 'dawn', light: false },
+  water: { name: 'Watercolour', hint: 'Dark ink on a light wash: mornings, children, weddings', env: 'watercolour', light: true },
+  chalk: { name: 'Chalk & slate', hint: 'Centred chalk on a green board, for teaching', env: 'slate', light: false },
+  kitenge: { name: 'Kitenge', hint: 'Woven bands in Ugandan colours top and bottom', env: 'kitenge', light: false },
+  candle: { name: 'Candlelight', hint: 'One warm pool of light: evening, prayer, communion', env: 'candle', light: false },
+  blueprint: { name: 'Blueprint', hint: 'Fine ruling and engraved circles on navy, for youth and conferences', env: 'blueprint', light: false },
+  scroll: { name: 'Scroll', hint: 'One verse big on a parchment ribbon, for the memory verse', env: 'night', light: true },
+};
+
+/** The look scripture shows with. */
+export const scriptureLookOf = (state) => (state && SCRIPTURE_INFO[state.sLook] ? state.sLook : 'ink');
+
 export function emptyState() {
   return {
     rev: 0,
@@ -77,6 +97,14 @@ export function emptyState() {
     place: 'center',
     // Words the operator tapped for emphasis: { "<item id>:<slide index>": { "<field>:<word>": { c: 'gold', b: true } } }.
     marks: {},
+    // Scripture: its look, serif or sans type, verse-by-verse reveal (Next brings the next verse on
+    // the slide; verses already read dim) and the thin progress bar through the passage.
+    sLook: 'ink',
+    sFont: 'serif',
+    reveal: true,
+    progress: true,
+    // With reveal: which verse of the slide is being read (0-based).
+    sub: 0,
   };
 }
 
@@ -127,25 +155,44 @@ export function newer(b, a) {
 
 const count = (s) => (s.item && s.item.slides ? s.item.slides.length : 0);
 
+/** How many steps the slide takes: its verses one by one when reveal is on (scripture), else one. */
+export function stepsOf(state, index = state.index) {
+  const it = state.item;
+  if (!it || it.kind !== 'scripture' || state.reveal === false) return 1;
+  const slide = it.slides && it.slides[index];
+  return Math.max(1, slide && slide.verses ? slide.verses.length : 1);
+}
+
 /** Applies a command; returns the next state (stamped with rev + 1 and the sender's id). */
 export function reduce(state, cmd, by) {
   const s = { ...state };
   switch (cmd.type) {
     case 'next':
       if (s.mode !== 'show') s.mode = 'show';
-      else s.index = Math.min(count(s) - 1, s.index + 1);
+      else if ((s.sub || 0) + 1 < stepsOf(s)) s.sub = (s.sub || 0) + 1;
+      else if (s.index < count(s) - 1) {
+        s.index += 1;
+        s.sub = 0;
+      }
       break;
     case 'prev':
       if (s.mode !== 'show') s.mode = 'show';
-      else s.index = Math.max(0, s.index - 1);
+      else if ((s.sub || 0) > 0) s.sub -= 1;
+      else if (s.index > 0) {
+        // Back to the previous slide with all its verses up.
+        s.index -= 1;
+        s.sub = stepsOf(s) - 1;
+      }
       break;
     case 'goto':
       s.index = Math.max(0, Math.min(count(s) - 1, cmd.index));
+      s.sub = 0;
       s.mode = 'show';
       break;
     case 'item':
       s.item = cmd.item;
       s.index = Math.max(0, Math.min(count(s) - 1, cmd.index || 0));
+      s.sub = 0;
       s.mode = 'show';
       s.marks = {};
       break;
@@ -176,6 +223,7 @@ export function reduce(state, cmd, by) {
       break;
     case 'set':
       Object.assign(s, cmd.patch);
+      if (s.sub >= stepsOf(s)) s.sub = 0;
       break;
     default:
       return state;
