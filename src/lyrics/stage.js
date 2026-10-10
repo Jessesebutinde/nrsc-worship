@@ -17,7 +17,11 @@ const SAFE_H = H - 2 * 54;
 const ILLUS_W = { small: 560, half: 760, large: 960 };
 
 // How long a frame takes to fade out, by what it shows.
-const OUT_MS = { worship: 400, praise: 200, classic: 250, poster: 200, sunshine: 300, lines: 400, beams: 500, scripture: 250, title: 300, logo: 400, media: 600, none: 400 };
+const OUT_MS = {
+  worship: 400, praise: 200, classic: 250, poster: 200, sunshine: 300, lines: 400, beams: 500,
+  banner: 200, midnight: 300, pixel: 150, neon: 350, grateful: 200, film: 300,
+  scripture: 250, title: 300, logo: 400, media: 600, none: 400,
+};
 
 /** Keeps the outgoing frame mounted (with .out) while it fades, so changes cross over smoothly. */
 function useSwap(key, data, outMs, toNone) {
@@ -152,6 +156,15 @@ function BgLayer({ kind, video }) {
   if (kind === 'arcs') return html`<div class="bg-fill bg-arcs"><i class="art"></i><i class="marks"></i></div>`;
   if (kind === 'beams')
     return html`<div class="bg-fill bg-beams"><i class="beam"></i><i class="scan"></i><i class="floor"></i><div class="vig"></div></div>`;
+  if (kind === 'bluestage')
+    return html`<div class="bg-fill bg-bluestage"><i class="glows"></i><i class="truss"></i><i class="haze"></i><i class="grain"></i><div class="vig"></div></div>`;
+  if (kind === 'forest')
+    return html`<div class="bg-fill bg-forest"><i class="trees"></i><i class="g1"></i><i class="g2"></i><i class="g3"></i><i class="grain"></i></div>`;
+  if (kind === 'darkglow') return html`<div class="bg-fill bg-darkglow"><i class="glow"></i></div>`;
+  if (kind === 'mono')
+    return html`<div class="bg-fill bg-mono"><i class="light"></i><i class="crowd"></i><i class="grain"></i><i class="tint"></i></div>`;
+  if (kind === 'film')
+    return html`<div class="bg-fill bg-film"><i class="leak"></i><i class="grain"></i><div class="vig"></div></div>`;
   if (kind === 'bokeh')
     return html`<div class="bg-fill bg-bokeh">
       ${[0, 1, 2, 3, 4, 5, 6, 7].map((i) => html`<i class=${`b${i}`}></i>`)}<div class="vig"></div>
@@ -184,13 +197,13 @@ function Lines({ lines, marks }) {
   });
 }
 
-const BASE = { classic: 140, worship: 130, praise: 125, poster: 200, sunshine: 150, lines: 120, beams: 140 };
-const LINE_H = { classic: 1.18, worship: 1.15, praise: 1.08, poster: 0.98, sunshine: 1.05, lines: 1.15, beams: 1.1 };
-const MAX_LYRIC = { poster: 340 };
+const BASE = { classic: 140, worship: 130, praise: 125, poster: 200, sunshine: 150, lines: 120, beams: 140, banner: 150, midnight: 150, pixel: 200, neon: 160, grateful: 150, film: 200 };
+const LINE_H = { classic: 1.18, worship: 1.15, praise: 1.08, poster: 0.98, sunshine: 1.05, lines: 1.15, beams: 1.1, banner: 1.0, midnight: 1.0, pixel: 0.95, neon: 0.98, grateful: 1.02, film: 0.98 };
+const MAX_LYRIC = { poster: 340, pixel: 340, film: 340 };
 const maxLyric = (preset) => (MAX_LYRIC[preset] || 300) / BASE[preset];
 const LYRIC_H = SAFE_H * 0.88;
 // These looks write the lyrics in capitals whatever the Capitals switch says.
-const UPPER = new Set(['praise', 'poster', 'sunshine', 'lines', 'beams']);
+const UPPER = new Set(['praise', 'poster', 'sunshine', 'lines', 'beams', 'banner', 'midnight', 'pixel', 'neon', 'grateful', 'film']);
 
 /**
  * Fill mode: the slide's words re-broken into 3 or 4 shorter lines when that makes the letters

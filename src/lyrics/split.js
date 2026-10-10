@@ -18,6 +18,12 @@ export const PRESET_LIMITS = {
   sunshine: { target: 18, max: 22 },
   lines: { target: 18, max: 22 },
   beams: { target: 20, max: 24 },
+  banner: { target: 20, max: 24 },
+  midnight: { target: 18, max: 22 },
+  pixel: { target: 22, max: 26 },
+  neon: { target: 16, max: 20 },
+  grateful: { target: 16, max: 20 },
+  film: { target: 24, max: 28 },
 };
 
 /**
