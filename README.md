@@ -1,3 +1,6 @@
+This repo holds two church media apps: **SongCut** (below) and **[Lyric Slides](#lyric-slides)**, the lyrics and
+scripture screen for the hall TV.
+
 # SongCut
 
 A phone-friendly web app that cuts the worship songs out of a church service recording.
@@ -80,9 +83,108 @@ are marked as estimates (`~117 BPM`). It never invents song titles or fingerprin
   never shown unless the backend sends them.
 - If the Cloudflare quick-tunnel URL rotates, update `SONGCUT_API_BASE` and push to `main` (Pages redeploys).
 
-## Running and deploying
+# Lyric Slides
 
-There's no build step: it's static HTML plus ES modules, with Preact and htm vendored in `vendor/`.
+Lyrics, scripture, pictures and video on the 86″ hall TV and on the livestream, in the Namasuba screen style: big,
+calm and readable from the back of the hall. Live at **https://jessesebutinde.github.io/nrsc-worship/lyrics/**.
+
+## Sunday, in three taps
+
+1. Open the link on your phone and tap **Start a session**.
+2. On the **Show on TV & stream** sheet pick how the TV gets the picture:
+   - **Cast to the TV**: a Chromecast, Google TV or Android TV on the same Wi-Fi (Chrome's device list opens).
+   - **TV on this computer**: the hall PC is on HDMI; the picture opens fullscreen on the second display.
+   - **The TV's own browser**: on a smart TV open `…/lyrics/tv` and type the six-letter code, or scan the QR code.
+3. Pick a song, a passage or a picture. **Next** / **Back**, swipe the preview, or tap any slide. **Clear**,
+   **Black** and **Logo** do what they say.
+
+The phone and the TV talk through a public relay (no account, nothing to install), so the TV can be any device
+with a browser. Within one browser they also talk directly, and a Cast connection carries the slides itself. The
+screen keeps the last picture through a refresh, and a TV that joins late gets the current slide at once. The
+screen's keyboard works too: Space or → next, ← back, **B** black, **C** clear, **L** logo, **V** background video.
+
+## The stream feed (ATEM / Blackmagic)
+
+**Open the stream feed** on the sheet gives a second picture made for the switcher: by default **lower thirds on
+black**, so the ATEM keys it over the live camera (the gold reference tab, the verse, and the English below it;
+lyrics centred). Set it up once in ATEM Software Control: HDMI from that display into a spare input, **Upstream
+Key 1 → Luma**, fill and key source both that input, clip about 10%, gain about 50%, then **KEY 1** on air. The
+steps are also on the sheet. In Settings the feed can switch to the **full-screen** layout, or show the TV's
+background instead of black. OBS gets a transparent browser-source link.
+
+## Scripture
+
+Type `Zabbuli 23:1-4`, `Psalm 23`, `Yk 3:16` or `1 Yokaana 1:9`; Luganda and English book names and short forms all
+work. The TV stacks the two languages: reference in gold caps, Luganda large, English smaller and dimmed below, a
+thin gold bar at the left. By default the text **continues across slides at the same size until it ends**: short
+verses share a slide (with small verse numbers), and a verse too long for three lines splits at a natural pause,
+both languages at the same point (23 : 4a, 23 : 4b). Every slide is measured in the real font at the real size, so
+nothing ever shrinks or wraps. Turn **Continue the text** off for one verse per slide.
+
+Two versions are built in: **Luganda 1968** and the **KJV**. They are stored as one small JSON file per book in
+`lyrics/bibles/`, so the remote downloads only the book it needs. Other versions can be imported in Settings (VPL
+lines like `PSA 23:1 text`, tab separated, USFM, JSON or Bible XML); an import stays on that device. To rebuild:
+
+```sh
+node scripts/build-bible.mjs LugandaBible.xml lyrics/bibles/lug68 --lug68
+node scripts/build-bible.mjs eng-kjv_vpl.txt lyrics/bibles/kjv --kjv     # from ebible.org/Scriptures/eng-kjv_vpl.zip
+```
+
+`--lug68` repairs stray markup in the source file (seven verses in Amos had lost the name "Amosi"; Exodus 5:14 had
+a `>` inside a word). The 1968 text is © United Bible Societies 1968, British and Foreign Bible Society, and The
+Bible Society of Uganda.
+
+## Pictures and video
+
+The **Media** tab shows two sets:
+
+- **In the app's folder**: anything in `lyrics/media/` on GitHub. Add files there (jpg, png, webp, svg, mp4,
+  webm…), run `npm run media` (the deploy does it too), and every remote sees them.
+- **On this device**: files added from the phone or laptop (kept in the browser), or pasted links. Files added
+  here reach only screens open in the same browser; use the folder or a link for a TV on another device.
+
+Tap a picture or video to show it, or **Select several** for a set you step through. Each item goes to
+**TV + stream**, **TV only** or **Stream only**, so a video can play in the hall while the stream keeps the camera,
+or the other way round. Videos play with sound; **Loop video** repeats one.
+
+## Songs
+
+- In the editor, type or paste the lyrics. Put a blank line between slides and a label like `[Chorus]` before each
+  section. **Auto-split** makes 2-line slides (3 only in a chorus), breaking where a singer breathes (after commas,
+  never on "and", "the", "mu", "nga"…) and never inside a word. Slides that already fit are left alone.
+- The preview shows the slide under the cursor exactly as the TV will. A slide is flagged if a line would wrap on
+  the TV (measured in the real font) or has too many lines. Sizes never shrink to fit.
+- **Spelling** underlines words not found in the Luganda 1968 Bible, the KJV or your other songs, and offers a
+  one-tap fix. **It's right** teaches it a word.
+- Each song has a look:
+
+| Look | Style | Text | Position | Change |
+| --- | --- | --- | --- | --- |
+| Worship (default) | Hillsong-style | Montserrat 500, 130 px, mixed case | centre 74% down; title top-right on slide 1 | 400 ms crossfade |
+| Praise | Elevation-style | Montserrat 800, 125 px, CAPS | centre 70% down; no title | 200 ms fade |
+| Classic | Namasuba | Montserrat 600, 140 px | dead centre; gold song tag | fade + 24 px rise, 70 ms stagger |
+
+A new song opens with a 2-second title card. TV backgrounds: **Glow** (slow purple and gold), **Bokeh**, **Light
+leaks**, **Video loop** (a link, or press V on the screen PC) and **Key** (black, for keying the TV picture itself).
+**Calm mode** and the system's reduced-motion setting turn everything into plain crossfades.
+
+Songs are kept on each device and move between devices with **Export songs** / **Import songs**. With a Supabase
+project in `src/lyrics/config.js` (run `supabase/lyric_slides.sql`), the media team signs in with an emailed link
+and shares one library, and the project's Realtime replaces the public relay.
+
+## How the relay works
+
+`src/lyrics/config.js` lists public MQTT brokers (EMQX, then HiveMQ as a fallback). The remote and every screen
+subscribe to `nrsc/lyric-slides/<code>`; the state is published as a retained message, so a late screen gets it
+immediately. Anyone who knows the code could push text to the screen, and nothing but the current slide travels,
+which is fine for lyrics. Set `RELAY_URLS` to `[]` to keep everything inside one browser. The relay was built to
+the MQTT 3.1.1 spec and tested against a fake broker; the live brokers could not be reached from the build
+sandbox, so the first real test is yours.
+
+# Running and deploying
+
+There's no build step: it's static HTML plus ES modules, with Preact and htm vendored in `vendor/`. Lyric Slides
+bundles Montserrat (SIL Open Font License) in `lyrics/fonts/`, so the screen works offline.
 
 ```sh
 npm start        # serves on http://localhost:8080

@@ -1,0 +1,910 @@
+// /lyrics/ — the remote: pick songs, scripture, pictures and videos, step through slides,
+// Clear / Black / Logo, and put the picture on the TV and the stream.
+// Phone first; also works on the operator laptop (Space / arrows, B, C, L).
+
+import { html, render, useState, useEffect, useRef, useMemo } from '../ui/h.js';
+import { Fit, Stage } from './stage.js';
+import { Link, newCode, normalizeCode } from './link.js';
+import { emptyState, reduce, songItem, mediaItem, BACKGROUNDS, BACKGROUND_INFO, PRESET_INFO, STREAM_LAYOUTS } from './state.js';
+import { loadSongs, saveSongs, visibleSongs, upsertSong, removeSong, searchSongs, mergeSongs, exportLibrary, importLibrary } from './library.js';
+import { parseRef } from './books.js';
+import { allVersions, importVersion, removeVersion, passageItem, BUILTIN_VERSIONS } from './bible.js';
+import { relayConfig, cloudConfigured, loadSession, captureSession, sendMagicLink, signOut, pullSongs, pushSongs } from './cloud.js';
+import { canCast, castTo, openOnScreen } from './cast.js';
+import { fontsReady, scriptureFit } from './measure.js';
+import { idbSet, idbDel } from './idb.js';
+import { SongEditor } from './editor.js';
+import qrcode from '../../vendor/qrcode.js';
+
+const LS_ROOM = 'ls-remote-room';
+const LS_PREFS = 'ls-remote-prefs';
+const LS_RECENT_REFS = 'ls-recent-refs';
+const LS_MEDIA = 'ls-media';
+
+const read = (k, d) => {
+  try {
+    const v = JSON.parse(localStorage.getItem(k));
+    return v == null ? d : v;
+  } catch {
+    return d;
+  }
+};
+const write = (k, v) => {
+  try {
+    localStorage.setItem(k, JSON.stringify(v));
+  } catch {
+    /* storage full or blocked */
+  }
+};
+
+const screenUrl = (room, extra = '') => new URL(`screen.html?room=${room}${extra}`, location.href).href;
+const remoteUrl = (room) => new URL(`?room=${room}`, location.href).href;
+const shortUrl = (u) => u.replace(/^https?:\/\//, '').replace(/\/$/, '');
+
+// ------------------------------------------------------------------ small parts
+
+let showToast = () => {};
+function Toast() {
+  const [msg, setMsg] = useState(null);
+  useEffect(() => {
+    let t;
+    showToast = (m) => {
+      setMsg(m);
+      clearTimeout(t);
+      t = setTimeout(() => setMsg(null), 3200);
+    };
+  }, []);
+  return msg ? html`<div class="toast" role="status">${msg}</div>` : null;
+}
+
+function Qr({ text, size = 160 }) {
+  const svg = useMemo(() => {
+    const q = qrcode(0, 'M');
+    q.addData(text);
+    q.make();
+    return q.createSvgTag({ cellSize: 4, margin: 2, scalable: true });
+  }, [text]);
+  return html`<div class="qr" style=${`width:${size}px;height:${size}px`} dangerouslySetInnerHTML=${{ __html: svg }}></div>`;
+}
+
+async function copy(text, what = 'Link') {
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast(`${what} copied`);
+  } catch {
+    prompt(`Copy this ${what.toLowerCase()}`, text);
+  }
+}
+
+// ------------------------------------------------------------------ pairing
+
+function Pair({ onPair }) {
+  const [code, setCode] = useState('');
+  return html`<div class="pair-page">
+    <div class="brand"><span class="cross">✝</span> Lyric Slides</div>
+    <p class="muted">Lyrics, scripture, pictures and video for the hall TV and the stream.</p>
+    <div class="card">
+      <h2>Start</h2>
+      <p class="muted small">Makes a new session. Then put it on the TV in one tap.</p>
+      <button class="primary big-btn" onClick=${() => onPair(newCode(), true)}>Start a session</button>
+    </div>
+    <div class="card">
+      <h2>Join a screen</h2>
+      <p class="muted small">If a TV already shows a six-letter code, enter it here.</p>
+      <form
+        class="row"
+        onSubmit=${(e) => {
+          e.preventDefault();
+          const c = normalizeCode(code);
+          if (c.length >= 4) onPair(c, false);
+        }}
+      >
+        <input
+          class="code-input"
+          value=${code}
+          onInput=${(e) => setCode(normalizeCode(e.target.value))}
+          placeholder="ABC123"
+          autocapitalize="characters"
+          autocomplete="off"
+          aria-label="Screen code"
+        />
+        <button disabled=${normalizeCode(code).length < 4}>Join</button>
+      </form>
+    </div>
+  </div>`;
+}
+
+// ------------------------------------------------------------------ outputs: TV and stream
+
+function Outputs({ room, link, info, onClose }) {
+  const [busy, setBusy] = useState('');
+  const tvUrl = screenUrl(room);
+  const streamUrl = screenUrl(room, '&out=stream');
+  const tvPage = new URL('tv.html', location.href).href;
+
+  const cast = async () => {
+    setBusy('cast');
+    try {
+      const conn = await castTo(tvUrl);
+      link.addPort(conn);
+      showToast('Casting to the TV');
+    } catch (e) {
+      if (!/abort|cancel|dismiss/i.test(e.message || '')) showToast(e.message || 'Could not cast');
+    } finally {
+      setBusy('');
+    }
+  };
+  const second = async (url, name, what) => {
+    setBusy(name);
+    const r = await openOnScreen(url, name);
+    setBusy('');
+    if (!r.window) showToast('The browser blocked the window. Allow pop-ups for this site.');
+    else if (r.placed) showToast(`${what} opened on the ${r.label}`);
+    else showToast(`${what} opened. Drag it to the TV and click it for fullscreen.`);
+  };
+
+  return html`<div class="sheet outputs" role="dialog" aria-label="Outputs">
+    <header class="sheet-head">
+      <button class="ghost" onClick=${onClose}>Done</button>
+      <b>Show on TV & stream</b>
+      <span class="muted small">Code <b class="code">${room}</b></span>
+    </header>
+    <div class="outputs-body">
+      <section class="card">
+        <h2>Hall TV <span class=${`pill ${info.peers.screen || info.ports ? 'ok' : ''}`}>${info.peers.screen || info.ports ? 'connected' : 'not yet'}</span></h2>
+        <div class="out-grid">
+          ${canCast() &&
+          html`<button class="out-btn" onClick=${cast} disabled=${busy === 'cast'}>
+            <span class="out-ic">📡</span><b>Cast to the TV</b>
+            <span class="muted small">Chromecast, Google TV or Android TV on this Wi-Fi. Chrome shows the list.</span>
+          </button>`}
+          <button class="out-btn" onClick=${() => second(tvUrl, 'lyric-screen', 'TV window')} disabled=${busy === 'lyric-screen'}>
+            <span class="out-ic">🖥</span><b>TV on this computer</b>
+            <span class="muted small">HDMI from this PC. Opens the picture fullscreen on the second display.</span>
+          </button>
+          <div class="out-btn static">
+            <span class="out-ic">📺</span><b>The TV's own browser</b>
+            <span class="muted small">On the TV open <b>${shortUrl(tvPage)}</b> and type <b>${room}</b>. Or scan:</span>
+            <${Qr} text=${tvUrl} size=${132} />
+            <button class="chip ghost" onClick=${() => copy(tvUrl, 'TV link')}>Copy TV link</button>
+          </div>
+        </div>
+        ${info.cloud === 'off' &&
+        html`<p class="note small">The relay is off in <code>src/lyrics/config.js</code>, so only windows of this browser (and Cast) can follow this remote.</p>`}
+      </section>
+
+      <section class="card">
+        <h2>Stream · ATEM / Blackmagic</h2>
+        <p class="muted small">A second picture made for the switcher: lower thirds on black, so the ATEM keys it over the camera.</p>
+        <div class="out-grid">
+          <button class="out-btn" onClick=${() => second(streamUrl, 'lyric-stream', 'Stream feed')} disabled=${busy === 'lyric-stream'}>
+            <span class="out-ic">🎬</span><b>Open the stream feed</b>
+            <span class="muted small">Fullscreen on the display that goes to the ATEM.</span>
+          </button>
+          <div class="out-btn static">
+            <span class="out-ic">🎥</span><b>OBS</b>
+            <span class="muted small">Browser Source, 1920×1080, with this link (transparent):</span>
+            <button class="chip ghost" onClick=${() => copy(`${streamUrl}&transparent=1`, 'OBS link')}>Copy OBS link</button>
+          </div>
+        </div>
+        <details>
+          <summary>Set up the ATEM Mini once</summary>
+          <ol class="small">
+            <li>HDMI from the PC output that shows the stream feed into a spare ATEM input (say input 4).</li>
+            <li>In ATEM Software Control open <b>Palettes → Upstream Key 1</b>, choose <b>Luma</b>, and set both <b>Fill Source</b> and <b>Key Source</b> to input 4.</li>
+            <li>Set <b>Clip</b> around 10% and <b>Gain</b> around 50% so the black disappears and the white text stays. Leave <b>Invert Key</b> off.</li>
+            <li>Press <b>KEY 1</b> on the ATEM (or ON AIR in the keyer palette). The text now sits over whatever camera is live, on the hall TV and the stream alike.</li>
+          </ol>
+        </details>
+      </section>
+
+      <section class="card">
+        <h2>Another remote</h2>
+        <p class="muted small">A second phone or laptop controls the same screens: open <b>${shortUrl(remoteUrl(room))}</b> or scan.</p>
+        <div class="row wrap">
+          <${Qr} text=${remoteUrl(room)} size=${120} />
+          <button class="chip ghost" onClick=${() => copy(remoteUrl(room), 'Remote link')}>Copy remote link</button>
+        </div>
+      </section>
+    </div>
+  </div>`;
+}
+
+// ------------------------------------------------------------------ live
+
+function Live({ state, act, info, goTab, onOutputs }) {
+  const item = state.item;
+  const list = useRef(null);
+  const swipe = useRef(null);
+  const connected = info.peers.screen > 0 || info.ports > 0;
+
+  useEffect(() => {
+    const el = list.current && list.current.querySelector('.on');
+    if (el) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [state.index, item && item.id]);
+
+  const onDown = (e) => (swipe.current = { x: e.clientX, y: e.clientY });
+  const onUp = (e) => {
+    const s = swipe.current;
+    swipe.current = null;
+    if (!s) return;
+    const dx = e.clientX - s.x;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(e.clientY - s.y)) act({ type: dx < 0 ? 'next' : 'prev' });
+  };
+
+  const modeBtn = (mode, label) =>
+    html`<button class=${`mode ${state.mode === mode ? 'on' : ''}`} onClick=${() => act({ type: 'mode', mode })}>${label}</button>`;
+
+  return html`<div class="live">
+    <div class="preview" onPointerDown=${onDown} onPointerUp=${onUp}>
+      <${Fit}><${Stage} state=${state} /><//>
+      <span class="preview-tag">${state.mode === 'show' ? 'LIVE' : state.mode.toUpperCase()}</span>
+    </div>
+    <div class="nav">
+      <button class="big" onClick=${() => act({ type: 'prev' })} aria-label="Previous slide">‹ Back</button>
+      <button class="big primary" onClick=${() => act({ type: 'next' })} aria-label="Next slide">Next ›</button>
+    </div>
+    <div class="modes">${modeBtn('clear', 'Clear')}${modeBtn('black', 'Black')}${modeBtn('logo', 'Logo')}</div>
+    ${!connected &&
+    html`<button class="note-btn" onClick=${onOutputs}>
+      <b>No TV connected yet.</b> <span>Tap to put the picture on the TV or the stream ›</span>
+    </button>`}
+    ${item
+      ? html`<div class="item-head">
+            <div>
+              <b>${item.title}</b>
+              <span class="muted small">
+                ${`${item.kind === 'song' ? PRESET_INFO[item.preset || 'worship'].name : item.kind === 'scripture' ? item.versions.join(' + ') : { both: 'TV + stream', tv: 'TV only', stream: 'Stream only' }[item.to || 'both']} · ${state.index + 1}/${item.slides.length}`}
+              </span>
+            </div>
+          </div>
+          <ol class="slides" ref=${list}>
+            ${item.slides.map(
+              (s, i) => html`<li
+                class=${`slide ${i === state.index ? 'on' : ''}`}
+                onClick=${() => act({ type: 'goto', index: i })}
+              >
+                <span class="slide-no">${i + 1}${s.label ? ` · ${s.label}` : ''}${s.ref ? ` · ${s.ref.split(' · ')[0].replace(/^\S+ /, '')}` : ''}</span>
+                ${item.kind === 'song' && s.lines.map((l) => html`<span class="slide-line">${l}</span>`)}
+                ${item.kind === 'scripture' &&
+                html`<span class="slide-line">${s.primary}</span>
+                  ${s.secondary && html`<span class="slide-line dim">${s.secondary}</span>`}`}
+                ${item.kind === 'media' && html`<span class="slide-line">${s.type === 'video' ? '▶ ' : '🖼 '}${s.title}</span>`}
+              </li>`,
+            )}
+          </ol>`
+      : html`<div class="empty">
+          <p>Nothing on the screen yet.</p>
+          <div class="row center wrap">
+            <button onClick=${() => goTab('songs')}>Pick a song</button>
+            <button onClick=${() => goTab('scripture')}>Scripture</button>
+            <button onClick=${() => goTab('media')}>Pictures & video</button>
+          </div>
+        </div>`}
+  </div>`;
+}
+
+// ------------------------------------------------------------------ songs
+
+function Songs({ songs, onShow, onEdit, onNew, liveId }) {
+  const [q, setQ] = useState('');
+  const list = useMemo(() => searchSongs(songs, q), [songs, q]);
+  return html`<div class="songs">
+    <div class="row">
+      <input class="grow" type="search" value=${q} onInput=${(e) => setQ(e.target.value)} placeholder="Search songs, words, tags" />
+      <button class="primary" onClick=${onNew}>+ New</button>
+    </div>
+    <ul class="song-list">
+      ${list.map(
+        (s) => html`<li class=${`song-row ${s.id === liveId ? 'on' : ''}`}>
+          <button class="song-main" onClick=${() => onShow(s)}>
+            <b>${s.title}</b>
+            <span class="muted small">
+              ${{ lg: 'Luganda', en: 'English', mixed: 'Luganda + English' }[s.language] || ''} ·
+              ${PRESET_INFO[s.preset] ? PRESET_INFO[s.preset].name : ''} · ${s.slides.length} slides
+            </span>
+            <span class="first-line">${s.slides[0] ? s.slides[0].lines.join(' / ') : ''}</span>
+          </button>
+          <button class="ghost edit" onClick=${() => onEdit(s)} aria-label=${`Edit ${s.title}`}>Edit</button>
+        </li>`,
+      )}
+    </ul>
+    ${!list.length && html`<p class="muted center">${q ? 'No song matches.' : 'No songs yet. Tap + New.'}</p>`}
+  </div>`;
+}
+
+// ------------------------------------------------------------------ scripture
+
+function Scripture({ prefs, setPrefs, onShow }) {
+  const [text, setText] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const [recent, setRecent] = useState(() => read(LS_RECENT_REFS, ['Zabbuli 23:1-6', 'Yokaana 3:16']));
+  const versions = allVersions();
+  const ref = parseRef(text);
+
+  const go = async (t = text) => {
+    const r = parseRef(t);
+    if (!r) {
+      setErr('Type a reference like “Zabbuli 23:1-4” or “Psalm 23:1-4”.');
+      return;
+    }
+    setBusy(true);
+    setErr('');
+    try {
+      // Measured in the real font, so a slide holds exactly what fits at the fixed size.
+      const loaded = await Promise.race([fontsReady(), new Promise((res) => setTimeout(() => res(null), 3000))]);
+      const fit = loaded !== null && document.fonts.check('600 92px Montserrat') ? scriptureFit() : undefined;
+      const item = await passageItem({ ref: r, primaryId: prefs.primary, secondaryId: prefs.secondary, flow: !prefs.perVerse, fit });
+      onShow(item);
+      const label = t.trim();
+      const next = [label, ...recent.filter((x) => x.toLowerCase() !== label.toLowerCase())].slice(0, 8);
+      setRecent(next);
+      write(LS_RECENT_REFS, next);
+    } catch (e) {
+      setErr(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const vSelect = (key, allowNone) => html`<select value=${prefs[key] || ''} onChange=${(e) => setPrefs({ ...prefs, [key]: e.target.value })}>
+    ${allowNone && html`<option value="">None</option>`}
+    ${versions.map((v) => html`<option value=${v.id}>${v.name}</option>`)}
+  </select>`;
+
+  return html`<div class="scripture">
+    <form
+      class="row"
+      onSubmit=${(e) => {
+        e.preventDefault();
+        go();
+      }}
+    >
+      <input
+        class="grow"
+        value=${text}
+        onInput=${(e) => {
+          setText(e.target.value);
+          setErr('');
+        }}
+        placeholder="Zabbuli 23:1-4 or Psalm 23:1-4"
+        autocomplete="off"
+        aria-label="Bible reference"
+      />
+      <button class="primary" disabled=${busy || !text.trim()}>${busy ? '…' : 'Show'}</button>
+    </form>
+    <p class="small ${ref ? 'ok' : 'muted'}">
+      ${ref
+        ? `${ref.book.lg} ${ref.chapter}${ref.from ? `:${ref.from}${ref.to !== ref.from ? `-${ref.to}` : ''}` : ' (whole chapter)'} · ${ref.book.en}`
+        : 'Luganda or English book names, short forms work too (Zab, Yk, Ps, Jn).'}
+    </p>
+    ${err && html`<p class="error small">${err}</p>`}
+    <div class="row wrap">
+      <label class="field grow"><span>On top (read aloud)</span>${vSelect('primary', false)}</label>
+      <label class="field grow"><span>Below, smaller</span>${vSelect('secondary', true)}</label>
+    </div>
+    <label class="toggle">
+      <input type="checkbox" checked=${!prefs.perVerse} onChange=${(e) => setPrefs({ ...prefs, perVerse: !e.target.checked })} />
+      <span>Continue the text across slides at the same size until it ends (off: one verse per slide)</span>
+    </label>
+    ${recent.length > 0 &&
+    html`<div class="recent">
+      <span class="muted small">Recent</span>
+      <div class="chips">
+        ${recent.map(
+          (r) => html`<button
+            class="chip"
+            onClick=${() => {
+              setText(r);
+              go(r);
+            }}
+          >
+            ${r}
+          </button>`,
+        )}
+      </div>
+    </div>`}
+  </div>`;
+}
+
+// ------------------------------------------------------------------ pictures and video
+
+function Media({ onShow, liveId, relayOn }) {
+  const [folder, setFolder] = useState(null);
+  const [mine, setMine] = useState(() => read(LS_MEDIA, []));
+  const [url, setUrl] = useState('');
+  const [to, setTo] = useState('both');
+  const [loop, setLoop] = useState(false);
+  const [picked, setPicked] = useState(new Set());
+  const [selecting, setSelecting] = useState(false);
+
+  useEffect(() => {
+    fetch('media/index.json')
+      .then((r) => (r.ok ? r.json() : []))
+      .then((list) => setFolder(list.map((f) => ({ id: `f:${f.file}`, title: f.title, type: f.type, src: `media/${f.file}` }))))
+      .catch(() => setFolder([]));
+  }, []);
+
+  const opts = () => ({ to, loop });
+  const show = (files) => onShow(mediaItem(files, opts()));
+
+  const addFiles = async (files) => {
+    const added = [];
+    for (const f of files) {
+      const id = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+      try {
+        await idbSet('files', `media:${id}`, f);
+        added.push({ id, title: f.name.replace(/\.[^.]+$/, ''), type: f.type.startsWith('video') ? 'video' : 'image', src: `idb:media:${id}` });
+      } catch {
+        showToast(`${f.name} is too big to keep`);
+      }
+    }
+    const next = [...mine, ...added];
+    setMine(next);
+    write(LS_MEDIA, next);
+    if (added.length) showToast(`Added ${added.length} file${added.length === 1 ? '' : 's'}`);
+  };
+  const remove = (m) => {
+    idbDel('files', `media:${m.id}`).catch(() => {});
+    const next = mine.filter((x) => x.id !== m.id);
+    setMine(next);
+    write(LS_MEDIA, next);
+  };
+  const addUrl = () => {
+    const u = url.trim();
+    if (!u) return;
+    const type = /\.(mp4|webm|m4v|mov|ogv)(\?|$)/i.test(u) ? 'video' : 'image';
+    const m = { id: `u:${u}`, title: u.split('/').pop().split('?')[0] || u, type, src: u };
+    const next = [...mine.filter((x) => x.id !== m.id), m];
+    setMine(next);
+    write(LS_MEDIA, next);
+    setUrl('');
+  };
+
+  const toggle = (m) => {
+    const n = new Set(picked);
+    if (n.has(m.id)) n.delete(m.id);
+    else n.add(m.id);
+    setPicked(n);
+  };
+  const all = [...(folder || []), ...mine];
+  const chosen = all.filter((m) => picked.has(m.id));
+
+  const card = (m, canRemove) => html`<li class=${`media-card ${liveId === mediaItem(m).id ? 'on' : ''} ${picked.has(m.id) ? 'picked' : ''}`}>
+    <button class="media-main" onClick=${() => (selecting ? toggle(m) : show(m))} aria-label=${`Show ${m.title}`}>
+      ${m.type === 'video'
+        ? html`<span class="media-thumb video">▶</span>`
+        : html`<img class="media-thumb" src=${m.src.startsWith('idb:') ? '' : m.src} alt="" loading="lazy" />`}
+      <span class="media-title">${m.title}</span>
+    </button>
+    ${canRemove && !selecting && html`<button class="ghost small" onClick=${() => remove(m)} aria-label=${`Remove ${m.title}`}>✕</button>`}
+  </li>`;
+
+  return html`<div class="media-tab">
+    <div class="row wrap between">
+      <div class="seg" role="group" aria-label="Where to show">
+        ${[
+          ['both', 'TV + stream'],
+          ['tv', 'TV only'],
+          ['stream', 'Stream only'],
+        ].map(([k, l]) => html`<button class=${to === k ? 'on' : ''} onClick=${() => setTo(k)}>${l}</button>`)}
+      </div>
+      <label class="toggle compact"><input type="checkbox" checked=${loop} onChange=${(e) => setLoop(e.target.checked)} /><span>Loop video</span></label>
+    </div>
+    <div class="row wrap">
+      <button class=${selecting ? 'primary' : ''} onClick=${() => { setSelecting(!selecting); setPicked(new Set()); }}>
+        ${selecting ? 'Cancel' : 'Select several'}
+      </button>
+      ${selecting && chosen.length > 0 && html`<button class="primary" onClick=${() => { show(chosen); setSelecting(false); setPicked(new Set()); }}>Show ${chosen.length} as a set</button>`}
+    </div>
+
+    <h2 class="sec-head">In the app's folder <span class="muted small">lyrics/media on GitHub</span></h2>
+    ${folder === null && html`<p class="muted small">Loading…</p>`}
+    ${folder && !folder.length && html`<p class="muted small">Empty. Add pictures or videos to the <code>lyrics/media</code> folder and run <code>npm run media</code>.</p>`}
+    <ul class="media-grid">${(folder || []).map((m) => card(m, false))}</ul>
+
+    <h2 class="sec-head">On this device</h2>
+    <div class="row wrap">
+      <label class="button">Add pictures or videos<input type="file" accept="image/*,video/*" multiple hidden onChange=${(e) => addFiles([...e.target.files])} /></label>
+      <form class="row grow" onSubmit=${(e) => { e.preventDefault(); addUrl(); }}>
+        <input class="grow" value=${url} onInput=${(e) => setUrl(e.target.value)} placeholder="or paste a picture / video link" />
+        <button disabled=${!url.trim()}>Add</button>
+      </form>
+    </div>
+    ${relayOn && mine.some((m) => m.src.startsWith('idb:')) &&
+    html`<p class="note small">Files added here only reach screens open in this same browser. For a TV on another device, put the file in the app's folder or use a link.</p>`}
+    <ul class="media-grid">${mine.map((m) => card(m, true))}</ul>
+  </div>`;
+}
+
+// ------------------------------------------------------------------ settings
+
+function Settings({ room, state, act, info, prefs, setPrefs, songs, setSongs, onUnpair, session, setSession, onOutputs }) {
+  const [email, setEmail] = useState('');
+  const [sent, setSent] = useState(false);
+  const [busy, setBusy] = useState('');
+  const [verName, setVerName] = useState('');
+  const [verLang, setVerLang] = useState('lg');
+  const [versions, setVersions] = useState(allVersions());
+  const [videoUrl, setVideoUrl] = useState(state.bgVideo || '');
+
+  const importBible = (file) => {
+    if (!file) return;
+    setBusy('bible');
+    file
+      .text()
+      .then((t) => importVersion({ name: verName.trim() || file.name.replace(/\.[^.]+$/, ''), lang: verLang, text: t }))
+      .then((r) => {
+        showToast(`Imported ${r.books} books, ${r.verses} verses`);
+        setVersions(allVersions());
+        setVerName('');
+      })
+      .catch((e) => showToast(e.message))
+      .finally(() => setBusy(''));
+  };
+
+  const download = () => {
+    const blob = new Blob([exportLibrary(songs)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `lyric-slides-songs-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  };
+
+  const upload = (file) =>
+    file &&
+    file
+      .text()
+      .then((t) => {
+        const r = importLibrary(songs, t);
+        setSongs(r.songs);
+        showToast(`Imported ${r.count} songs`);
+      })
+      .catch((e) => showToast(e.message));
+
+  const sync = async () => {
+    setBusy('sync');
+    try {
+      const remote = await pullSongs();
+      const { songs: merged, push } = mergeSongs(songs, remote);
+      await pushSongs(push);
+      setSongs(merged);
+      showToast(`Synced: ${visibleSongs(merged).length} songs`);
+    } catch (e) {
+      showToast(e.message);
+      setSession(loadSession());
+    } finally {
+      setBusy('');
+    }
+  };
+
+  return html`<div class="settings">
+    <section class="card">
+      <h2>Screens</h2>
+      <div class="row between wrap">
+        <div>
+          Code <b class="code">${room}</b>
+          <span class=${`pill ${info.peers.screen || info.ports ? 'ok' : ''}`}>
+            ${info.peers.screen || info.ports ? `${info.peers.screen + info.ports} connected` : 'no screen'}
+          </span>
+        </div>
+        <span class="row">
+          <button class="primary" onClick=${onOutputs}>Show on TV & stream</button>
+          <button class="ghost" onClick=${onUnpair}>Leave</button>
+        </span>
+      </div>
+      <p class="muted small">
+        Relay: ${info.cloud === 'off' ? 'off (this browser only)' : info.cloud === 'joined' ? 'connected' : 'reconnecting…'}
+        ${info.pending ? ' · last change waiting to send' : ''}
+      </p>
+    </section>
+
+    <section class="card">
+      <h2>Stream feed (ATEM)</h2>
+      <div class="field"><span>Layout</span>
+        <div class="seg">
+          ${Object.entries(STREAM_LAYOUTS).map(
+            ([k, l]) => html`<button class=${(state.streamLayout || 'lowerthird') === k ? 'on' : ''} onClick=${() => act({ type: 'set', patch: { streamLayout: k } })}>${l}</button>`,
+          )}
+        </div>
+      </div>
+      <div class="field"><span>Behind the text</span>
+        <div class="seg">
+          <button class=${(state.streamBg || 'key') === 'key' ? 'on' : ''} onClick=${() => act({ type: 'set', patch: { streamBg: 'key' } })}>Black, for keying</button>
+          <button class=${state.streamBg === 'tv' ? 'on' : ''} onClick=${() => act({ type: 'set', patch: { streamBg: 'tv' } })}>Same as the TV</button>
+        </div>
+      </div>
+      <p class="muted small">Lower thirds keep the camera in view and continue long verses at the same size. Full screen shows the TV layout.</p>
+    </section>
+
+    <section class="card">
+      <h2>TV background</h2>
+      <div class="chips">
+        ${BACKGROUNDS.map(
+          (b) => html`<button class=${`chip ${state.bg === b ? 'on' : ''}`} onClick=${() => act({ type: 'set', patch: { bg: b } })}>
+            ${BACKGROUND_INFO[b]}
+          </button>`,
+        )}
+      </div>
+      ${state.bg === 'key' &&
+      html`<p class="muted small">Pure black with a dark band at the bottom, for luma keying over the live camera in the ATEM.</p>`}
+      ${state.bg === 'video' &&
+      html`<form
+        class="row"
+        onSubmit=${(e) => {
+          e.preventDefault();
+          act({ type: 'set', patch: { bgVideo: videoUrl.trim() } });
+        }}
+      >
+        <input class="grow" value=${videoUrl} onInput=${(e) => setVideoUrl(e.target.value)} placeholder="https://…/loop.mp4 (or press V on the screen PC)" />
+        <button>Use</button>
+      </form>`}
+      <label class="toggle">
+        <input type="checkbox" checked=${state.calm} onChange=${(e) => act({ type: 'set', patch: { calm: e.target.checked } })} />
+        <span>Calm mode: crossfades only, still background</span>
+      </label>
+    </section>
+
+    <section class="card">
+      <h2>Bible versions</h2>
+      <ul class="plain">
+        ${versions.map(
+          (v) => html`<li class="row between">
+            <span><b>${v.name}</b> <span class="muted small">${v.lang === 'lg' ? 'Luganda' : 'English'}</span></span>
+            ${!BUILTIN_VERSIONS.some((b) => b.id === v.id) &&
+            html`<button
+              class="ghost small"
+              onClick=${() => {
+                removeVersion(v.id);
+                setVersions(allVersions());
+                if (prefs.primary === v.id || prefs.secondary === v.id)
+                  setPrefs({ ...prefs, primary: prefs.primary === v.id ? 'lug68' : prefs.primary, secondary: prefs.secondary === v.id ? 'kjv' : prefs.secondary });
+              }}
+            >
+              Remove
+            </button>`}
+          </li>`,
+        )}
+      </ul>
+      <details>
+        <summary>Import another version</summary>
+        <p class="muted small">
+          A text file with lines like <code>PSA 23:1 text</code> or <code>Zabbuli 23:1 text</code>, tab separated columns
+          (book, chapter, verse, text), USFM, JSON or Bible XML. Stays on this device.
+        </p>
+        <div class="row wrap">
+          <input class="grow" value=${verName} onInput=${(e) => setVerName(e.target.value)} placeholder="Name, e.g. NIV" />
+          <select value=${verLang} onChange=${(e) => setVerLang(e.target.value)}>
+            <option value="lg">Luganda</option><option value="en">English</option>
+          </select>
+          <label class="button">${busy === 'bible' ? 'Importing…' : 'Choose file'}
+            <input type="file" accept=".txt,.tsv,.usfm,.sfm,.json,.xml,text/*" hidden onChange=${(e) => importBible(e.target.files[0])} />
+          </label>
+        </div>
+      </details>
+    </section>
+
+    <section class="card">
+      <h2>Song library</h2>
+      <p class="muted small">${visibleSongs(songs).length} songs on this device.</p>
+      <div class="row wrap">
+        <button onClick=${download}>Export songs</button>
+        <label class="button">Import songs<input type="file" accept=".json,application/json" hidden onChange=${(e) => upload(e.target.files[0])} /></label>
+      </div>
+      ${cloudConfigured() &&
+      (session
+        ? html`<div class="row between">
+            <span class="small">Signed in as <b>${session.email}</b></span>
+            <span class="row">
+              <button onClick=${sync} disabled=${busy === 'sync'}>${busy === 'sync' ? 'Syncing…' : 'Sync now'}</button>
+              <button class="ghost" onClick=${() => { signOut(); setSession(null); }}>Sign out</button>
+            </span>
+          </div>`
+        : html`<form
+            class="row"
+            onSubmit=${(e) => {
+              e.preventDefault();
+              sendMagicLink(email.trim())
+                .then(() => setSent(true))
+                .catch((er) => showToast(er.message));
+            }}
+          >
+            <input class="grow" type="email" value=${email} onInput=${(e) => setEmail(e.target.value)} placeholder="Media team email" required />
+            <button>${sent ? 'Sent ✓' : 'Email me a sign-in link'}</button>
+          </form>`)}
+    </section>
+
+    <section class="card small muted">
+      <h2>About</h2>
+      ${allVersions().map((v) => html`<p><b>${v.name}:</b> ${v.notice}</p>`)}
+      <p>Montserrat font: SIL Open Font License. QR codes: qrcode-generator (MIT).</p>
+    </section>
+  </div>`;
+}
+
+// ------------------------------------------------------------------ app
+
+function App() {
+  const params = new URLSearchParams(location.search);
+  const [room, setRoom] = useState(() => normalizeCode(params.get('room')) || read(LS_ROOM, ''));
+  const [state, setState] = useState(() => (room ? read(`ls-remote-state:${room}`, emptyState()) : emptyState()));
+  const [info, setInfo] = useState({ peers: { screen: 0, remote: 0 }, cloud: 'off', pending: false, ports: 0 });
+  const [tab, setTab] = useState('live');
+  const [songs, setSongsRaw] = useState(() => loadSongs());
+  const [editing, setEditing] = useState(null);
+  const [outputs, setOutputs] = useState(false);
+  const [prefs, setPrefsRaw] = useState(() => ({ primary: 'lug68', secondary: 'kjv', perVerse: false, ...read(LS_PREFS, {}) }));
+  const [session, setSession] = useState(() => loadSession());
+  const link = useRef(null);
+  const stateRef = useRef(state);
+  stateRef.current = state;
+
+  const setSongs = (list) => {
+    setSongsRaw(list);
+    saveSongs(list);
+  };
+  const setPrefs = (p) => {
+    setPrefsRaw(p);
+    write(LS_PREFS, p);
+  };
+
+  useEffect(() => {
+    if (!room) return undefined;
+    write(LS_ROOM, room);
+    if (params.get('room')) history.replaceState(null, '', location.pathname);
+    const l = new Link({
+      room,
+      role: 'remote',
+      state: stateRef.current,
+      relay: relayConfig(),
+      onState: (s) => {
+        setState(s);
+        write(`ls-remote-state:${room}`, s);
+      },
+      onInfo: setInfo,
+    });
+    link.current = l;
+    return () => l.close();
+  }, [room]);
+
+  // Magic-link sign-in lands here.
+  useEffect(() => {
+    if (!cloudConfigured()) return;
+    const arriving = location.hash.includes('access_token');
+    captureSession()
+      .then((s) => {
+        setSession(s);
+        if (arriving && s) showToast(`Signed in as ${s.email}`);
+      })
+      .catch((e) => showToast(e.message));
+  }, []);
+
+  const act = (cmd) => {
+    if (!link.current) return;
+    const next = reduce(stateRef.current, cmd, link.current.id);
+    stateRef.current = next;
+    setState(next);
+    write(`ls-remote-state:${room}`, next);
+    link.current.publish(next);
+  };
+
+  // Laptop keys (not while typing).
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.ctrlKey || e.metaKey || e.altKey || editing || outputs) return;
+      if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+      const k = e.key;
+      if (k === ' ' || k === 'ArrowRight' || k === 'PageDown') act({ type: 'next' });
+      else if (k === 'ArrowLeft' || k === 'PageUp') act({ type: 'prev' });
+      else if (k === 'b' || k === 'B') act({ type: 'mode', mode: 'black' });
+      else if (k === 'c' || k === 'C') act({ type: 'mode', mode: 'clear' });
+      else if (k === 'l' || k === 'L') act({ type: 'mode', mode: 'logo' });
+      else return;
+      e.preventDefault();
+    };
+    addEventListener('keydown', onKey);
+    return () => removeEventListener('keydown', onKey);
+  }, [editing, outputs, room]);
+
+  if (!room)
+    return html`<${Pair}
+        onPair=${(code, fresh) => {
+          setRoom(code);
+          if (fresh) setOutputs(true);
+        }}
+      /><${Toast} />`;
+
+  const showItem = (item, index = 0) => {
+    act({ type: 'item', item, index });
+    setTab('live');
+  };
+  const showSong = (song, index = 0) => showItem(songItem(song), index);
+
+  const saveSong = (song) => {
+    setSongs(upsertSong(songs, song));
+    setEditing(null);
+    showToast('Saved');
+    // The song is up on the screen: send the new words.
+    const live = stateRef.current.item;
+    if (live && live.kind === 'song' && live.id === song.id) act({ type: 'item', item: songItem(song), index: stateRef.current.index });
+    if (session) pushSongs([song]).catch(() => showToast('Saved here; cloud sync failed'));
+  };
+
+  const deleteSong = (song) => {
+    const next = removeSong(songs, song.id);
+    setSongs(next);
+    setEditing(null);
+    showToast(`Deleted “${song.title}”`);
+    if (session) pushSongs(next.filter((s) => s.id === song.id)).catch(() => {});
+  };
+
+  const connected = info.peers.screen > 0 || info.ports > 0;
+  const tabs = [
+    ['live', 'Live'],
+    ['songs', 'Songs'],
+    ['scripture', 'Scripture'],
+    ['media', 'Media'],
+    ['settings', 'Settings'],
+  ];
+
+  return html`<div class="app">
+    <header class="top">
+      <div class="brand"><span class="cross">✝</span> Lyric Slides</div>
+      <button class=${`pill ${connected ? 'ok' : 'warn'}`} onClick=${() => setOutputs(true)}>
+        ${connected ? 'TV ✓' : 'Show on TV'} · ${room}${info.pending ? ' · waiting' : ''}
+      </button>
+    </header>
+    <main>
+      ${tab === 'live' && html`<${Live} state=${state} act=${act} info=${info} goTab=${setTab} onOutputs=${() => setOutputs(true)} />`}
+      ${tab === 'songs' &&
+      html`<${Songs}
+        songs=${songs}
+        liveId=${state.item && state.item.id}
+        onShow=${(s) => showSong(s)}
+        onEdit=${(s) => setEditing(s)}
+        onNew=${() => setEditing('new')}
+      />`}
+      ${tab === 'scripture' && html`<${Scripture} prefs=${prefs} setPrefs=${setPrefs} onShow=${showItem} />`}
+      ${tab === 'media' && html`<${Media} onShow=${showItem} liveId=${state.item && state.item.id} relayOn=${info.cloud !== 'off'} />`}
+      ${tab === 'settings' &&
+      html`<${Settings}
+        room=${room}
+        state=${state}
+        act=${act}
+        info=${info}
+        prefs=${prefs}
+        setPrefs=${setPrefs}
+        songs=${songs}
+        setSongs=${setSongs}
+        session=${session}
+        setSession=${setSession}
+        onOutputs=${() => setOutputs(true)}
+        onUnpair=${() => {
+          write(LS_ROOM, '');
+          setRoom('');
+        }}
+      />`}
+    </main>
+    <nav class="tabs">
+      ${tabs.map(([k, label]) => html`<button class=${tab === k ? 'on' : ''} onClick=${() => setTab(k)}>${label}</button>`)}
+    </nav>
+    ${outputs && link.current && html`<${Outputs} room=${room} link=${link.current} info=${info} onClose=${() => setOutputs(false)} />`}
+    ${editing &&
+    html`<${SongEditor}
+      song=${editing === 'new' ? null : editing}
+      songs=${songs}
+      onSave=${saveSong}
+      onDelete=${deleteSong}
+      onClose=${() => setEditing(null)}
+      onShow=${(song, index) => {
+        saveSong(song);
+        showSong(song, index);
+      }}
+    />`}
+    <${Toast} />
+  </div>`;
+}
+
+render(html`<${App} />`, document.getElementById('app'));
