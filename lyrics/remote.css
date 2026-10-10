@@ -800,7 +800,7 @@ main {
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
 }
 .slide-card.warn {
-  border-color: rgba(240, 176, 74, 0.6);
+  border-color: var(--warn-line, rgba(240, 176, 74, 0.6));
 }
 .slide-warn {
   color: var(--warn);
