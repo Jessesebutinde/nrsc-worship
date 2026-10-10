@@ -29,39 +29,71 @@ export function receiveCast(onConnection) {
 
 export const canPlaceWindows = () => typeof window !== 'undefined' && 'getScreenDetails' in window;
 
+/** 'granted' | 'prompt' | 'denied' | 'unsupported' for the window-management permission. */
+export async function displayPermission() {
+  if (!canPlaceWindows()) return 'unsupported';
+  try {
+    const p = await navigator.permissions.query({ name: 'window-management' });
+    return p.state;
+  } catch {
+    return 'prompt';
+  }
+}
+
+function describe(s, i) {
+  return {
+    id: `${s.label || 'display'}@${s.availLeft},${s.availTop}`,
+    label: s.label || `Display ${i + 1}`,
+    left: s.availLeft,
+    top: s.availTop,
+    width: s.availWidth,
+    height: s.availHeight,
+    internal: Boolean(s.isInternal),
+  };
+}
+
 /**
- * The displays other than the laptop's own screen: [{ label, left, top, width, height }].
- * Asks for the window-management permission the first time. [] when not available.
+ * The displays other than the one this window is on: [{ id, label, left, top, width, height }].
+ * Asks for the window-management permission when it has not been granted. [] when not available.
+ * `onChange` is called again whenever displays are plugged in or removed.
  */
-export async function extraDisplays() {
+export async function extraDisplays(onChange) {
   if (!canPlaceWindows()) return [];
   try {
     const d = await window.getScreenDetails();
-    const list = d.screens.length > 1 ? d.screens.filter((s) => s !== d.currentScreen && !s.isInternal) : [];
-    const others = list.length ? list : d.screens.filter((s) => s !== d.currentScreen);
-    return others.map((s, i) => ({
-      label: s.label || `Display ${i + 2}`,
-      left: s.availLeft,
-      top: s.availTop,
-      width: s.availWidth,
-      height: s.availHeight,
-    }));
+    const list = () => d.screens.filter((s) => s !== d.currentScreen).map(describe);
+    if (onChange) d.onscreenschange = () => onChange(list());
+    return list();
   } catch {
     return [];
   }
 }
 
-/** Opens `url` filling `display` (from extraDisplays), or as a window to drag when there is none. */
+/**
+ * Opens `url` filling `display`. Must be called straight from a click (no await before it), or the
+ * browser opens a plain window instead of a fullscreen one. Returns the window, or null if blocked.
+ */
 export function openOn(url, name, display) {
   if (display) {
-    const w = window.open(
+    return window.open(
       url,
       name,
       `popup,fullscreen,left=${display.left},top=${display.top},width=${display.width},height=${display.height}`,
     );
-    return { window: w, placed: true, label: display.label };
   }
-  return { window: window.open(url, name, 'popup,width=1280,height=720'), placed: false };
+  return window.open(url, name, 'popup,width=1280,height=720');
+}
+
+/** Which of `displays` a window we opened is on (by its position), or null if it is closed. */
+export function displayOf(win, displays) {
+  try {
+    if (!win || win.closed) return null;
+    const x = win.screenX + win.outerWidth / 2;
+    const y = win.screenY + win.outerHeight / 2;
+    return displays.find((d) => x >= d.left && x < d.left + d.width && y >= d.top && y < d.top + d.height) || null;
+  } catch {
+    return null;
+  }
 }
 
 /** "windows" | "mac" | "chromeos" | "other": for the wireless-display steps. */

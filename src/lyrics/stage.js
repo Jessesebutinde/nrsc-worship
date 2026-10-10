@@ -5,9 +5,16 @@ import { html, useState, useEffect, useRef, useLayoutEffect } from '../ui/h.js';
 import { CHURCH_NAME } from './config.js';
 import { shownOn } from './state.js';
 import { idbGet } from './idb.js';
+import { splitAtPauses } from './split.js';
+import { lineWidth } from './measure.js';
 
 const W = 1920;
 const H = 1080;
+// Inside the 5% safe area.
+const SAFE_W = W - 2 * 96;
+const SAFE_H = H - 2 * 54;
+// The illustration panel's width on the TV, by size.
+const ILLUS_W = { small: 560, half: 760, large: 960 };
 
 // How long a frame takes to fade out, by what it shows.
 const OUT_MS = { worship: 400, praise: 200, classic: 250, scripture: 250, title: 300, logo: 400, media: 600, none: 400 };
@@ -56,6 +63,68 @@ export function Fit({ children, class: cls = '', fill = false }) {
   </div>`;
 }
 
+// Fonts arrive after the first paint; text measured before that is measured in the wrong font.
+let fontsDone = typeof document === 'undefined' || !document.fonts ? true : document.fonts.status === 'loaded';
+function useFontsReady() {
+  const [ready, setReady] = useState(fontsDone);
+  useEffect(() => {
+    if (ready || !document.fonts) return;
+    document.fonts.ready.then(() => {
+      fontsDone = true;
+      setReady(true);
+    });
+  }, []);
+  return ready;
+}
+
+// The widest line in `el` compared with `el` itself (both as drawn, so the stage's scale cancels out).
+function widestLine(el) {
+  const box = el.getBoundingClientRect().width;
+  let widest = 0;
+  for (const ln of el.children) {
+    const r = document.createRange();
+    r.selectNodeContents(ln);
+    widest = Math.max(widest, r.getBoundingClientRect().width);
+  }
+  return box ? widest / box : 0;
+}
+
+/**
+ * Sizes the text in `ref` (through its --fs scale) so it just fills `availH` (and the width, when
+ * `lines` do not wrap): as large as `max`, and no smaller than `min` even when a line is too wide.
+ * Off: the standard size.
+ */
+function useFill(ref, { on, max, min = 1, availH, lines = false }, deps) {
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const set = (s) => el.style.setProperty('--fs', String(s));
+    el.classList.remove('squeeze');
+    if (!on) {
+      set(1);
+      return;
+    }
+    const fits = (s) => {
+      set(s);
+      return el.scrollHeight <= availH && (!lines || widestLine(el) <= 1);
+    };
+    if (!fits(min)) {
+      // Even the smallest size is too wide: let the lines wrap rather than cut them off.
+      set(min);
+      el.classList.add('squeeze');
+      return;
+    }
+    let lo = min;
+    let hi = max;
+    for (let i = 0; i < 8; i++) {
+      const mid = (lo + hi) / 2;
+      if (fits(mid)) lo = mid;
+      else hi = mid;
+    }
+    set(Math.floor(lo * 100) / 100);
+  }, deps);
+}
+
 // ------------------------------------------------------------------ backgrounds
 
 function Background({ bg, video }) {
@@ -87,14 +156,55 @@ function BgLayer({ kind, video }) {
 
 const Lines = ({ lines }) => lines.map((l, i) => html`<span class="ln" style=${`--i:${i}`}>${l}</span>`);
 
-function SongFrame({ item, index, lt }) {
+const BASE = { classic: 140, worship: 130, praise: 125 };
+const LINE_H = { classic: 1.18, worship: 1.15, praise: 1.08 };
+const MAX_LYRIC = 300;
+const LYRIC_H = SAFE_H * 0.88;
+
+/**
+ * Fill mode: the slide's words re-broken into 3 or 4 shorter lines when that makes the letters
+ * clearly bigger than the lines as written (a long line is held back by the screen's width).
+ */
+function bestLines(lines, preset, caps, textW) {
+  const base = BASE[preset];
+  const size = (ls) => {
+    const widest = Math.max(...ls.map((l) => lineWidth(caps ? l.toUpperCase() : l, preset)));
+    return Math.min(MAX_LYRIC / base, textW / widest, LYRIC_H / (ls.length * base * LINE_H[preset]));
+  };
+  let best = lines;
+  let bestSize = size(lines);
+  const words = lines.join(' ');
+  for (let k = lines.length + 1; k <= 4; k++) {
+    const c = splitAtPauses(words, k);
+    if (c.length !== k) break;
+    const sz = size(c);
+    if (sz > bestSize * 1.1) {
+      best = c;
+      bestSize = sz;
+    }
+  }
+  return best;
+}
+
+function SongFrame({ item, index, lt, fill, caps, textW, fontsReady }) {
   const slide = item.slides[index];
+  const box = useRef(null);
+  const preset = item.preset || 'worship';
+  const refill = fill && !lt;
+  const lines = slide ? (refill && fontsReady ? bestLines(slide.lines, preset, caps || preset === 'praise', textW) : slide.lines) : [];
+  useFill(box, { on: refill, max: MAX_LYRIC / BASE[preset], min: 0.7, availH: LYRIC_H, lines: true }, [
+    lines.join('\n'),
+    fill,
+    caps,
+    textW,
+    preset,
+    fontsReady,
+  ]);
   if (!slide) return null;
   if (lt)
     return html`<div class="lt-band"><div class="lt-lyric"><${Lines} lines=${slide.lines} /></div></div>`;
-  const preset = item.preset || 'worship';
   return html`<div class="safe">
-    <div class="lyric"><${Lines} lines=${slide.lines} /></div>
+    <div class="lyric" ref=${box}><${Lines} lines=${lines} /></div>
     ${preset === 'classic' && html`<div class="songtag">${item.title}</div>`}
     ${preset === 'worship' && index === 0 && html`<div class="songtitle">${item.title}</div>`}
   </div>`;
@@ -111,8 +221,10 @@ function Verses({ slide, field }) {
   );
 }
 
-function ScriptureFrame({ item, index, lt }) {
+function ScriptureFrame({ item, index, lt, fill, textW, fontsReady }) {
   const s = item.slides[index];
+  const box = useRef(null);
+  useFill(box, { on: fill && !lt, max: 1.8, min: 0.8, availH: SAFE_H * 0.92 }, [s && s.ref, s && s.primary, s && s.secondary, fill, textW, fontsReady]);
   if (!s) return null;
   const more = index < item.slides.length - 1;
   if (lt)
@@ -121,7 +233,7 @@ function ScriptureFrame({ item, index, lt }) {
       ${s.primary && html`<div class="ln pri" style="--i:1"><${Verses} slide=${s} field="primary" /></div>`}
       ${s.secondary && html`<div class="ln sec" style="--i:2"><${Verses} slide=${s} field="secondary" /></div>`}
     </div>`;
-  return html`<div class="scrip">
+  return html`<div class="scrip" ref=${box}>
     <div class="bar"></div>
     <div class="ln ref" style="--i:0">${s.ref}</div>
     ${s.primary && html`<div class="ln pri" style="--i:1"><${Verses} slide=${s} field="primary" /></div>`}
@@ -157,29 +269,35 @@ function useMediaUrl(src) {
   return url;
 }
 
-function MediaFrame({ item, index, live }) {
-  const slide = item.slides[index];
-  const url = useMediaUrl(slide ? slide.src : '');
+/** One picture or video, filling its box. */
+function MediaView({ src, type, title, live, loop, sound, blur = true }) {
+  const url = useMediaUrl(src || '');
   const vid = useRef(null);
   useEffect(() => {
     const v = vid.current;
     if (!v || !live) return;
-    v.muted = !item.sound;
+    v.muted = !sound;
     v.play().catch(() => {
       // Autoplay with sound needs a click on the page first: play silently rather than not at all.
       v.muted = true;
       v.play().catch(() => {});
     });
   }, [url, live]);
-  if (!slide || !url) return null;
-  if (slide.type === 'video')
+  if (!url) return null;
+  if (type === 'video')
     return html`<div class="mf">
-      <video ref=${vid} src=${url} class="mf-main" autoplay=${live} loop=${item.loop} playsinline muted=${!live || !item.sound}></video>
+      <video ref=${vid} src=${url} class="mf-main" autoplay=${live} loop=${loop} playsinline muted=${!live || !sound}></video>
     </div>`;
   return html`<div class="mf">
-    <img src=${url} class="mf-blur" alt="" aria-hidden="true" />
-    <img src=${url} class="mf-main" alt=${slide.title || ''} />
+    ${blur && html`<img src=${url} class="mf-blur" alt="" aria-hidden="true" />`}
+    <img src=${url} class="mf-main" alt=${title || ''} />
   </div>`;
+}
+
+function MediaFrame({ item, index, live }) {
+  const slide = item.slides[index];
+  if (!slide) return null;
+  return html`<${MediaView} ...${slide} live=${live} loop=${item.loop} sound=${item.sound} />`;
 }
 
 const TitleFrame = ({ item }) => html`<div class="titlecard">
@@ -209,7 +327,7 @@ export function frameOf(state, { titleFor = null, out = 'preview' } = {}) {
 /**
  * @param {object} p
  * @param {object} p.state           screen state
- * @param {'tv'|'stream'|'preview'} [p.out]  which output this is (media can be sent to one of them)
+ * @param {'tv'|'stream'|'preview'} [p.out]  which output this is (media and illustrations are for the TV)
  * @param {'full'|'lowerthird'} [p.layout]
  * @param {'auto'|'key'|'none'} [p.background]  auto = the TV background from the state; key = black for the ATEM; none = transparent (OBS)
  * @param {boolean} [p.titleCards]   show the 2 s song title card (the real TV only)
@@ -219,6 +337,7 @@ export function frameOf(state, { titleFor = null, out = 'preview' } = {}) {
 export function Stage({ state, out = 'preview', layout = 'full', background = 'auto', titleCards = false, video = '', safe = false }) {
   const st = state || {};
   const lowerThird = layout === 'lowerthird';
+  const fontsReady = useFontsReady();
   const [titleFor, setTitleFor] = useState(null);
   const seen = useRef(st.item && st.item.id);
   const itemId = st.item && st.item.kind === 'song' ? st.item.id : null;
@@ -237,27 +356,42 @@ export function Stage({ state, out = 'preview', layout = 'full', background = 'a
   const outMs = OUT_MS[f.kind === 'song' ? f.preset : f.kind] || 300;
   const frames = useSwap(key, { f, item: st.item, index: st.index || 0 }, outMs, key === 'none');
 
+  // The illustration sits beside the words on the TV (never on the stream feed).
+  const illus = out !== 'stream' && !lowerThird && st.illustration && (f.kind === 'song' || f.kind === 'scripture') ? st.illustration : null;
+  const illusW = illus ? ILLUS_W[illus.size] || ILLUS_W.half : 0;
+  const textW = SAFE_W - (illus ? illusW + 48 : 0);
+  const fill = st.fill !== false;
+
   const bg = background === 'none' ? 'none' : background === 'key' ? (lowerThird ? 'black' : 'key') : st.bg;
   const cls = [
     'stage',
     lowerThird ? 'is-lt' : '',
     background === 'none' ? 'is-transparent' : '',
     st.calm ? 'calm' : '',
+    st.caps !== false ? 'caps' : '',
+    fill ? 'fill' : '',
+    illus ? 'with-illus' : '',
     safe ? 'show-safe' : '',
   ].join(' ');
-  return html`<div class=${cls}>
+  return html`<div class=${cls} style=${`--illus-w:${illusW}px`}>
     <${Background} bg=${bg} video=${st.bgVideo || video} />
     ${frames.map(({ key: k, data, leaving, outMs: o }) => {
       const kind = data.f.kind;
       const preset = kind === 'song' ? data.f.preset : kind;
       return html`<div key=${k} class=${`frame k-${kind} p-${preset} ${leaving ? 'out' : 'in'}`} style=${`--out:${o}ms`}>
-        ${kind === 'song' && html`<${SongFrame} item=${data.item} index=${data.index} lt=${lowerThird} />`}
-        ${kind === 'scripture' && html`<${ScriptureFrame} item=${data.item} index=${data.index} lt=${lowerThird} />`}
+        ${kind === 'song' &&
+        html`<${SongFrame} item=${data.item} index=${data.index} lt=${lowerThird} fill=${fill} caps=${st.caps !== false} textW=${textW} fontsReady=${fontsReady} />`}
+        ${kind === 'scripture' &&
+        html`<${ScriptureFrame} item=${data.item} index=${data.index} lt=${lowerThird} fill=${fill} textW=${textW} fontsReady=${fontsReady} />`}
         ${kind === 'media' && html`<${MediaFrame} item=${data.item} index=${data.index} live=${out !== 'preview' && !leaving} />`}
         ${kind === 'title' && html`<${TitleFrame} item=${data.item} />`}
         ${kind === 'logo' && html`<${LogoFrame} />`}
       </div>`;
     })}
+    ${illus &&
+    html`<div class="illus" key=${illus.src}>
+      <${MediaView} ...${illus} live=${out !== 'preview'} loop=${true} sound=${false} blur=${false} />
+    </div>`}
     ${background !== 'none' && html`<div class=${`blackout ${st.mode === 'black' ? 'on' : ''}`}></div>`}
     <div class="safe-guide"></div>
   </div>`;
