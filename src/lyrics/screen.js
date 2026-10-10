@@ -6,7 +6,8 @@
 //   ?badge=1          show which output this is for a few seconds (the laptop sets it when it opens windows)
 //   ?room=NAME        another channel (default: the church's, from config.js)
 //
-// Keys: Space / → next, ← previous, B black, C clear, L logo, F fullscreen, V pick a background video.
+// Keys: Space / → next, ← previous, B black, C clear, L logo, V pick a background video; J / F / U follow
+// the singer (next word, previous word, next line; the letters chosen on this laptop). Double-click: fullscreen.
 // Opened from the laptop the window arrives fullscreen; otherwise the first click or key press makes it so.
 
 import { html, render, useState, useEffect, useRef } from '../ui/h.js';
@@ -14,6 +15,7 @@ import { Fit, Stage } from './stage.js';
 import { Link, normalizeCode } from './link.js';
 import { ROOM } from './config.js';
 import { emptyState, reduce } from './state.js';
+import { followCommand } from './keys.js';
 import { relayConfig } from './cloud.js';
 import { receiveCast } from './cast.js';
 import { idbGet, idbSet } from './idb.js';
@@ -135,8 +137,8 @@ function Screen() {
       else if (k === 'c' || k === 'C') act({ type: 'mode', mode: 'clear' });
       else if (k === 'l' || k === 'L') act({ type: 'mode', mode: 'logo' });
       else if (k === 'Enter') act({ type: 'mode', mode: 'show' });
-      else if (k === 'f' || k === 'F') toggleFullscreen();
       else if (k === 'v' || k === 'V') pickVideo();
+      else if (followCommand(k)) act(followCommand(k));
       else return;
       e.preventDefault();
     };
@@ -202,7 +204,7 @@ function Screen() {
   const layout = out === 'stream' ? state.streamLayout || 'lowerthird' : 'full';
   const background = transparent ? 'none' : out === 'stream' && state.streamBg !== 'tv' ? 'key' : 'auto';
 
-  return html`<div class=${`screen ${idle ? 'idle' : ''} ${transparent ? 'clear-bg' : ''}`}>
+  return html`<div class=${`screen ${idle ? 'idle' : ''} ${transparent ? 'clear-bg' : ''}`} onDblClick=${toggleFullscreen}>
     <${Fit} fill=${true}>
       <${Stage} state=${state} out=${out} layout=${layout} background=${background} titleCards=${isTv} video=${video} />
     <//>
@@ -222,7 +224,7 @@ function Screen() {
     ${hint &&
     !full &&
     !transparent &&
-    html`<div class="hint">Click once for fullscreen · Space / → next · ← back · B black · C clear · L logo</div>`}
+    html`<div class="hint">Click once for fullscreen · Space / → next · ← back · B black · C clear · L logo · J / F word by word</div>`}
     ${!transparent && info.cloud === 'closed' && html`<div class="offline">Reconnecting…</div>`}
   </div>`;
 }

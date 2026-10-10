@@ -188,6 +188,20 @@ and in the stream's lower third at once. Tapping it again with the same pen take
 and **Clear all** remove them. Marks stay while you step back and forth through the passage and go when a new
 song or passage is shown.
 
+## Follow the singer: J and F
+
+While a song is up, tap **J** as each word is sung: that word swells a little and glows in the look's accent colour
+on the TV, the words already sung stay bright and the ones still to come wait dimmer. **F** steps back a word. After
+the last word of a slide, **J** moves on to the next slide and lights its first word, so you can keep tapping through
+the whole song. **U** lights the next whole line at once, which is easier on fast songs. The same keys work on the TV
+page (there, double-click toggles fullscreen).
+
+Under the live slide, **Follow the singer** shows where the cursor is (word 3 of 6) with the same moves as buttons
+and **Off**; in the Emphasis strip, the **▶ Follow** pen jumps the cursor to the word you tap. Changing slide any
+other way (Space, the arrows, a click) starts the new slide with no word lit. In Settings → Words you can pick other
+letters (kept on this laptop; Space, B, C, L and V are taken), turn off the dimming, and keep the stream's lower third
+plain. Scripture is not followed word by word; it has verse by verse.
+
 ## Light on the laptop
 
 The console's three previews are still pictures: no environment motion, no blur. Motion runs only on the TV and

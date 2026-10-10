@@ -12,6 +12,7 @@ import { parseRef, bookByCode, BOOKS, formatRef } from './books.js';
 import { VerseIndex, fillIndex, highlight } from './search.js';
 import { spokenRef, refText } from './spoken.js';
 import { Listener, canListen, SPEECH_LANGS } from './voice.js';
+import { readFollowKeys, saveFollowKeys, followCommand, validKey, FOLLOW_KEYS, FOLLOW_KEY_NAMES } from './keys.js';
 import { allVersions, importVersion, removeVersion, passageItem, BUILTIN_VERSIONS, loadBook, versionById } from './bible.js';
 import { relayConfig, cloudConfigured, loadSession, captureSession, sendMagicLink, signOut, pullSongs, pushSongs } from './cloud.js';
 import { canCast, castTo, displayPermission, extraDisplays, openOn, displayOf, platform } from './cast.js';
@@ -505,8 +506,45 @@ function OutputsPanel({ room, link, info, state, act, onMore }) {
 
 // ------------------------------------------------------------------ emphasis: tap a word
 
+
+/** Re-renders when the follow letters are changed in Settings. */
+function useFollowKeys() {
+  const [keys, setKeys] = useState(readFollowKeys);
+  useEffect(() => {
+    const f = () => setKeys(readFollowKeys());
+    addEventListener('ls-keys', f);
+    return () => removeEventListener('ls-keys', f);
+  }, []);
+  return keys;
+}
+
+/** "J / F", the follow letters chosen on this laptop. */
+function FollowKeyHint() {
+  const k = useFollowKeys();
+  return `${k.next.toUpperCase()} / ${k.prev.toUpperCase()}`;
+}
+
+/** Following the singer word by word: the keys, as buttons too, and where the cursor is. */
+function FollowBar({ state, act }) {
+  const keys = useFollowKeys();
+  const slide = state.item.slides[state.index];
+  const n = slide ? slide.lines.join(' ').split(/\s+/).filter(Boolean).length : 0;
+  const wc = Array.isArray(state.wc) ? state.wc : null;
+  const kbd = (k) => html`<kbd>${k.toUpperCase()}</kbd>`;
+  return html`<div class="follow-bar">
+    <span class="small"><b>Follow the singer</b>
+      <span class="muted"> · ${wc ? (wc[0] === wc[1] ? `word ${wc[0] + 1} of ${n}` : `line, words ${wc[0] + 1}–${wc[1] + 1} of ${n}`) : 'off'}</span></span>
+    <span class="seg" role="group" aria-label="Follow the singer">
+      <button onClick=${() => act({ type: 'word', dir: -1 })} title="Previous word">${kbd(keys.prev)} ‹ word</button>
+      <button onClick=${() => act({ type: 'word', dir: 1 })} title="Next word (after the last word, the next slide)">word › ${kbd(keys.next)}</button>
+      <button onClick=${() => act({ type: 'word', dir: 1, unit: 'line' })} title="Light the next whole line">line › ${kbd(keys.line)}</button>
+      <button onClick=${() => act({ type: 'word', off: true })} disabled=${!wc}>Off</button>
+    </span>
+  </div>`;
+}
+
 function Emphasis({ state, act }) {
-  const [pen, setPen] = useState({ c: 'gold', b: false });
+  const [pen, setPen] = useState({ c: 'gold', b: false, follow: false });
   const item = state.item;
   const slide = item && item.slides[state.index];
   const groups = slideWords(item, slide);
@@ -516,12 +554,14 @@ function Emphasis({ state, act }) {
   const any = Object.keys(state.marks || {}).some((k) => Object.keys(state.marks[k]).length);
   return html`<div class="emph">
     <div class="row wrap between">
-      <span class="small"><b>Emphasis</b> <span class="muted">· tap a word</span></span>
+      <span class="small"><b>Emphasis</b> <span class="muted">· ${pen.follow ? 'tap a word to follow from there' : 'tap a word'}</span></span>
       <div class="row wrap">
         ${Object.entries(MARK_COLORS).map(
-          ([k, v]) => html`<button class=${`swatch ${pen.c === k ? 'on' : ''}`} style=${`--c:${v}`} onClick=${() => setPen({ ...pen, c: k })} aria-label=${`${k} pen`} title=${k}></button>`,
+          ([k, v]) => html`<button class=${`swatch ${pen.c === k && !pen.follow ? 'on' : ''}`} style=${`--c:${v}`} onClick=${() => setPen({ ...pen, c: k, follow: false })} aria-label=${`${k} pen`} title=${k}></button>`,
         )}
-        <button class=${`chip ${pen.b ? 'on' : ''}`} onClick=${() => setPen({ ...pen, b: !pen.b })} title="Slant the word"><span class="bend">Bend</span></button>
+        <button class=${`chip ${pen.b ? 'on' : ''}`} onClick=${() => setPen({ ...pen, b: !pen.b, follow: false })} title="Slant the word"><span class="bend">Bend</span></button>
+        ${item.kind === 'song' &&
+        html`<button class=${`chip follow-pen ${pen.follow ? 'on' : ''}`} onClick=${() => setPen({ ...pen, follow: !pen.follow })} title="Tap a word to follow the singer from there">▶ Follow</button>`}
         <button class="chip ghost" onClick=${() => act({ type: 'unmark', slide: key })} disabled=${!Object.keys(marks).length}>Clear slide</button>
         ${any && html`<button class="chip ghost" onClick=${() => act({ type: 'unmark' })}>Clear all</button>`}
       </div>
@@ -532,9 +572,11 @@ function Emphasis({ state, act }) {
         ${g.words.map((w, i) => {
           const id = `${g.field}:${i}`;
           const m = marks[id];
+          const wc = g.field === 'l' && Array.isArray(state.wc) ? state.wc : null;
+          const at = wc ? (i < wc[0] ? 'sung' : i <= wc[1] ? 'cur' : '') : '';
           return html`<button
-            class=${`word ${m ? `mk-${m.c}` : ''} ${m && m.b ? 'bend' : ''}`}
-            onClick=${() => act({ type: 'mark', slide: key, word: id, mark: pen })}
+            class=${`word ${m ? `mk-${m.c}` : ''} ${m && m.b ? 'bend' : ''} ${at}`}
+            onClick=${() => (pen.follow && g.field === 'l' ? act({ type: 'word', at: i }) : act({ type: 'mark', slide: key, word: id, mark: { c: pen.c, b: pen.b } }))}
           >
             ${w}
           </button>`;
@@ -723,6 +765,7 @@ function Live({ state, act, info, goTab, onOutputs, wide, setLook }) {
     html`<button class="note-btn" onClick=${onOutputs}>
       <b>No TV connected yet.</b> <span>Tap to put the picture on the TV or the stream ›</span>
     </button>`}
+    ${item && item.kind === 'song' && html`<${FollowBar} state=${state} act=${act} />`}
     ${(!item || item.kind !== 'media') && html`<${Emphasis} state=${state} act=${act} />`}
     ${state.illustration &&
     html`<div class="illus-row">
@@ -739,7 +782,7 @@ function Live({ state, act, info, goTab, onOutputs, wide, setLook }) {
             <div>
               <b>${item.title}</b>
               <span class="muted small">
-                ${`${item.kind === 'song' ? PRESET_INFO[lookOf(state, item)].name : item.kind === 'scripture' ? `${SCRIPTURE_INFO[scriptureLookOf(state)].name} · ${item.versions.join(' + ')}` : { both: 'TV + stream', tv: 'TV only', stream: 'Stream only' }[item.to || 'both']} · ${state.index + 1}/${item.slides.length}${stepsOf(state) > 1 ? ` · verse ${(state.sub || 0) + 1} of ${stepsOf(state)}` : ''}`}
+                ${`${item.kind === 'song' ? PRESET_INFO[lookOf(state, item)].name : item.kind === 'scripture' ? `${SCRIPTURE_INFO[scriptureLookOf(state)].name} · ${item.versions.join(' + ')}` : { both: 'TV + stream', tv: 'TV only', stream: 'Stream only' }[item.to || 'both']} · ${state.index + 1}/${item.slides.length}${stepsOf(state) > 1 ? ` · verse ${(state.sub || 0) + 1} of ${stepsOf(state)}` : ''}${item.kind === 'song' && Array.isArray(state.wc) ? ` · word ${state.wc[0] + 1}` : ''}`}
               </span>
             </div>
           </div>
@@ -1231,6 +1274,53 @@ function Media({ onShow, onIllustrate, illustration, liveId, relayOn }) {
 
 // ------------------------------------------------------------------ settings
 
+/** The letters that follow the singer (this laptop) and how the words look while following. */
+function FollowSettings({ state, act }) {
+  const [keys, setKeys] = useState(readFollowKeys);
+  const [msg, setMsg] = useState('');
+  const change = (name, raw) => {
+    const k = String(raw || '').slice(-1).toLowerCase();
+    if (!k) return;
+    if (!validKey(k)) {
+      setMsg(`${k.toUpperCase()} is taken (Space, B, C, L and V already do something) or is not a letter.`);
+      return;
+    }
+    if (Object.entries(keys).some(([n, v]) => n !== name && v === k)) {
+      setMsg(`${k.toUpperCase()} is already ${FOLLOW_KEY_NAMES[Object.keys(keys).find((n) => keys[n] === k)].toLowerCase()}.`);
+      return;
+    }
+    const next = { ...keys, [name]: k };
+    setKeys(next);
+    saveFollowKeys(next);
+    setMsg('');
+  };
+  return html`<div class="field follow-set"><span>Follow the singer (songs)</span>
+    <div class="row wrap">
+      ${Object.entries(FOLLOW_KEY_NAMES).map(
+        ([name, label]) => html`<label class="keybox"><input value=${keys[name].toUpperCase()} maxlength="2" onInput=${(e) => {
+          change(name, e.target.value);
+          e.target.value = (readFollowKeys()[name] || '').toUpperCase();
+        }} aria-label=${label} /><small>${label}</small></label>`,
+      )}
+      <button class="chip ghost" onClick=${() => {
+        setKeys({ ...FOLLOW_KEYS });
+        saveFollowKeys({ ...FOLLOW_KEYS });
+        setMsg('');
+      }}>J F U</button>
+    </div>
+    ${msg && html`<small class="error">${msg}</small>`}
+    <small class="muted">Tap the next-word key as each word is sung: it swells and glows on the screen; after the last word it moves on to the next slide. The line key lights a whole line at once, easier on fast songs. These letters are kept on this laptop (the TV page on it uses them too).</small>
+    <label class="toggle">
+      <input type="checkbox" checked=${state.followDim !== false} onChange=${(e) => act({ type: 'set', patch: { followDim: e.target.checked } })} />
+      <span>Dim the words still to come</span>
+    </label>
+    <label class="toggle">
+      <input type="checkbox" checked=${state.followStream !== false} onChange=${(e) => act({ type: 'set', patch: { followStream: e.target.checked } })} />
+      <span>The stream's lower third follows too (off: the stream stays plain)</span>
+    </label>
+  </div>`;
+}
+
 function Settings({ state, act, info, prefs, setPrefs, songs, setSongs, session, setSession, onOutputs, setLook, ui, setUi, wide }) {
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
@@ -1360,6 +1450,7 @@ function Settings({ state, act, info, prefs, setPrefs, songs, setSongs, session,
 
     <section class="card">
       <h2>Words</h2>
+      <${FollowSettings} state=${state} act=${act} />
       <label class="toggle">
         <input type="checkbox" checked=${state.fill !== false} onChange=${(e) => act({ type: 'set', patch: { fill: e.target.checked } })} />
         <span>Grow the words to use the screen (never smaller than the standard size)</span>
@@ -1561,6 +1652,7 @@ function App() {
       else if (k === 'b' || k === 'B') act({ type: 'mode', mode: 'black' });
       else if (k === 'c' || k === 'C') act({ type: 'mode', mode: 'clear' });
       else if (k === 'l' || k === 'L') act({ type: 'mode', mode: 'logo' });
+      else if (followCommand(k)) act(followCommand(k));
       else return;
       e.preventDefault();
     };
@@ -1684,7 +1776,7 @@ function App() {
   const livePane = html`<${Live} state=${state} act=${act} info=${info} wide=${wide} goTab=${wide ? openLib : setTab} onOutputs=${() => setOutputs(true)} setLook=${setLook} />`;
   const header = html`<header class="top">
     <div class="brand"><span class="cross">✝</span> Lyric Slides</div>
-    ${wide && html`<span class="muted small keys">Space / → next · ← back · B black · C clear · L logo</span>`}
+    ${wide && html`<span class="muted small keys">Space / → next · ← back · B black · C clear · L logo · <${FollowKeyHint} /> word by word</span>`}
     <div class="row top-end">
       <${LightSwitch} ui=${ui} setUi=${setUi} />
       <button class=${`pill ${connected ? 'ok' : 'warn'}`} onClick=${() => setOutputs(true)}>
