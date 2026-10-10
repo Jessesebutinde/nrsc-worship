@@ -4,7 +4,8 @@
 
 import { html, render, useState, useEffect, useRef, useMemo } from '../ui/h.js';
 import { Fit, Stage } from './stage.js';
-import { Link, newCode, normalizeCode } from './link.js';
+import { Link, normalizeCode } from './link.js';
+import { ROOM } from './config.js';
 import { emptyState, reduce, songItem, mediaItem, BACKGROUNDS, BACKGROUND_INFO, PRESET_INFO, STREAM_LAYOUTS } from './state.js';
 import { loadSongs, saveSongs, visibleSongs, upsertSong, removeSong, searchSongs, mergeSongs, exportLibrary, importLibrary } from './library.js';
 import { parseRef } from './books.js';
@@ -16,7 +17,6 @@ import { idbSet, idbDel } from './idb.js';
 import { SongEditor } from './editor.js';
 import qrcode from '../../vendor/qrcode.js';
 
-const LS_ROOM = 'ls-remote-room';
 const LS_PREFS = 'ls-remote-prefs';
 const LS_RECENT_REFS = 'ls-recent-refs';
 const LS_MEDIA = 'ls-media';
@@ -37,8 +37,13 @@ const write = (k, v) => {
   }
 };
 
-const screenUrl = (room, extra = '') => new URL(`screen.html?room=${room}${extra}`, location.href).href;
-const remoteUrl = (room) => new URL(`?room=${room}`, location.href).href;
+// The church's own channel needs nothing in the address; any other is carried as ?room=.
+const roomQuery = (room) => (room === normalizeCode(ROOM) ? '' : `room=${room}`);
+const screenUrl = (room, extra = '') => {
+  const q = [roomQuery(room), extra].filter(Boolean).join('&');
+  return new URL(`screen.html${q ? `?${q}` : ''}`, location.href).href;
+};
+const remoteUrl = (room) => new URL(roomQuery(room) ? `./?${roomQuery(room)}` : './', location.href).href;
 const shortUrl = (u) => u.replace(/^https?:\/\//, '').replace(/\/$/, '');
 
 // ------------------------------------------------------------------ small parts
@@ -88,44 +93,6 @@ async function copy(text, what = 'Link') {
   }
 }
 
-// ------------------------------------------------------------------ pairing
-
-function Pair({ onPair }) {
-  const [code, setCode] = useState('');
-  return html`<div class="pair-page">
-    <div class="brand"><span class="cross">✝</span> Lyric Slides</div>
-    <p class="muted">Lyrics, scripture, pictures and video for the hall TV and the stream.</p>
-    <div class="card">
-      <h2>Start</h2>
-      <p class="muted small">Makes a new session. Then put it on the TV in one tap.</p>
-      <button class="primary big-btn" onClick=${() => onPair(newCode(), true)}>Start a session</button>
-    </div>
-    <div class="card">
-      <h2>Join a screen</h2>
-      <p class="muted small">If a TV already shows a six-letter code, enter it here.</p>
-      <form
-        class="row"
-        onSubmit=${(e) => {
-          e.preventDefault();
-          const c = normalizeCode(code);
-          if (c.length >= 4) onPair(c, false);
-        }}
-      >
-        <input
-          class="code-input"
-          value=${code}
-          onInput=${(e) => setCode(normalizeCode(e.target.value))}
-          placeholder="ABC123"
-          autocapitalize="characters"
-          autocomplete="off"
-          aria-label="Screen code"
-        />
-        <button disabled=${normalizeCode(code).length < 4}>Join</button>
-      </form>
-    </div>
-  </div>`;
-}
-
 // ------------------------------------------------------------------ outputs: TV and stream
 
 /** The actions behind every "put it on the TV / stream" button, with the display chooser they may need. */
@@ -133,7 +100,7 @@ function useOutputs(room, link) {
   const [busy, setBusy] = useState('');
   const [choose, setChoose] = useState(null); // { what, url, name, displays }
   const tvUrl = screenUrl(room);
-  const streamUrl = screenUrl(room, '&out=stream');
+  const streamUrl = screenUrl(room, 'out=stream');
 
   const cast = async () => {
     setBusy('cast');
@@ -209,7 +176,7 @@ function Outputs({ room, link, info, onClose }) {
     <header class="sheet-head">
       <button class="ghost" onClick=${onClose}>Done</button>
       <b>Show on TV & stream</b>
-      <span class="muted small">Code <b class="code">${room}</b></span>
+      <span></span>
     </header>
     <div class="outputs-body">
       ${o.chooser}
@@ -238,7 +205,7 @@ function Outputs({ room, link, info, onClose }) {
           </button>
           <div class="out-btn static">
             <span class="out-ic">📺</span><b>The TV's own browser</b>
-            <span class="muted small">On the TV open <b>${shortUrl(tvPage)}</b> and type <b>${room}</b>. Or scan:</span>
+            <span class="muted small">On the TV open <b>${shortUrl(tvPage)}</b>. Or scan:</span>
             <${Qr} text=${o.tvUrl} size=${132} />
             <button class="chip ghost" onClick=${() => copy(o.tvUrl, 'TV link')}>Copy TV link</button>
           </div>
@@ -258,7 +225,7 @@ function Outputs({ room, link, info, onClose }) {
           <div class="out-btn static">
             <span class="out-ic">🎥</span><b>OBS</b>
             <span class="muted small">Browser Source, 1920×1080, with this link (transparent):</span>
-            <button class="chip ghost" onClick=${() => copy(`${o.streamUrl}&transparent=1`, 'OBS link')}>Copy OBS link</button>
+            <button class="chip ghost" onClick=${() => copy(`${o.streamUrl}${o.streamUrl.includes('?') ? '&' : '?'}transparent=1`, 'OBS link')}>Copy OBS link</button>
           </div>
         </div>
         <details>
@@ -625,7 +592,7 @@ function Media({ onShow, liveId, relayOn }) {
 
 // ------------------------------------------------------------------ settings
 
-function Settings({ room, state, act, info, prefs, setPrefs, songs, setSongs, onUnpair, session, setSession, onOutputs }) {
+function Settings({ state, act, info, prefs, setPrefs, songs, setSongs, session, setSession, onOutputs }) {
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState('');
@@ -690,14 +657,12 @@ function Settings({ room, state, act, info, prefs, setPrefs, songs, setSongs, on
       <h2>Screens</h2>
       <div class="row between wrap">
         <div>
-          Code <b class="code">${room}</b>
           <span class=${`pill ${info.peers.screen || info.ports ? 'ok' : ''}`}>
             ${info.peers.screen || info.ports ? `${info.peers.screen + info.ports} connected` : 'no screen'}
           </span>
         </div>
         <span class="row">
           <button class="primary" onClick=${onOutputs}>Show on TV & stream</button>
-          <button class="ghost" onClick=${onUnpair}>Leave</button>
         </span>
       </div>
       <p class="muted small">
@@ -833,8 +798,9 @@ function Settings({ room, state, act, info, prefs, setPrefs, songs, setSongs, on
 
 function App() {
   const params = new URLSearchParams(location.search);
-  const [room, setRoom] = useState(() => normalizeCode(params.get('room')) || read(LS_ROOM, ''));
-  const [state, setState] = useState(() => (room ? read(`ls-remote-state:${room}`, emptyState()) : emptyState()));
+  // No code to type: everyone is on the church's channel unless the address names another.
+  const room = useRef(normalizeCode(params.get('room')) || normalizeCode(ROOM)).current;
+  const [state, setState] = useState(() => read(`ls-remote-state:${room}`, emptyState()));
   const [info, setInfo] = useState({ peers: { screen: 0, remote: 0 }, cloud: 'off', pending: false, ports: 0 });
   const wide = useWide();
   const [tab, setTab] = useState('live');
@@ -858,9 +824,7 @@ function App() {
   };
 
   useEffect(() => {
-    if (!room) return undefined;
-    write(LS_ROOM, room);
-    if (params.get('room')) history.replaceState(null, '', location.pathname);
+    if (params.get('room') && room === normalizeCode(ROOM)) history.replaceState(null, '', location.pathname);
     const l = new Link({
       room,
       role: 'remote',
@@ -915,14 +879,6 @@ function App() {
     return () => removeEventListener('keydown', onKey);
   }, [editing, outputs, room]);
 
-  if (!room)
-    return html`<${Pair}
-        onPair=${(code, fresh) => {
-          setRoom(code);
-          if (fresh && !matchMedia(WIDE).matches) setOutputs(true);
-        }}
-      /><${Toast} />`;
-
   const showItem = (item, index = 0) => {
     act({ type: 'item', item, index });
     if (!wide) setTab('live');
@@ -958,7 +914,6 @@ function App() {
   const scripturePane = html`<${Scripture} prefs=${prefs} setPrefs=${setPrefs} onShow=${showItem} />`;
   const mediaPane = html`<${Media} onShow=${showItem} liveId=${state.item && state.item.id} relayOn=${info.cloud !== 'off'} />`;
   const settingsPane = html`<${Settings}
-    room=${room}
     state=${state}
     act=${act}
     info=${info}
@@ -969,17 +924,13 @@ function App() {
     session=${session}
     setSession=${setSession}
     onOutputs=${() => setOutputs(true)}
-    onUnpair=${() => {
-      write(LS_ROOM, '');
-      setRoom('');
-    }}
   />`;
   const livePane = html`<${Live} state=${state} act=${act} info=${info} wide=${wide} goTab=${wide ? setLibTab : setTab} onOutputs=${() => setOutputs(true)} />`;
   const header = html`<header class="top">
     <div class="brand"><span class="cross">✝</span> Lyric Slides</div>
     ${wide && html`<span class="muted small keys">Space / → next · ← back · B black · C clear · L logo</span>`}
     <button class=${`pill ${connected ? 'ok' : 'warn'}`} onClick=${() => setOutputs(true)}>
-      ${connected ? 'TV ✓' : 'Show on TV'} · ${room}${info.pending ? ' · waiting' : ''}
+      ${connected ? 'TV ✓' : 'Show on TV'}${info.pending ? ' · waiting' : ''}
     </button>
   </header>`;
   const sheets = html`

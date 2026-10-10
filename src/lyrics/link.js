@@ -29,7 +29,7 @@ export function normalizeCode(text) {
   return String(text || '')
     .toUpperCase()
     .replace(/[^A-Z0-9]/g, '')
-    .slice(0, 8);
+    .slice(0, 32);
 }
 
 export function clientId() {

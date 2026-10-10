@@ -6,88 +6,18 @@
     <title>Lyric Slides · TV</title>
     <meta name="theme-color" content="#0e0b14" />
     <link rel="icon" href="icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="stage.css" />
+    <!-- Opened in the TV's own browser: there is nothing to type, it goes straight to the picture. -->
+    <script>
+      location.replace(`screen.html${location.search}`);
+    </script>
     <style>
-      /* Opened in the TV's own browser: type the code from the laptop, then the screen takes over. */
       html,
       body {
         margin: 0;
         height: 100%;
         background: #0e0b14;
-        color: #f5f3ee;
-        font-family: 'Montserrat', system-ui, sans-serif;
-      }
-      main {
-        min-height: 100%;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 3vh;
-        text-align: center;
-        padding: 4vh 4vw;
-        box-sizing: border-box;
-      }
-      h1 {
-        font-size: 3.5vw;
-        font-weight: 600;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-        margin: 0;
-      }
-      p {
-        font-size: 1.8vw;
-        margin: 0;
-        opacity: 0.8;
-      }
-      input {
-        font: 700 6vw 'Montserrat', system-ui, sans-serif;
-        letter-spacing: 0.25em;
-        text-transform: uppercase;
-        text-align: center;
-        width: 10ch;
-        max-width: 90vw;
-        padding: 1vw 2vw;
-        border-radius: 1.5vw;
-        border: 0.3vw solid #e3b75a;
-        background: #000;
-        color: #fff;
-      }
-      input:focus {
-        outline: 0.4vw solid #e3b75a;
-        outline-offset: 0.4vw;
-      }
-      button {
-        font: 600 2vw 'Montserrat', system-ui, sans-serif;
-        padding: 1.2vw 3vw;
-        border-radius: 1vw;
-        border: 0;
-        background: #e3b75a;
-        color: #1a1206;
-        cursor: pointer;
-      }
-      button:focus {
-        outline: 0.4vw solid #fff;
       }
     </style>
   </head>
-  <body>
-    <main>
-      <h1>Namasuba Redeemed</h1>
-      <p>Type the six-letter code shown on the laptop</p>
-      <form id="f">
-        <input id="code" autofocus autocomplete="off" autocapitalize="characters" maxlength="8" placeholder="ABC123" />
-      </form>
-      <button type="submit" form="f">Show</button>
-    </main>
-    <script>
-      const f = document.getElementById('f');
-      const input = document.getElementById('code');
-      f.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const code = input.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
-        if (code.length >= 4) location.href = `screen.html?room=${code}`;
-      });
-    </script>
-  </body>
+  <body></body>
 </html>
