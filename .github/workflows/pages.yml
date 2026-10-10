@@ -43,7 +43,7 @@ jobs:
           cp -r index.html styles.css manifest.webmanifest icon.svg icon-192.png icon-512.png src vendor lyrics keys _site/
           # Stamp the lyrics and keys pages so browsers fetch the new stylesheet and script after every deploy.
           sed -i "s/__V__/${GITHUB_SHA::8}/g" _site/lyrics/index.html _site/lyrics/screen.html _site/keys/index.html
-          sed -i "s/stage-keys-1'/stage-keys-${GITHUB_SHA::8}'/" _site/keys/sw.js
+          sed -i "s/PREFIX + '1'/PREFIX + '${GITHUB_SHA::8}'/" _site/keys/sw.js
           touch _site/.nojekyll
           cd _site
           git init -q

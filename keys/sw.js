@@ -1,7 +1,9 @@
 // Offline shell for Stage Keys: the app's own files are cached on first visit; sounds are cached by the
-// sample library itself (Cache Storage "stage-keys-samples"). Bump VERSION when files change.
+// sample library itself (Cache Storage "stage-keys-samples", which this worker must never delete).
+// The deploy stamps VERSION with the commit, so every release starts a fresh shell cache.
 
-const VERSION = 'stage-keys-1';
+const PREFIX = 'stage-keys-shell-';
+const VERSION = PREFIX + '1';
 const SHELL = [
   './',
   './index.html',
@@ -28,7 +30,7 @@ self.addEventListener('install', (e) => {
 });
 
 self.addEventListener('activate', (e) => {
-  e.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((k) => k.startsWith('stage-keys-') && k !== VERSION).map((k) => caches.delete(k)))).then(() => self.clients.claim()));
+  e.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((k) => k.startsWith(PREFIX) && k !== VERSION).map((k) => caches.delete(k)))).then(() => self.clients.claim()));
 });
 
 self.addEventListener('fetch', (e) => {
