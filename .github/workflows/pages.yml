@@ -41,6 +41,8 @@ jobs:
           node scripts/build-media.mjs
           mkdir _site
           cp -r index.html styles.css manifest.webmanifest icon.svg icon-192.png icon-512.png src vendor lyrics _site/
+          # Stamp the lyrics pages so browsers fetch the new stylesheet and script after every deploy.
+          sed -i "s/__V__/${GITHUB_SHA::8}/g" _site/lyrics/index.html _site/lyrics/screen.html
           touch _site/.nojekyll
           cd _site
           git init -q
