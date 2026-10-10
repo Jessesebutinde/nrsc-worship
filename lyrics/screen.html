@@ -65,6 +65,39 @@
         font-weight: 600;
         overflow-wrap: anywhere;
       }
+      /* Which output this window is, for a few seconds after the laptop opens it. */
+      .badge {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.6vw;
+        padding: 2vw 3.5vw;
+        border-radius: 1.5vw;
+        background: rgba(14, 11, 20, 0.85);
+        border: 0.25vw solid #e3b75a;
+        animation: ls-fade-in 300ms ease both;
+        pointer-events: none;
+      }
+      .badge b {
+        font-size: 5vw;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        color: #e3b75a;
+      }
+      .badge.stream b {
+        color: #7fd9bf;
+      }
+      .badge.stream {
+        border-color: #7fd9bf;
+      }
+      .badge span {
+        font-size: 1.6vw;
+        opacity: 0.85;
+      }
       .hint,
       .offline {
         position: absolute;

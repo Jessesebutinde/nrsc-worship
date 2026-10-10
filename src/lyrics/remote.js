@@ -6,12 +6,12 @@ import { html, render, useState, useEffect, useRef, useMemo } from '../ui/h.js';
 import { Fit, Stage } from './stage.js';
 import { Link, normalizeCode } from './link.js';
 import { ROOM } from './config.js';
-import { emptyState, reduce, songItem, mediaItem, BACKGROUNDS, BACKGROUND_INFO, PRESET_INFO, STREAM_LAYOUTS } from './state.js';
+import { emptyState, reduce, songItem, mediaItem, BACKGROUNDS, BACKGROUND_INFO, PRESET_INFO, STREAM_LAYOUTS, ILLUSTRATION_SIZES } from './state.js';
 import { loadSongs, saveSongs, visibleSongs, upsertSong, removeSong, searchSongs, mergeSongs, exportLibrary, importLibrary } from './library.js';
 import { parseRef } from './books.js';
 import { allVersions, importVersion, removeVersion, passageItem, BUILTIN_VERSIONS } from './bible.js';
 import { relayConfig, cloudConfigured, loadSession, captureSession, sendMagicLink, signOut, pullSongs, pushSongs } from './cloud.js';
-import { canCast, castTo, extraDisplays, openOn, platform } from './cast.js';
+import { canCast, castTo, displayPermission, extraDisplays, openOn, displayOf, platform } from './cast.js';
 import { fontsReady, scriptureFit } from './measure.js';
 import { idbSet, idbDel } from './idb.js';
 import { SongEditor } from './editor.js';
@@ -20,6 +20,7 @@ import qrcode from '../../vendor/qrcode.js';
 const LS_PREFS = 'ls-remote-prefs';
 const LS_RECENT_REFS = 'ls-recent-refs';
 const LS_MEDIA = 'ls-media';
+const LS_DISPLAYS = 'ls-displays';
 
 const read = (k, d) => {
   try {
@@ -95,12 +96,110 @@ async function copy(text, what = 'Link') {
 
 // ------------------------------------------------------------------ outputs: TV and stream
 
-/** The actions behind every "put it on the TV / stream" button, with the display chooser they may need. */
+const WIN = { tv: 'lyric-screen', stream: 'lyric-stream' };
+const withParam = (url, q) => `${url}${url.includes('?') ? '&' : '?'}${q}`;
+const WHAT = { tv: 'The TV picture', stream: 'The stream feed' };
+
+/**
+ * Everything behind "TV picture", "Stream feed" and "Cast…". Each output has its own display,
+ * remembered on this laptop (TV → one, ATEM → the other); the windows open straight from the
+ * click so the browser lets them arrive fullscreen, and each shows a badge saying which it is.
+ */
 function useOutputs(room, link) {
   const [busy, setBusy] = useState('');
-  const [choose, setChoose] = useState(null); // { what, url, name, displays }
+  const [perm, setPerm] = useState('prompt');
+  const [displays, setDisplays] = useState([]);
+  const [assign, setAssignRaw] = useState(() => read(LS_DISPLAYS, {}));
+  const [, tick] = useState(0);
+  const wins = useRef({ tv: null, stream: null });
   const tvUrl = screenUrl(room);
   const streamUrl = screenUrl(room, 'out=stream');
+
+  const setAssign = (a) => {
+    setAssignRaw(a);
+    write(LS_DISPLAYS, a);
+  };
+
+  useEffect(() => {
+    displayPermission().then(async (p) => {
+      setPerm(p);
+      if (p === 'granted') setDisplays(await extraDisplays(setDisplays));
+    });
+    // Open / closed changes as the operator closes windows.
+    const t = setInterval(() => tick((n) => n + 1), 2000);
+    return () => clearInterval(t);
+  }, []);
+
+  // Asks the browser once to see the displays (a click is needed for the prompt).
+  const allow = async () => {
+    const d = await extraDisplays(setDisplays);
+    setDisplays(d);
+    setPerm(await displayPermission());
+  };
+
+  // Which display each output uses: the remembered one, else a guess from the display's name
+  // (ATEM / Blackmagic / HDMI → the stream; TV / wireless / a TV brand → the TV), else by position.
+  const looksLike = (d, which) =>
+    (which === 'stream' ? /atem|blackmagic|bmd|hdmi|capture/i : /\btv\b|wireless|miracast|airplay|cast|samsung|lg\b|sony|hisense|tcl|philips|panasonic/i).test(d.label);
+  const displayFor = (which) => {
+    if (!displays.length) return null;
+    const chosen = displays.find((d) => d.id === assign[which]);
+    if (chosen) return chosen;
+    const other = displays.find((d) => d.id === assign[which === 'tv' ? 'stream' : 'tv']);
+    const free = displays.filter((d) => d !== other);
+    if (!free.length) return displays[0];
+    const named = free.find((d) => looksLike(d, which)) || free.find((d) => !looksLike(d, which === 'tv' ? 'stream' : 'tv'));
+    if (named) return named;
+    return which === 'tv' ? free[0] : free[free.length - 1];
+  };
+  const isOpen = (which) => {
+    const w = wins.current[which];
+    return Boolean(w && !w.closed);
+  };
+
+  const open = (which) => {
+    const d = displayFor(which);
+    const url = which === 'tv' ? tvUrl : streamUrl;
+    const w = openOn(d ? withParam(url, 'badge=1') : url, WIN[which], d);
+    wins.current[which] = w;
+    if (!w) {
+      showToast('The browser blocked the window. Allow pop-ups for this site, then try again.');
+      return;
+    }
+    if (!d) {
+      showToast(`${WHAT[which]} opened. Drag it onto the ${which === 'tv' ? 'TV' : 'ATEM display'} and click it once for fullscreen.`);
+      return;
+    }
+    showToast(`${WHAT[which]} is on ${d.label}.`);
+    // A moment later, check it really landed there (the OS can refuse the position).
+    setTimeout(() => {
+      const at = displayOf(w, displays);
+      if (at && at.id !== d.id) showToast(`${WHAT[which]} ended up on ${at.label}. Use Swap if the TV and the ATEM are the wrong way round.`);
+      tick((n) => n + 1);
+    }, 1500);
+  };
+
+  const swap = () => {
+    const tv = displayFor('tv');
+    const st = displayFor('stream');
+    if (!tv || !st) return;
+    setAssign({ tv: st.id, stream: tv.id });
+    const reopen = [];
+    for (const which of ['tv', 'stream']) {
+      if (isOpen(which)) {
+        wins.current[which].close();
+        wins.current[which] = null;
+        reopen.push(which);
+      }
+    }
+    // Only one window can open per click; the first reopens now, the other on the next click.
+    if (reopen.length) {
+      const first = reopen[0];
+      const d = first === 'tv' ? st : tv;
+      wins.current[first] = openOn(withParam(first === 'tv' ? tvUrl : streamUrl, 'badge=1'), WIN[first], d);
+      showToast(reopen.length > 1 ? `Swapped. Now click ${first === 'tv' ? 'Stream feed' : 'TV picture'} to reopen it too.` : 'Swapped.');
+    } else showToast('Swapped: the next windows open the other way round.');
+  };
 
   const cast = async () => {
     setBusy('cast');
@@ -115,39 +214,42 @@ function useOutputs(room, link) {
     }
   };
 
-  const place = (url, name, what, display) => {
-    setChoose(null);
-    const r = openOn(url, name, display);
-    if (!r.window) showToast('The browser blocked the window. Allow pop-ups for this site, then try again.');
-    else if (r.placed) showToast(`${what} is on ${r.label}. Click it once for fullscreen.`);
-    else showToast(`${what} opened. Drag it onto the TV and click it for fullscreen.`);
+  /** The display picker for one output (nothing to pick with one display). */
+  const picker = (which) => {
+    if (!displays.length) return null;
+    const cur = displayFor(which);
+    return html`<label class="disp">
+      <span class="muted small">on</span>
+      <select value=${cur ? cur.id : ''} onChange=${(e) => setAssign({ ...assign, [which]: e.target.value })} disabled=${displays.length < 2}>
+        ${displays.map((d) => html`<option value=${d.id}>${d.label} · ${d.width}×${d.height}</option>`)}
+      </select>
+    </label>`;
   };
 
-  const open = async (what) => {
-    const url = what === 'TV' ? tvUrl : streamUrl;
-    const name = what === 'TV' ? 'lyric-screen' : 'lyric-stream';
-    setBusy(name);
-    const displays = await extraDisplays();
-    setBusy('');
-    if (displays.length > 1) setChoose({ what, url, name, displays });
-    else place(url, name, what === 'TV' ? 'The TV picture' : 'The stream feed', displays[0]);
+  // The one-off permission, or the fallback when the browser cannot place windows.
+  const setup =
+    perm === 'unsupported'
+      ? html`<p class="muted small">This browser cannot place windows on a display: each window opens on the laptop, drag it onto the right screen and click it once. Chrome or Edge can do it for you.</p>`
+      : perm !== 'granted'
+        ? html`<button class="chip" onClick=${allow}>Allow the browser to see your displays</button>`
+        : displays.length
+          ? null
+          : html`<p class="muted small">No other display yet. Join the TV (wireless or HDMI) and plug the ATEM in; they appear here by themselves.</p>`;
+
+  return {
+    busy,
+    cast,
+    openTv: () => open('tv'),
+    openStream: () => open('stream'),
+    swap,
+    isOpen,
+    displays,
+    displayFor,
+    picker,
+    setup,
+    tvUrl,
+    streamUrl,
   };
-
-  const chooser =
-    choose &&
-    html`<div class="chooser" role="dialog" aria-label="Choose a display">
-      <b>Which display is the ${choose.what === 'TV' ? 'TV' : 'ATEM'}?</b>
-      <div class="row wrap">
-        ${choose.displays.map(
-          (d) => html`<button class="primary" onClick=${() => place(choose.url, choose.name, choose.what === 'TV' ? 'The TV picture' : 'The stream feed', d)}>
-            ${d.label} <span class="small">${d.width}×${d.height}</span>
-          </button>`,
-        )}
-        <button class="ghost" onClick=${() => setChoose(null)}>Cancel</button>
-      </div>
-    </div>`;
-
-  return { busy, cast, openTv: () => open('TV'), openStream: () => open('stream'), chooser, tvUrl, streamUrl };
 }
 
 function WirelessSteps() {
@@ -179,7 +281,6 @@ function Outputs({ room, link, info, onClose }) {
       <span></span>
     </header>
     <div class="outputs-body">
-      ${o.chooser}
       <section class="card best">
         <h2>Best with one laptop</h2>
         <p class="small">The laptop's <b>HDMI cable goes to the ATEM</b> (stream feed). The <b>TV gets the picture wirelessly</b>: Cast, or the TV as a wireless display.
@@ -192,14 +293,14 @@ function Outputs({ room, link, info, onClose }) {
           <div class="out-btn static">
             <span class="out-ic">📶</span><b>TV as a wireless display</b>
             <span class="muted small"><${WirelessSteps} /></span>
-            <button class="primary" onClick=${o.openTv} disabled=${o.busy === 'lyric-screen'}>TV picture</button>
+            <button class="primary" onClick=${o.openTv}>TV picture</button>
           </div>
           ${canCast() &&
           html`<button class="out-btn" onClick=${o.cast} disabled=${o.busy === 'cast'}>
             <span class="out-ic">📡</span><b>Cast to the TV</b>
             <span class="muted small">Chromecast, Google TV or Android TV on the same Wi-Fi. Chrome shows the list.</span>
           </button>`}
-          <button class="out-btn" onClick=${o.openTv} disabled=${o.busy === 'lyric-screen'}>
+          <button class="out-btn" onClick=${o.openTv}>
             <span class="out-ic">🖥</span><b>TV on HDMI</b>
             <span class="muted small">The TV is plugged into this laptop. Opens the picture on it.</span>
           </button>
@@ -217,8 +318,10 @@ function Outputs({ room, link, info, onClose }) {
       <section class="card">
         <h2>Stream · ATEM / Blackmagic</h2>
         <p class="muted small">A second picture made for the switcher: lower thirds on black, so the ATEM keys it over the camera.</p>
+        ${o.setup}
+        ${o.displays.length > 0 && html`<div class="row wrap">${o.picker('tv')}${o.picker('stream')}${o.displays.length > 1 && html`<button class="ghost" onClick=${o.swap}>⇄ Swap</button>`}</div>`}
         <div class="out-grid">
-          <button class="out-btn" onClick=${o.openStream} disabled=${o.busy === 'lyric-stream'}>
+          <button class="out-btn" onClick=${o.openStream}>
             <span class="out-ic">🎬</span><b>Stream feed</b>
             <span class="muted small">Opens on the display that goes to the ATEM (the laptop's HDMI).</span>
           </button>
@@ -251,31 +354,43 @@ function OutputsPanel({ room, link, info, state, act, onMore }) {
   const o = useOutputs(room, link);
   const tvOn = info.peers.screen > 0 || info.ports > 0;
   const layout = state.streamLayout || 'lowerthird';
+  const status = (which) => (o.isOpen(which) ? html`<span class="pill ok">open</span>` : html`<span class="pill">closed</span>`);
   return html`<div class="out-panel">
-    ${o.chooser}
     <section>
-      <div class="row between"><h2>TV</h2><span class=${`pill ${tvOn ? 'ok' : 'warn'}`}>${tvOn ? 'connected' : 'not connected'}</span></div>
+      <div class="row between"><h2>TV</h2>${status('tv')}</div>
       <div class="mini"><${Fit}><${Stage} state=${state} out="tv" /><//></div>
       <div class="row wrap">
-        <button class="primary" onClick=${o.openTv} disabled=${o.busy === 'lyric-screen'} title="Opens on the TV display (HDMI or wireless display)">TV picture</button>
+        <button class="primary" onClick=${o.openTv} title="Opens fullscreen on the TV's display">TV picture</button>
         ${canCast() && html`<button onClick=${o.cast} disabled=${o.busy === 'cast'}>Cast…</button>`}
+        ${o.picker('tv')}
       </div>
       <p class="muted small"><${WirelessSteps} /></p>
     </section>
     <section>
-      <div class="row between"><h2>Stream · ATEM</h2></div>
+      <div class="row between"><h2>Stream · ATEM</h2>${status('stream')}</div>
       <div class="mini"><${Fit}><${Stage} state=${state} out="stream" layout=${layout} background=${state.streamBg === 'tv' ? 'auto' : 'key'} /><//></div>
       <div class="row wrap">
-        <button class="primary" onClick=${o.openStream} disabled=${o.busy === 'lyric-stream'}>Stream feed</button>
+        <button class="primary" onClick=${o.openStream} title="Opens fullscreen on the display that goes to the ATEM">Stream feed</button>
         <div class="seg">
           <button class=${layout === 'lowerthird' ? 'on' : ''} onClick=${() => act({ type: 'set', patch: { streamLayout: 'lowerthird' } })}>Lower thirds</button>
           <button class=${layout === 'full' ? 'on' : ''} onClick=${() => act({ type: 'set', patch: { streamLayout: 'full' } })}>Full</button>
         </div>
+        ${o.picker('stream')}
       </div>
+      <p class="muted small">Illustrations and the TV's pictures never go here; the stream gets the words only.</p>
       <details>
         <summary class="small">ATEM keyer setup</summary>
         ${ATEM_STEPS}
       </details>
+    </section>
+    <section class="displays">
+      ${o.setup}
+      ${o.displays.length > 1 &&
+      html`<div class="row between wrap">
+        <span class="small muted">Each window shows <b>TV</b> or <b>STREAM FEED</b> for 5 s when it opens.</span>
+        <button class="ghost" onClick=${o.swap} title="The TV and the ATEM are the wrong way round">⇄ Swap TV and ATEM</button>
+      </div>`}
+      ${tvOn && !o.isOpen('tv') && html`<p class="muted small">A TV is connected another way (Cast or the TV's own browser).</p>`}
     </section>
     <button class="ghost more" onClick=${onMore}>More ways: TV browser, QR codes, OBS, another remote ›</button>
   </div>`;
@@ -321,6 +436,16 @@ function Live({ state, act, info, goTab, onOutputs, wide }) {
     html`<button class="note-btn" onClick=${onOutputs}>
       <b>No TV connected yet.</b> <span>Tap to put the picture on the TV or the stream ›</span>
     </button>`}
+    ${state.illustration &&
+    html`<div class="illus-row">
+      <span class="small"><b>Beside the words on the TV:</b> ${state.illustration.title}</span>
+      <div class="seg">
+        ${Object.entries(ILLUSTRATION_SIZES).map(
+          ([k, l]) => html`<button class=${state.illustration.size === k ? 'on' : ''} onClick=${() => act({ type: 'set', patch: { illustration: { ...state.illustration, size: k } } })}>${l}</button>`,
+        )}
+      </div>
+      <button class="ghost" onClick=${() => act({ type: 'set', patch: { illustration: null } })}>Remove</button>
+    </div>`}
     ${item
       ? html`<div class="item-head">
             <div>
@@ -482,7 +607,7 @@ function Scripture({ prefs, setPrefs, onShow }) {
 
 // ------------------------------------------------------------------ pictures and video
 
-function Media({ onShow, liveId, relayOn }) {
+function Media({ onShow, onIllustrate, illustration, liveId, relayOn }) {
   const [folder, setFolder] = useState(null);
   const [mine, setMine] = useState(() => read(LS_MEDIA, []));
   const [url, setUrl] = useState('');
@@ -543,13 +668,17 @@ function Media({ onShow, liveId, relayOn }) {
   const all = [...(folder || []), ...mine];
   const chosen = all.filter((m) => picked.has(m.id));
 
-  const card = (m, canRemove) => html`<li class=${`media-card ${liveId === mediaItem(m).id ? 'on' : ''} ${picked.has(m.id) ? 'picked' : ''}`}>
+  const card = (m, canRemove) => html`<li class=${`media-card ${liveId === mediaItem(m).id ? 'on' : ''} ${picked.has(m.id) ? 'picked' : ''} ${illustration && illustration.src === m.src ? 'illus-on' : ''}`}>
     <button class="media-main" onClick=${() => (selecting ? toggle(m) : show(m))} aria-label=${`Show ${m.title}`}>
       ${m.type === 'video'
         ? html`<span class="media-thumb video">▶</span>`
         : html`<img class="media-thumb" src=${m.src.startsWith('idb:') ? '' : m.src} alt="" loading="lazy" />`}
       <span class="media-title">${m.title}</span>
     </button>
+    ${!selecting &&
+    html`<button class="chip beside" onClick=${() => onIllustrate(m)} aria-label=${`Show ${m.title} beside the words`}>
+      ${illustration && illustration.src === m.src ? '✓ Beside the words' : 'Beside the words'}
+    </button>`}
     ${canRemove && !selecting && html`<button class="ghost small" onClick=${() => remove(m)} aria-label=${`Remove ${m.title}`}>✕</button>`}
   </li>`;
 
@@ -564,6 +693,7 @@ function Media({ onShow, liveId, relayOn }) {
       </div>
       <label class="toggle compact"><input type="checkbox" checked=${loop} onChange=${(e) => setLoop(e.target.checked)} /><span>Loop video</span></label>
     </div>
+    <p class="muted small">Tap a picture to show it full screen. <b>Beside the words</b> keeps it next to the lyrics or scripture on the TV only (the stream never gets it).</p>
     <div class="row wrap">
       <button class=${selecting ? 'primary' : ''} onClick=${() => { setSelecting(!selecting); setPicked(new Set()); }}>
         ${selecting ? 'Cancel' : 'Select several'}
@@ -714,6 +844,18 @@ function Settings({ state, act, info, prefs, setPrefs, songs, setSongs, session,
       <label class="toggle">
         <input type="checkbox" checked=${state.calm} onChange=${(e) => act({ type: 'set', patch: { calm: e.target.checked } })} />
         <span>Calm mode: crossfades only, still background</span>
+      </label>
+    </section>
+
+    <section class="card">
+      <h2>Words</h2>
+      <label class="toggle">
+        <input type="checkbox" checked=${state.fill !== false} onChange=${(e) => act({ type: 'set', patch: { fill: e.target.checked } })} />
+        <span>Grow the words to use the screen (never smaller than the standard size)</span>
+      </label>
+      <label class="toggle">
+        <input type="checkbox" checked=${state.caps !== false} onChange=${(e) => act({ type: 'set', patch: { caps: e.target.checked } })} />
+        <span>Capital letters for lyrics</span>
       </label>
     </section>
 
@@ -912,7 +1054,17 @@ function App() {
     onNew=${() => setEditing('new')}
   />`;
   const scripturePane = html`<${Scripture} prefs=${prefs} setPrefs=${setPrefs} onShow=${showItem} />`;
-  const mediaPane = html`<${Media} onShow=${showItem} liveId=${state.item && state.item.id} relayOn=${info.cloud !== 'off'} />`;
+  const mediaPane = html`<${Media}
+    onShow=${showItem}
+    illustration=${state.illustration}
+    onIllustrate=${(m) => {
+      const same = state.illustration && state.illustration.src === m.src;
+      act({ type: 'set', patch: { illustration: same ? null : { src: m.src, type: m.type, title: m.title, size: (state.illustration && state.illustration.size) || 'half' } } });
+      showToast(same ? 'Removed from beside the words' : `${m.title} is beside the words on the TV`);
+    }}
+    liveId=${state.item && state.item.id}
+    relayOn=${info.cloud !== 'off'}
+  />`;
   const settingsPane = html`<${Settings}
     state=${state}
     act=${act}

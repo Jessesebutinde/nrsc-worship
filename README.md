@@ -95,17 +95,36 @@ On a laptop the remote is a console: songs, scripture and media on the left, the
 **B** black, **C** clear, **L** logo.
 
 1. Open the link in Chrome or Edge. There is no code or password: the console opens straight away.
-2. Plug the laptop's **HDMI into the ATEM** (set Windows/macOS to *extend*, not mirror) and click **Stream feed**.
-3. Put the **TV** on wirelessly, then click **TV picture**:
-   - Windows: press **Windows + K**, pick the TV, choose **Extend**.
-   - Mac: **Control Centre → Screen Mirroring**, pick the TV, **Use As Separate Display**.
-   - Or **Cast…** to a Chromecast / Google TV, or open `…/lyrics/tv` in the TV's own browser.
+2. Plug the laptop's **HDMI into the ATEM** and join the **TV as a wireless display** (Windows: **Windows + K**,
+   pick the TV, **Extend**; Mac: **Screen Mirroring**, pick the TV, **Use As Separate Display**). Set both to
+   *extend*, not mirror.
+3. The first time, click **Allow the browser to see your displays** in the right column. The console then names a
+   display for each output (it reads the names: "ATEM" or "HDMI" goes to the stream, "TV" or "wireless" to the TV)
+   and remembers the choice. Change either with its **on** list, or **⇄ Swap TV and ATEM**.
+4. Click **TV picture** and **Stream feed**. Each window arrives fullscreen on its display and shows a big
+   **TV** or **STREAM FEED** badge for five seconds, so a mix-up is obvious at once. The two are never confused:
+   the TV window is always the TV layout and the stream window always the stream layout, whichever display
+   they land on.
 
-When the laptop sees two extra displays, it asks which one is the TV and which is the ATEM, and opens each picture
-there (the browser asks once for permission to place windows). Click each picture once to make it fullscreen.
-Both outputs follow the laptop directly, so nothing depends on the internet. A phone can join as a second remote
-(**More ways** → scan the QR code); that one goes through the relay. On a narrow window or a phone the remote shows
-tabs instead of columns, with the same buttons under **Show on TV**.
+A window that cannot arrive fullscreen (an older browser, or a window dragged by hand) goes fullscreen on the
+first click. Both outputs follow the laptop directly, so nothing depends on the internet. A phone can join as a
+second remote (**More ways** → scan the QR code); that one goes through the relay. On a narrow window or a phone
+the remote shows tabs instead of columns, with the same buttons under **Show on TV**.
+
+## Words that use the screen
+
+By default the words **grow to fill the TV**: each slide is measured in the real font and sized as large as fits
+(up to 300 px for lyrics, 1.8× for scripture), never smaller than the standard size unless a line would otherwise
+be cut off. A lyric slide whose long lines hold it back is re-broken into three or four shorter lines when that
+makes the letters clearly bigger. Lyrics show in **capital letters**; scripture keeps sentence case. Both are
+switches in Settings → Words. The stream feed keeps its fixed lower-third sizes.
+
+## Illustrations beside the words
+
+In **Media**, **Beside the words** puts a picture or video next to the lyrics or scripture on the TV: a map, a
+drawing, a photo. The words move left and the picture takes a **Small**, **Half** or **Large** panel on the right
+(the controls sit above the slide list in Live, with **Remove**). The stream feed never shows it; the ATEM keeps
+the words only.
 
 ## The stream feed (ATEM / Blackmagic)
 

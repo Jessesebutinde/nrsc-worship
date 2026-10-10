@@ -33,8 +33,15 @@ export function emptyState() {
     // The stream (ATEM) output: its layout, and whether it shows the TV background or keys over the camera.
     streamLayout: 'lowerthird',
     streamBg: 'key',
+    // Text grows to use the screen (down to the standard size, never smaller); lyrics in capitals.
+    fill: true,
+    caps: true,
+    // A picture or video beside the words on the TV only: { src, type, title, size: 'small' | 'half' | 'large' }.
+    illustration: null,
   };
 }
+
+export const ILLUSTRATION_SIZES = { small: 'Small', half: 'Half', large: 'Large' };
 
 /** Does this output show the item? Media can be sent to the TV only, the stream only, or both. */
 export function shownOn(item, out) {
