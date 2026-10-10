@@ -3,7 +3,7 @@
 
 import { html, useState, useEffect, useMemo, useRef } from '../ui/h.js';
 import { Fit, Stage } from './stage.js';
-import { parseSlides, splitLyrics, lintSlides } from './split.js';
+import { parseSlides, splitLyrics, splitShort, lintSlides } from './split.js';
 import { PRESETS, PRESET_INFO } from './state.js';
 import { makeSong } from './library.js';
 import { checkText, applyFix, Dictionary } from './spell.js';
@@ -62,6 +62,7 @@ export function SongEditor({ song, songs, onSave, onDelete, onClose, onShow }) {
   const [dict, setDict] = useState(null);
   const [fontsOk, setFontsOk] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [bigWords, setBigWords] = useState(2);
   const ta = useRef(null);
 
   const slides = useMemo(() => parseSlides(text), [text]);
@@ -178,6 +179,12 @@ export function SongEditor({ song, songs, onSave, onDelete, onClose, onShow }) {
         </label>
         <div class="row wrap">
           <button onClick=${() => setText(splitLyrics(text, preset, size))} disabled=${!text.trim()}>Auto-split into slides</button>
+          <span class="row">
+            <button onClick=${() => setText(splitShort(text, bigWords))} disabled=${!text.trim()} title="One short burst per slide, as big as the screen allows">Big slides</button>
+            <select value=${bigWords} onChange=${(e) => setBigWords(Number(e.target.value))} aria-label="Words per slide">
+              <option value="1">1 word</option><option value="2">2 words</option><option value="3">3 words</option>
+            </select>
+          </span>
           <span class="muted small">${slides.length} slide${slides.length === 1 ? '' : 's'}</span>
         </div>
         ${dict &&

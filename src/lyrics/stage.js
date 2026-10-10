@@ -3,7 +3,7 @@
 
 import { html, useState, useEffect, useRef, useLayoutEffect } from '../ui/h.js';
 import { CHURCH_NAME } from './config.js';
-import { shownOn } from './state.js';
+import { shownOn, lookOf, PRESET_INFO } from './state.js';
 import { idbGet } from './idb.js';
 import { splitAtPauses } from './split.js';
 import { lineWidth } from './measure.js';
@@ -17,7 +17,7 @@ const SAFE_H = H - 2 * 54;
 const ILLUS_W = { small: 560, half: 760, large: 960 };
 
 // How long a frame takes to fade out, by what it shows.
-const OUT_MS = { worship: 400, praise: 200, classic: 250, scripture: 250, title: 300, logo: 400, media: 600, none: 400 };
+const OUT_MS = { worship: 400, praise: 200, classic: 250, poster: 200, sunshine: 300, lines: 400, beams: 500, scripture: 250, title: 300, logo: 400, media: 600, none: 400 };
 
 /** Keeps the outgoing frame mounted (with .out) while it fades, so changes cross over smoothly. */
 function useSwap(key, data, outMs, toNone) {
@@ -79,7 +79,10 @@ function useFontsReady() {
 
 // The widest line in `el` compared with `el` itself (both as drawn, so the stage's scale cancels out).
 function widestLine(el) {
-  const box = el.getBoundingClientRect().width;
+  // The content box only: a look with padding (the Poster band) keeps its text inside the band.
+  const cs = getComputedStyle(el);
+  const inner = el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+  const box = el.offsetWidth ? (el.getBoundingClientRect().width * inner) / el.offsetWidth : 0;
   let widest = 0;
   for (const ln of el.children) {
     const r = document.createRange();
@@ -143,6 +146,12 @@ function BgLayer({ kind, video }) {
       <video src=${video} autoplay muted loop playsinline></video><div class="bg-dim"></div><div class="vig"></div>
     </div>`;
   if (kind === 'key') return html`<div class="bg-fill bg-key"><div class="bg-keyband"></div></div>`;
+  if (kind === 'crowd')
+    return html`<div class="bg-fill bg-crowd"><i class="lights"></i><i class="haze"></i><i class="grain"></i><div class="vig"></div></div>`;
+  if (kind === 'wood') return html`<div class="bg-fill bg-wood"><i class="grainlines"></i><i class="corner"></i></div>`;
+  if (kind === 'arcs') return html`<div class="bg-fill bg-arcs"><i class="art"></i><i class="marks"></i></div>`;
+  if (kind === 'beams')
+    return html`<div class="bg-fill bg-beams"><i class="beam"></i><i class="scan"></i><i class="floor"></i><div class="vig"></div></div>`;
   if (kind === 'bokeh')
     return html`<div class="bg-fill bg-bokeh">
       ${[0, 1, 2, 3, 4, 5, 6, 7].map((i) => html`<i class=${`b${i}`}></i>`)}<div class="vig"></div>
@@ -156,10 +165,13 @@ function BgLayer({ kind, video }) {
 
 const Lines = ({ lines }) => lines.map((l, i) => html`<span class="ln" style=${`--i:${i}`}>${l}</span>`);
 
-const BASE = { classic: 140, worship: 130, praise: 125 };
-const LINE_H = { classic: 1.18, worship: 1.15, praise: 1.08 };
-const MAX_LYRIC = 300;
+const BASE = { classic: 140, worship: 130, praise: 125, poster: 200, sunshine: 150, lines: 120, beams: 140 };
+const LINE_H = { classic: 1.18, worship: 1.15, praise: 1.08, poster: 0.98, sunshine: 1.05, lines: 1.15, beams: 1.1 };
+const MAX_LYRIC = { poster: 340 };
+const maxLyric = (preset) => (MAX_LYRIC[preset] || 300) / BASE[preset];
 const LYRIC_H = SAFE_H * 0.88;
+// These looks write the lyrics in capitals whatever the Capitals switch says.
+const UPPER = new Set(['praise', 'poster', 'sunshine', 'lines', 'beams']);
 
 /**
  * Fill mode: the slide's words re-broken into 3 or 4 shorter lines when that makes the letters
@@ -169,7 +181,7 @@ function bestLines(lines, preset, caps, textW) {
   const base = BASE[preset];
   const size = (ls) => {
     const widest = Math.max(...ls.map((l) => lineWidth(caps ? l.toUpperCase() : l, preset)));
-    return Math.min(MAX_LYRIC / base, textW / widest, LYRIC_H / (ls.length * base * LINE_H[preset]));
+    return Math.min(maxLyric(preset), textW / widest, LYRIC_H / (ls.length * base * LINE_H[preset]));
   };
   let best = lines;
   let bestSize = size(lines);
@@ -186,13 +198,12 @@ function bestLines(lines, preset, caps, textW) {
   return best;
 }
 
-function SongFrame({ item, index, lt, fill, caps, textW, fontsReady }) {
+function SongFrame({ item, index, lt, fill, caps, preset, textW, fontsReady }) {
   const slide = item.slides[index];
   const box = useRef(null);
-  const preset = item.preset || 'worship';
   const refill = fill && !lt;
-  const lines = slide ? (refill && fontsReady ? bestLines(slide.lines, preset, caps || preset === 'praise', textW) : slide.lines) : [];
-  useFill(box, { on: refill, max: MAX_LYRIC / BASE[preset], min: 0.7, availH: LYRIC_H, lines: true }, [
+  const lines = slide ? (refill && fontsReady ? bestLines(slide.lines, preset, caps || UPPER.has(preset), textW) : slide.lines) : [];
+  useFill(box, { on: refill, max: maxLyric(preset), min: 0.7, availH: LYRIC_H, lines: true }, [
     lines.join('\n'),
     fill,
     caps,
@@ -204,7 +215,10 @@ function SongFrame({ item, index, lt, fill, caps, textW, fontsReady }) {
   if (lt)
     return html`<div class="lt-band"><div class="lt-lyric"><${Lines} lines=${slide.lines} /></div></div>`;
   return html`<div class="safe">
-    <div class="lyric" ref=${box}><${Lines} lines=${lines} /></div>
+    <div class="lyric" ref=${box}>
+      <${Lines} lines=${lines} />
+      ${PRESET_INFO[preset].subtitle && html`<div class="sub">${item.title}</div>`}
+    </div>
     ${preset === 'classic' && html`<div class="songtag">${item.title}</div>`}
     ${preset === 'worship' && index === 0 && html`<div class="songtitle">${item.title}</div>`}
   </div>`;
@@ -313,7 +327,7 @@ const LogoFrame = () => html`<div class="logo">
   <div class="ln logo-sub" style="--i:2">Society Church · Kampala</div>
 </div>`;
 
-/** Which frame the state shows on an output: { key, kind, preset }. */
+/** Which frame the state shows on an output: { key, kind, preset } (preset = the song's look). */
 export function frameOf(state, { titleFor = null, out = 'preview' } = {}) {
   const { item, index = 0, mode } = state || {};
   if (!state || mode === 'black' || mode === 'clear') return { key: 'none', kind: 'none' };
@@ -321,7 +335,7 @@ export function frameOf(state, { titleFor = null, out = 'preview' } = {}) {
   if (!shownOn(item, out)) return { key: 'none', kind: 'none' };
   if (item.kind === 'song' && titleFor === item.id && index === 0) return { key: `title:${item.id}`, kind: 'title' };
   const kind = item.kind === 'scripture' ? 'scripture' : item.kind === 'media' ? 'media' : 'song';
-  return { key: `${item.id}:${index}`, kind, preset: kind === 'song' ? item.preset || 'worship' : kind };
+  return { key: `${item.id}:${index}`, kind, preset: kind === 'song' ? lookOf(state, item) : kind };
 }
 
 /**
@@ -362,7 +376,10 @@ export function Stage({ state, out = 'preview', layout = 'full', background = 'a
   const textW = SAFE_W - (illus ? illusW + 48 : 0);
   const fill = st.fill !== false;
 
-  const bg = background === 'none' ? 'none' : background === 'key' ? (lowerThird ? 'black' : 'key') : st.bg;
+  // A look with its own environment brings it while the song is up (title card included).
+  const songLook = st.item && st.item.kind === 'song' && st.mode === 'show' && shownOn(st.item, out) ? lookOf(st, st.item) : null;
+  const env = songLook && st.lookBg !== 'mine' ? PRESET_INFO[songLook].env : null;
+  const bg = background === 'none' ? 'none' : background === 'key' ? (lowerThird ? 'black' : 'key') : env || st.bg;
   const cls = [
     'stage',
     lowerThird ? 'is-lt' : '',
@@ -380,7 +397,7 @@ export function Stage({ state, out = 'preview', layout = 'full', background = 'a
       const preset = kind === 'song' ? data.f.preset : kind;
       return html`<div key=${k} class=${`frame k-${kind} p-${preset} ${leaving ? 'out' : 'in'}`} style=${`--out:${o}ms`}>
         ${kind === 'song' &&
-        html`<${SongFrame} item=${data.item} index=${data.index} lt=${lowerThird} fill=${fill} caps=${st.caps !== false} textW=${textW} fontsReady=${fontsReady} />`}
+        html`<${SongFrame} item=${data.item} index=${data.index} lt=${lowerThird} fill=${fill} caps=${st.caps !== false} preset=${data.f.preset} textW=${textW} fontsReady=${fontsReady} />`}
         ${kind === 'scripture' &&
         html`<${ScriptureFrame} item=${data.item} index=${data.index} lt=${lowerThird} fill=${fill} textW=${textW} fontsReady=${fontsReady} />`}
         ${kind === 'media' && html`<${MediaFrame} item=${data.item} index=${data.index} live=${out !== 'preview' && !leaving} />`}

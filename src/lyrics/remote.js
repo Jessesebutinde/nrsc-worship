@@ -6,7 +6,7 @@ import { html, render, useState, useEffect, useRef, useMemo } from '../ui/h.js';
 import { Fit, Stage } from './stage.js';
 import { Link, normalizeCode } from './link.js';
 import { ROOM } from './config.js';
-import { emptyState, reduce, songItem, mediaItem, BACKGROUNDS, BACKGROUND_INFO, PRESET_INFO, STREAM_LAYOUTS, ILLUSTRATION_SIZES } from './state.js';
+import { emptyState, reduce, songItem, mediaItem, BACKGROUNDS, BACKGROUND_INFO, PRESETS, PRESET_INFO, STREAM_LAYOUTS, ILLUSTRATION_SIZES, lookOf } from './state.js';
 import { loadSongs, saveSongs, visibleSongs, upsertSong, removeSong, searchSongs, mergeSongs, exportLibrary, importLibrary } from './library.js';
 import { parseRef } from './books.js';
 import { allVersions, importVersion, removeVersion, passageItem, BUILTIN_VERSIONS } from './bible.js';
@@ -431,6 +431,14 @@ function Live({ state, act, info, goTab, onOutputs, wide }) {
       <button class="big primary" onClick=${() => act({ type: 'next' })} aria-label="Next slide">Next ›</button>
     </div>
     <div class="modes">${modeBtn('clear', 'Clear')}${modeBtn('black', 'Black')}${modeBtn('logo', 'Logo')}</div>
+    ${item &&
+    item.kind === 'song' &&
+    html`<div class="looks chips" role="group" aria-label="Look">
+      <button class=${`chip ${!state.look ? 'on' : ''}`} onClick=${() => act({ type: 'set', patch: { look: '' } })} title="Each song's own look">Song's own</button>
+      ${PRESETS.map(
+        (p) => html`<button class=${`chip ${state.look === p ? 'on' : ''}`} onClick=${() => act({ type: 'set', patch: { look: p } })} title=${PRESET_INFO[p].hint}>${PRESET_INFO[p].name}</button>`,
+      )}
+    </div>`}
     ${!connected &&
     !wide &&
     html`<button class="note-btn" onClick=${onOutputs}>
@@ -451,7 +459,7 @@ function Live({ state, act, info, goTab, onOutputs, wide }) {
             <div>
               <b>${item.title}</b>
               <span class="muted small">
-                ${`${item.kind === 'song' ? PRESET_INFO[item.preset || 'worship'].name : item.kind === 'scripture' ? item.versions.join(' + ') : { both: 'TV + stream', tv: 'TV only', stream: 'Stream only' }[item.to || 'both']} · ${state.index + 1}/${item.slides.length}`}
+                ${`${item.kind === 'song' ? PRESET_INFO[lookOf(state, item)].name : item.kind === 'scripture' ? item.versions.join(' + ') : { both: 'TV + stream', tv: 'TV only', stream: 'Stream only' }[item.to || 'both']} · ${state.index + 1}/${item.slides.length}`}
               </span>
             </div>
           </div>
@@ -857,6 +865,11 @@ function Settings({ state, act, info, prefs, setPrefs, songs, setSongs, session,
         <input type="checkbox" checked=${state.caps !== false} onChange=${(e) => act({ type: 'set', patch: { caps: e.target.checked } })} />
         <span>Capital letters for lyrics</span>
       </label>
+      <label class="toggle">
+        <input type="checkbox" checked=${state.lookBg !== 'mine'} onChange=${(e) => act({ type: 'set', patch: { lookBg: e.target.checked ? 'look' : 'mine' } })} />
+        <span>Looks bring their own background (off: keep the TV background under every look)</span>
+      </label>
+      <p class="muted small">Poster, Sunshine, Lines and Beams are looks with their own environment. Pick one per song in the editor, or force one for every song from the chips under the live slide.</p>
     </section>
 
     <section class="card">

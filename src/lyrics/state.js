@@ -1,22 +1,36 @@
 // What the screen shows. Controllers (the remote, the screen's keyboard) send the whole state;
 // the newest one wins everywhere: higher rev, or the same rev from the larger client id.
 
-export const BACKGROUNDS = ['glow', 'bokeh', 'leaks', 'video', 'key'];
-export const PRESETS = ['worship', 'praise', 'classic'];
+export const BACKGROUNDS = ['glow', 'bokeh', 'leaks', 'crowd', 'wood', 'arcs', 'beams', 'video', 'key'];
+
+// Looks for lyrics. The first three are the Namasuba standard; the others bring their own
+// environment (`env`, one of the backgrounds) and their own type.
+export const PRESETS = ['worship', 'praise', 'classic', 'poster', 'sunshine', 'lines', 'beams'];
 
 export const PRESET_INFO = {
   worship: { name: 'Worship', hint: 'Hillsong-style: mixed case, lower third' },
   praise: { name: 'Praise', hint: 'Elevation-style: caps, quick cuts' },
   classic: { name: 'Classic', hint: 'Namasuba: centred, gold song tag' },
+  poster: { name: 'Poster', hint: 'Chunky coral caps on a cream band, over a grainy stage', env: 'crowd', subtitle: false },
+  sunshine: { name: 'Sunshine', hint: 'White block caps with a long shadow on sunny woodgrain', env: 'wood', subtitle: true },
+  lines: { name: 'Lines', hint: 'Light teal caps and line-art on navy', env: 'arcs', subtitle: true },
+  beams: { name: 'Beams', hint: 'Glowing cyan caps in light beams', env: 'beams', subtitle: true },
 };
 
 export const BACKGROUND_INFO = {
   glow: 'Glow',
   bokeh: 'Bokeh',
   leaks: 'Light leaks',
+  crowd: 'Stage & crowd',
+  wood: 'Sunny woodgrain',
+  arcs: 'Teal line-art',
+  beams: 'Light beams',
   video: 'Video loop',
   key: 'Key (ATEM)',
 };
+
+/** The look a song shows with: the operator's override for all songs, else the song's own. */
+export const lookOf = (state, item) => (state && state.look && PRESET_INFO[state.look] ? state.look : (item && item.preset) || 'worship');
 
 export const STREAM_LAYOUTS = { lowerthird: 'Lower thirds', full: 'Full screen' };
 
@@ -38,6 +52,10 @@ export function emptyState() {
     caps: true,
     // A picture or video beside the words on the TV only: { src, type, title, size: 'small' | 'half' | 'large' }.
     illustration: null,
+    // '' = each song's own look; a look name forces it for every song. Looks bring their own
+    // environment unless lookBg is 'mine' (keep the TV background).
+    look: '',
+    lookBg: 'look',
   };
 }
 
