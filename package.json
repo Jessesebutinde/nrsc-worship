@@ -6,6 +6,7 @@
   "scripts": {
     "start": "npx --yes http-server -c-1 -p 8080 .",
     "test": "node --test tests/*.test.mjs",
-    "media": "node scripts/build-media.mjs"
+    "media": "node scripts/build-media.mjs",
+    "smoke": "node scripts/keys-smoke.mjs"
   }
 }

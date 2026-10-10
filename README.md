@@ -1,5 +1,5 @@
-This repo holds two church media apps: **SongCut** (below) and **[Lyric Slides](#lyric-slides)**, the lyrics and
-scripture screen for the hall TV.
+This repo holds three church media apps: **SongCut** (below), **[Lyric Slides](#lyric-slides)**, the lyrics and
+scripture screen for the hall TV, and **[Stage Keys](#stage-keys)**, the live keyboard rig for the KROSS 2.
 
 # SongCut
 
@@ -373,3 +373,138 @@ npm test         # unit tests (the audio tests use ffmpeg if it's installed)
 `.github/workflows/pages.yml` runs the tests on every push. On `main` it also publishes the site to the `gh-pages`
 branch, which GitHub Pages serves at **https://jessesebutinde.github.io/nrsc-worship/**. You can add the site to your
 phone's home screen.
+
+# Stage Keys
+
+A live keyboard rig that runs in the browser. Plug the KORG KROSS 2 (or any USB keyboard) into the laptop, open the
+page, and the keys play the computer's sounds: Congolese **sebene** solo and mi-solo guitars and the bass under them,
+Elevation / Hillsong worship pads and pianos, Nord-style splits and layers, tonewheel organs with drawbars and Leslie,
+Brooklyn-style choir stacks, Billie Eilish / FINNEAS dark sounds, strings, mallets. Phrase **loops** let you play a
+pattern once and keep it going under the song, and a **set list** carries a whole rig per song. Live at
+**https://jessesebutinde.github.io/nrsc-worship/keys/**. Chrome or Edge (Web MIDI and AudioWorklet).
+
+## The plan, and what is built
+
+The rig is organised like a stage keyboard (Montage / MODX live sets, Nord programs), not like a DAW:
+
+| Idea | How it works here |
+| --- | --- |
+| **Performance (rig)** | Up to 8 **parts**, each one sound with its own key range (split), velocity range, octave, MIDI channel, fader, pan and effect chain. Parts layer when their ranges overlap. |
+| **Sounds** | 84 presets in 11 families, led by the sebene ones. Each is a program for the engine plus an effect chain; sampled, synthesised, modelled or stacked. |
+| **Combos** | 14 ready rigs: *Sebene Rig* (bass left, solo right, cavacha kit), *Sebene Praise*, *Ndombolo Praise*, *Elevation Night*, *Hillsong Sunday*, *Nord: Piano + Pad*, *Gospel B3 + Piano*, *Brooklyn Choir Stack*, *Billie Dark*… one tap loads the lot. |
+| **Macros** | Four knobs per rig, each driving any number of parameters over a range (reverb mix, filter, pad level, palm mute…). The KROSS 2 tone knobs drive them with no setup. |
+| **Loops** | One phrase loop per part, Ableton-session style but MIDI: arm, play the phrase once, stop at the end; it rounds to whole bars and keeps going, quantised to 16ths, phase-locked to the tempo. Mute it for the next song, overdub, or clear. Built-in drum grooves (sebene cavacha, ndombolo, rumba, worship 4/4 and 6/8, pop) are loops on a kit part. |
+| **Songs** | The set list: each song keeps its rig, tempo and loops. Next / Previous by button, arrow keys, a learned pedal or a program change from the keyboard. Old notes ring out through a change. |
+| **Offline** | The app shell is cached by a service worker; sampled instruments are cached after their first download. *Settings → Download every sound in the set list* prepares a gig. |
+
+### How the sound is made
+
+Everything runs inside one **AudioWorklet** (`src/keys/dsp/`, plain modules that also run in Node for the tests):
+
+- **Synth** (`voice-synth.js`): three oscillators (band-limited saw, square/pulse, triangle, sine, 7-voice super saw),
+  noise, a 12/24 dB state-variable filter, two ADSRs, an LFO with tempo sync, unison/detune/spread, poly, mono and
+  legato with glide, analogue drift. The worship pads, leads, Moog and 808 basses, Billie's bass.
+- **Organ** (`voice-organ.js`): nine tonewheel drawbars with Hammond foldback, 2nd/3rd percussion (single-trigger),
+  key click, leakage, and the scanner vibrato/chorus (V1–C3) as a part effect. Drawbars move live. The Leslie is in
+  the effect chain.
+- **String model** (`voice-string.js`): an extended Karplus-Strong pluck for the **sebene guitars and bass**: a pick
+  burst shaped by pick position and brightness rings in a tuned loop with damping and stiffness, through a pickup tone
+  and body filter. Mod wheel = palm mute (ghost notes), legato = hammer-ons, pitch bend = slides, optional doubled
+  string. Level is compensated across the keyboard so the high sebene register stays strong.
+- **Sampler** (`voice-sampler.js`): multisamples from the free MIDI.js soundfont sets (MusyngKite, FluidR3, FatBoy),
+  Hermite interpolation, ADSR, optional filter and vibrato, and **crossfade looping** found automatically
+  (`loop-detect.js`) so a 3-second choir or string clip holds for as long as the key is down.
+- **Layers**: a part can stack two or three sources on one note (modelled pluck + sampled Strat, aahs + oohs + octave
+  synth choir) sharing one effect chain.
+- **Drums** (`voice-drums.js`): a synthesised kit (kick, snare, rim, hats, clap, congas, cowbell, shaker…) for the
+  grooves and loops.
+- **Voices**: a 160-voice pool, per-part polyphony with graceful stealing, sustain and half-damper, pitch bend,
+  mod wheel, expression, and sample-accurate timed events so loops land exactly on the grid.
+
+Each part then has a native Web Audio **effect chain** (`src/keys/fx.js`): compressor, drive/amp, 3-band EQ with low
+cut, chorus/ensemble/flanger/phaser (with the Roland-JC "wet on one side" the soukous players use), tremolo/auto-pan,
+a rotary speaker with horn/drum acceleration, a tempo-synced stereo/ping-pong delay, and convolution reverb from
+generated impulses (room, plate, hall, cathedral, spring, and a **shimmer** that feeds the tail back an octave up
+through a granular pitch shifter). A limiter on the master keeps a big layered chord clean.
+
+### The sebene sounds
+
+From the research into how the Kinshasa guitarists get their sound (clean Strat-type single coils, flat-picked single
+lines in the top register, a touch of chorus on one side, a short echo, plate or spring reverb; fingered thumb-and-index
+bass, dry and punchy, with muted ghost notes):
+
+- **Sebene Solo** (modelled), **Sebene Solo Legato** (hammer-ons), **Sebene Solo (sampled)**, **Sebene Solo Hybrid**
+  (model + sample) and **Sebene Mi-Composé** (octave-doubled, Lokassa style). Chain: compressor 3:1 → EQ (low cut
+  120 Hz, −2 dB at 300 Hz, +3 dB top) → chorus 0.8 Hz wet on the right → 1/8-note echo (tempo-synced, 20 % feedback)
+  → plate 1.4 s. Macro "Echo" rides the delay, macro "Mute" rides the palm mute.
+- **Mi-Solo** (warmer, no echo, an octave down), **Rhythm Chop** (palm-muted chatter), **Soukous Clean JC** (for
+  arpeggio cells and chords), **Likembe**.
+- **Sebene Bass** (modelled, legato, wheel mutes), **Sebene Bass (poly)**, **Sebene Bass (sampled)**, **Sebene Bass
+  Hybrid**, **Ndombolo Synth Bass**. Chain: compressor 4:1 → EQ (+3 dB low, +2 dB at 700 Hz, −3 dB top), no reverb.
+
+Tempos of 120–155 bpm with a 16th feel; the *Sebene (cavacha)* groove has the kick on every beat and the snare's
+accent pattern, congas, cloche and shaker.
+
+## Setting up the KROSS 2
+
+1. Connect the KROSS 2's square **USB B** port to the laptop. It is class-compliant: Windows and macOS see a
+   **KROSS2 MIDI** device and a **KROSS2 audio** device without a driver. On Windows 11 24H2 or later do *not* install
+   the KORG USB-MIDI driver (uninstall it if present). Windows lets one program hold the MIDI port, so close any DAW
+   or Korg editor first.
+2. Open the page in Chrome or Edge, press **Start the rig**, and allow MIDI.
+3. On the KROSS: **GLOBAL/MEDIA → G-MIDI › BASIC**, untick **Local Control On**, then **FUNCTION › Write Global
+   Setting** so it survives power-off. Now the keys play only the computer. Tick it again to layer the KROSS's own
+   sounds under the rig.
+4. To hear the laptop through the KROSS's outputs and headphones, choose **KROSS2 audio** under *Settings → Audio →
+   Output* (Chrome 110+). The KROSS mixes it at its USB audio input.
+5. The damper pedal, mod wheel, pitch bend and an expression pedal (assignable pedal → **Expression CC 11**) just work.
+   The assignable switch (**Foot Switch CC 82**) can be learned for Next song, rotary slow/fast or a loop. The four
+   **TONE** knobs (CC 74, 71, 73, 72) are the four macros. Program changes from the keyboard select songs (switch off in
+   Settings if you change programs on the KROSS for its own sounds).
+
+The full guide is under *Settings → KROSS 2 setup guide* in the app.
+
+## Playing
+
+- **Perform** shows the parts: fader with meter, mute, octave, **Edit** (sound, effects, mix & zone), **Change**
+  (sound browser), ▶ to hear it. Tap a card to select it; the keyboard strip at the bottom shows every part's range
+  as a band (drag a band's end to move a split) and lights the keys as you play. Esc is panic.
+- **Sounds**: families on the left, search on top. **Load** replaces the selected part; **+ Layer** adds the sound as
+  a new part on the whole keyboard; **+ Left hand** / **+ Right hand** add it on one side of middle C. ★ keeps
+  favourites; *Save as my sound* in the editor keeps your tweaks.
+- **Loops**: Start the transport (or let the first note start it), arm a part with **● Rec**, play the phrase once
+  and press **■ Done** at the end. Play/mute per part, **All loops off**, grooves per kit part, click, quantise,
+  count-in. Loops are saved with the song.
+- **Songs**: *Save current rig as a song*, reorder, rename, set key and tempo; **Next / Previous** on stage.
+  Export/Import carries the whole set list between computers.
+- **Settings**: MIDI input, audio output and latency (Normal, Low 5 ms, Lowest, Relaxed), sample quality (memory),
+  master and click volume, learned controls, offline download, the typing keyboard (Z–M, Q–P) for trying sounds
+  without a keyboard.
+
+Latency on a laptop is the audio buffer plus the output path: around 10–20 ms on macOS, 20–40 ms on Windows with the
+default buffer; the *Low* setting asks for the smallest buffer the device allows. A wired output is much lower than
+Bluetooth.
+
+## Tests
+
+`npm test` runs the Node tests for the engine (`tests/keys-dsp.test.mjs`: envelopes, filters, band-limited
+oscillators, loop detection, timed events, sustain, legato, stealing, layers), the state and presets
+(`tests/keys-state.test.mjs`), the looper (`tests/keys-looper.test.mjs`) and the sample loader
+(`tests/keys-samples.test.mjs`). `npm run smoke` renders every preset through the real worklet in headless Chromium,
+then opens the app, loads the Sebene Rig, plays both splits and the groove loop, and takes screenshots (`--shots`).
+
+## Layout
+
+```
+keys/                 the page: index.html, keys.css, manifest, icon, sw.js (offline shell)
+src/keys/app.js       boot: store, engine, MIDI, router, looper, views
+src/keys/state.js     performance / parts / songs / settings, reducer, persistence
+src/keys/engine.js    AudioContext, worklet node, part chains, master, click, device choice
+src/keys/fx.js        the effect stages and impulse generator
+src/keys/samples.js   soundfont download, cache, decode, loop detection → worklet;  banks.js the catalogue
+src/keys/midi.js      Web MIDI input + typing keyboard;  router.js zones, channels, pedals, CC learn
+src/keys/looper.js    transport, phrase loops, grooves, metronome
+src/keys/presets.js   the sound library;  combos.js the rigs
+src/keys/dsp/         the engine (pure modules);  worklet/ the AudioWorklet shells
+src/keys/ui/          Preact views: perform, editor, sounds, loops, songs, settings, keyboard, controls
+```
