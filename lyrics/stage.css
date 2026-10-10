@@ -391,64 +391,151 @@
   color: rgba(245, 243, 238, 0.4);
 }
 
-/* ------------------------------------------------------------ scripture (stacked bilingual) */
+/* ------------------------------------------------------------ scripture */
+/* Eleven looks. The stage carries the look (.sl-<look>) and sets its palette and metrics in
+   variables; the block (.scrip) is laid out by the look's class (.l-<look>). Sizes scale with --fs
+   (fill mode). The type is Source Serif 4, or Montserrat with the Sans switch. */
 
+.stage {
+  --sfam: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  --sa: var(--gold); /* accent: reference, bar, verse numbers */
+  --sfg: var(--white); /* the language on top */
+  --sfg2: rgba(245, 243, 238, 0.68); /* the one below */
+  --sshadow: var(--shadow);
+  --sl: 154px; /* block left */
+  --sw: 1613px; /* block width */
+  --sp: 56px; /* room for the bar */
+  --sps: 92px; /* primary size */
+  --spw: 600;
+  --sss: 64px; /* secondary size */
+  --ssw: 400;
+  --ssi: normal; /* secondary italic? */
+  --salign: left;
+  --strack: rgba(255, 255, 255, 0.12);
+  --sbar: block; /* the bar at the left (Ink & stone, Dawn, Kitenge) */
+}
+.stage.sfont-sans {
+  --sfam: 'Montserrat', sans-serif;
+}
 .scrip {
   position: absolute;
-  left: 154px;
+  left: var(--sl);
   top: 50%;
   transform: translateY(-50%);
-  width: 1613px; /* 84% */
-  padding-left: 56px;
-  text-align: left;
-  text-shadow: var(--shadow);
+  width: var(--sw);
+  padding-left: var(--sp);
+  text-align: var(--salign);
+  text-shadow: var(--sshadow);
+  font-family: var(--sfam);
+  color: var(--sfg);
 }
 .scrip .bar {
+  display: var(--sbar);
   position: absolute;
   left: 0;
   top: 8px;
   bottom: 8px;
   width: 8px;
   border-radius: 8px;
-  background: var(--gold);
+  background: var(--sa);
   animation: ls-fade-in 300ms ease both;
 }
 .frame.out .scrip .bar {
   animation: none;
 }
-.scrip .ref {
-  font-size: calc(48px * var(--fs, 1));
+.scrip .ref,
+.sref {
+  font-family: 'Montserrat', sans-serif;
+  font-size: calc(44px * min(var(--fs, 1), 1.15));
   font-weight: 600;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--gold);
-  margin-bottom: calc(40px * var(--fs, 1));
+  color: var(--sa);
+  margin-bottom: calc(36px * var(--fs, 1));
 }
 .scrip .pri {
-  font-size: calc(92px * var(--fs, 1));
-  font-weight: 600;
+  font-size: calc(var(--sps) * var(--fs, 1));
+  font-weight: var(--spw);
   line-height: 1.22;
 }
 .scrip .sec {
-  font-size: calc(64px * var(--fs, 1));
-  font-weight: 500;
+  font-size: calc(var(--sss) * var(--fs, 1));
+  font-weight: var(--ssw);
+  font-style: var(--ssi);
   line-height: 1.3;
-  color: rgba(245, 243, 238, 0.68);
-  margin-top: calc(44px * var(--fs, 1));
+  color: var(--sfg2);
+  margin-top: calc(40px * var(--fs, 1));
 }
 .scrip .ref + .sec {
-  font-size: calc(92px * var(--fs, 1));
-  font-weight: 600;
-  color: var(--white);
+  font-size: calc(var(--sps) * var(--fs, 1));
+  font-weight: var(--spw);
+  font-style: normal;
+  color: var(--sfg);
 }
 .scrip .ver {
   display: block;
-  font-size: calc(30px * var(--fs, 1));
+  font-family: 'Montserrat', sans-serif;
+  font-size: calc(28px * var(--fs, 1));
   font-weight: 600;
+  font-style: normal;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   opacity: 0.6;
   margin-bottom: 10px;
+}
+.scrip .vn {
+  color: var(--sa);
+}
+/* The marker that the passage goes on, and the bar through it. */
+.smore {
+  position: absolute;
+  right: 96px;
+  bottom: 54px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--sa);
+  opacity: 0.6;
+  animation: ls-fade-in 600ms ease both;
+}
+.progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 7px;
+  background: var(--strack);
+  z-index: 3;
+}
+.progress i {
+  display: block;
+  height: 100%;
+  background: var(--sa);
+  transition: width 500ms var(--ease);
+}
+/* Reveal: the verse being read is full, the ones before it dim, the ones after it wait unseen. */
+.vs {
+  transition: opacity 500ms ease;
+}
+.vs.read {
+  opacity: 0.38;
+}
+.vs.next {
+  opacity: 0;
+}
+.sfont-serif .lt-scrip .pri,
+.sfont-serif .lt-scrip .sec {
+  font-family: 'Source Serif 4', Georgia, serif;
+}
+.sfont-serif .lt-scrip .sec {
+  font-style: italic;
+}
+/* Beside an illustration every look stacks into the room that is left. */
+.with-illus .scrip {
+  left: 154px;
+  width: calc(1613px - var(--illus-w) - 48px);
 }
 
 /* ------------------------------------------------------------ title card & logo */
@@ -478,6 +565,38 @@
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--gold);
+}
+.tc-scrip {
+  font-family: var(--sfam);
+  color: var(--sfg);
+  text-shadow: var(--sshadow);
+}
+.tc-scrip .ornt {
+  color: var(--sa);
+  font-size: 40px;
+  letter-spacing: 1em;
+  padding-left: 1em;
+  opacity: 0.7;
+}
+.tc-scrip .book {
+  font-size: 150px;
+  font-weight: 600;
+  line-height: 1.1;
+  margin-top: 24px;
+}
+.tc-scrip .book2 {
+  font-size: 72px;
+  font-style: italic;
+  color: var(--sfg2);
+  margin-top: 8px;
+}
+.tc-scrip .ch {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 44px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--sa);
+  margin-top: 40px;
 }
 .logo svg {
   color: var(--gold);
@@ -614,9 +733,6 @@
 
 .with-illus .safe .lyric {
   right: calc(var(--illus-w) + 48px);
-}
-.with-illus .scrip {
-  width: calc(1613px - var(--illus-w) - 48px);
 }
 .with-illus .songtitle {
   display: none;
@@ -966,6 +1082,62 @@
   font-weight: 400;
   font-display: block;
   src: url(fonts/archivo-black-latin.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* Source Serif 4 (OFL): the scripture type. */
+@font-face {
+  font-family: 'Source Serif 4';
+  font-style: italic;
+  font-weight: 400;
+  font-display: block;
+  src: url(fonts/sserif-400-italic-latin-ext.woff2) format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF,
+    U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Source Serif 4';
+  font-style: italic;
+  font-weight: 400;
+  font-display: block;
+  src: url(fonts/sserif-400-italic-latin.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Source Serif 4';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url(fonts/sserif-400-normal-latin-ext.woff2) format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF,
+    U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Source Serif 4';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url(fonts/sserif-400-normal-latin.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Source Serif 4';
+  font-style: normal;
+  font-weight: 600;
+  font-display: block;
+  src: url(fonts/sserif-600-normal-latin-ext.woff2) format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF,
+    U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Source Serif 4';
+  font-style: normal;
+  font-weight: 600;
+  font-display: block;
+  src: url(fonts/sserif-600-normal-latin.woff2) format('woff2');
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
     U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
@@ -1653,4 +1825,497 @@
   translate: none !important;
   rotate: none !important;
   scale: none !important;
+}
+
+/* ------------------------------------------------------------ scripture looks: palettes and layouts */
+
+/* Ink & stone (default): stacked, gold bar. */
+.sl-dawn {
+  --sa: #f0c070;
+}
+.sl-dawn .scrip {
+  top: 48%;
+}
+/* Watercolour: dark ink on a light wash. */
+.sl-water {
+  --sbar: none;
+  --sa: #8a3b2a;
+  --sfg: #2b2a33;
+  --sfg2: #5e5a68;
+  --sshadow: none;
+  --sl: 140px;
+  --sw: 1640px;
+  --sp: 0px;
+  --sss: 60px;
+  --ssi: italic;
+  --strack: rgba(0, 0, 0, 0.1);
+}
+/* Chalk & slate: centred chalk, a short underline between the languages. */
+.sl-chalk {
+  --sbar: none;
+  --sa: #f0e6b0;
+  --sfg: #f6f2e6;
+  --sfg2: rgba(246, 242, 230, 0.6);
+  --sshadow: 0 0 2px rgba(255, 255, 255, 0.55);
+  --sl: 160px;
+  --sw: 1600px;
+  --sp: 0px;
+  --spw: 400;
+  --sss: 60px;
+  --salign: center;
+}
+.sl-chalk .scrip .ref {
+  font-weight: 500;
+}
+.scrip .ul {
+  display: block;
+  width: calc(220px * var(--fs, 1));
+  height: 4px;
+  margin: calc(30px * var(--fs, 1)) auto 0;
+  border-radius: 2px;
+  background: var(--sa);
+  opacity: 0.8;
+}
+/* Kitenge: woven bands top and bottom, gold bar; the marker and the progress bar sit above the band. */
+.sl-kitenge .smore {
+  bottom: 130px;
+}
+.sl-kitenge .progress {
+  bottom: 110px;
+}
+.sl-kitenge {
+  --sa: #d4a017;
+  --sfg2: rgba(245, 243, 238, 0.65);
+  --sl: 150px;
+  --sw: 1620px;
+  --sps: 88px;
+  --sss: 60px;
+  --strack: transparent;
+}
+/* Candlelight: centred in one warm pool of light. */
+.sl-candle {
+  --sbar: none;
+  --sa: #f0b860;
+  --sfg: #fff1d6;
+  --sfg2: rgba(255, 230, 190, 0.6);
+  --sshadow: 0 0 30px rgba(255, 170, 70, 0.35);
+  --sl: 240px;
+  --sw: 1440px;
+  --sp: 0px;
+  --sss: 60px;
+  --ssi: italic;
+  --salign: center;
+}
+/* Blueprint: light serif, sans English, engraved lines. */
+.sl-blueprint {
+  --sbar: none;
+  --sa: #9cd0f2;
+  --sfg: #eef6fb;
+  --sfg2: rgba(238, 246, 251, 0.6);
+  --sl: 140px;
+  --sw: 1240px;
+  --sp: 0px;
+  --spw: 400;
+  --sss: 52px;
+  --strack: rgba(140, 190, 230, 0.2);
+}
+.sl-blueprint .scrip .sec {
+  font-family: 'Montserrat', sans-serif;
+}
+/* Parchment: two columns on aged paper, the reference at the top. */
+.sl-parchment {
+  --sa: #8a6a1e;
+  --sfg: #2f2419;
+  --sfg2: #5a4a35;
+  --sshadow: none;
+  --sl: 96px;
+  --sw: 1728px;
+  --sp: 0px;
+  --sps: 80px;
+  --sss: 60px;
+  --strack: rgba(90, 60, 20, 0.15);
+}
+.sref {
+  position: absolute;
+  left: 96px;
+  top: 70px;
+  margin: 0;
+}
+.scrip.l-parchment {
+  display: grid;
+  grid-template-columns: 1fr 2px 1fr;
+  gap: 56px;
+  align-items: center;
+}
+.scrip.l-parchment .rule {
+  display: block;
+  align-self: stretch;
+  background: var(--sa);
+  opacity: 0.7;
+}
+.scrip.l-parchment .sec {
+  margin-top: 0;
+}
+.with-illus .scrip.l-parchment {
+  grid-template-columns: 1fr;
+}
+.with-illus .scrip.l-parchment .rule {
+  display: none;
+}
+/* Manuscript: book and chapter above, an illuminated capital, an ornament below. */
+.sl-manuscript {
+  --sfg2: rgba(245, 243, 238, 0.62);
+  --sl: 240px;
+  --sw: 1440px;
+  --sp: 0px;
+  --sps: 86px;
+  --sss: 56px;
+  --ssi: italic;
+}
+.sl-manuscript .scrip {
+  top: 54%;
+}
+.shead {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 72px;
+  text-align: center;
+  text-shadow: var(--sshadow);
+}
+.shead .book {
+  font-family: var(--sfam);
+  font-size: 48px;
+  font-style: italic;
+  color: var(--sa);
+}
+.shead .ch {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 26px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--sa);
+  opacity: 0.75;
+  margin-top: 8px;
+}
+.scrip .cap {
+  float: left;
+  font-size: calc(300px * var(--fs, 1));
+  line-height: 0.8;
+  font-weight: 600;
+  color: var(--sa);
+  margin: 0.03em 0.1em 0 0;
+  text-shadow: 0 0 40px rgba(227, 183, 90, 0.35);
+}
+.scrip.l-manuscript .sec {
+  clear: both;
+}
+.sorn {
+  position: absolute;
+  left: 50%;
+  bottom: 60px;
+  transform: translateX(-50%);
+  color: var(--sa);
+  font-size: 34px;
+  letter-spacing: 1em;
+  padding-left: 1em;
+  opacity: 0.7;
+}
+/* Linen card: the language read aloud on a cream card, the other on a band below. */
+.sl-linen {
+  --sa: #8a6a1e;
+  --sfg: #22202a;
+  --sfg2: rgba(245, 243, 238, 0.65);
+  --sshadow: none;
+  --sl: 150px;
+  --sw: 1620px;
+  --sp: 0px;
+  --sps: 96px;
+  --sss: 44px;
+  --strack: rgba(255, 255, 255, 0.1);
+}
+.sl-linen .progress i,
+.sl-linen .smore {
+  --sa: #e3b75a;
+}
+.scrip.l-linen {
+  display: flex;
+  flex-direction: column;
+  gap: calc(30px * var(--fs, 1));
+}
+.scrip.l-linen .card {
+  background: rgba(243, 236, 220, 0.96);
+  border-radius: 22px;
+  box-shadow: 0 40px 100px rgba(0, 0, 0, 0.5);
+  padding: calc(64px * var(--fs, 1)) 90px;
+}
+.scrip.l-linen .band {
+  display: flex;
+  align-items: center;
+  padding: 0 90px;
+  min-height: 120px;
+  color: var(--sfg2);
+  margin-top: 0;
+}
+.scrip.l-linen .band b {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #e3b75a;
+  margin-right: 40px;
+  flex: none;
+}
+.scrip.l-linen .band .sec {
+  margin-top: 0;
+  color: var(--sfg2);
+  text-shadow: var(--shadow);
+}
+/* Scroll: one verse big on a parchment ribbon, the reference below. */
+.sl-scroll .smore {
+  right: auto;
+  left: 96px;
+}
+.sl-scroll {
+  --sfg: #2a2118;
+  --sfg2: #6b5a3e;
+  --sshadow: none;
+  --sl: 0px;
+  --sw: 1920px;
+  --sp: 0px;
+  --sps: 100px;
+  --sss: 60px;
+  --ssi: italic;
+  --salign: center;
+}
+.sl-scroll .scrip {
+  top: 47%;
+}
+.scrip.l-scroll .ribbon {
+  position: relative;
+  background: #efe4c8;
+  padding: calc(70px * var(--fs, 1)) 200px;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
+}
+.scrip.l-scroll .ribbon::before,
+.scrip.l-scroll .ribbon::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 44px;
+  background: #d9c99c;
+}
+.scrip.l-scroll .ribbon::before {
+  left: 0;
+  box-shadow: inset -12px 0 20px rgba(0, 0, 0, 0.25);
+}
+.scrip.l-scroll .ribbon::after {
+  right: 0;
+  box-shadow: inset 12px 0 20px rgba(0, 0, 0, 0.25);
+}
+.scrip.l-scroll .sec {
+  margin-top: calc(30px * var(--fs, 1));
+}
+.sl-scroll .sref {
+  left: 50%;
+  top: auto;
+  bottom: 90px;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+.with-illus .scrip.l-scroll .ribbon {
+  padding-left: 100px;
+  padding-right: 100px;
+}
+.with-illus.sl-scroll .sref {
+  left: 154px;
+  transform: none;
+}
+/* The light looks' ink would vanish on a keyed (black or transparent) output: white there. */
+.keyed.sl-water,
+.keyed.sl-parchment {
+  --sfg: var(--white);
+  --sfg2: rgba(245, 243, 238, 0.68);
+  --sa: var(--gold);
+  --sshadow: var(--shadow);
+}
+/* Emphasis on a light page: "white" is the darkest ink. */
+.sl-water .w.mk-white,
+.sl-parchment .w.mk-white,
+.sl-linen .card .w.mk-white,
+.sl-scroll .w.mk-white {
+  color: #111;
+}
+.keyed.sl-water .w.mk-white,
+.keyed.sl-parchment .w.mk-white {
+  color: #fff;
+}
+
+/* ------------------------------------------------------------ scripture environments (still) */
+
+.bg-stone {
+  background: radial-gradient(ellipse 70% 60% at 25% 20%, #3a3a46 0%, #1c1c24 50%, #0e0e14 100%);
+}
+.bg-stone .grain,
+.bg-vellum .grain,
+.bg-linen .grain,
+.bg-dawn .grain,
+.bg-slate .grain,
+.bg-kitenge .grain,
+.bg-candle .grain,
+.bg-blueprint .grain,
+.bg-night .grain {
+  position: absolute;
+  inset: -4%;
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%27320%27%20height=%27320%27%3E%3Cfilter%20id=%27n%27%3E%3CfeTurbulence%20type=%27fractalNoise%27%20baseFrequency=%270.9%27%20numOctaves=%272%27%20stitchTiles=%27stitch%27/%3E%3CfeColorMatrix%20values=%270%200%200%200%201%20%200%200%200%200%201%20%200%200%200%200%201%20%200%200%200%200.6%200%27/%3E%3C/filter%3E%3Crect%20width=%27320%27%20height=%27320%27%20filter=%27url%28%23n%29%27/%3E%3C/svg%3E");
+  background-size: 320px 320px;
+  opacity: 0.28;
+  mix-blend-mode: overlay;
+}
+.bg-parchment {
+  background: radial-gradient(ellipse 80% 80% at 50% 45%, #f3e9d2 0%, #e9dcbd 60%, #d9c79f 100%);
+}
+.bg-parchment .paper,
+.bg-watercolour .paper {
+  position: absolute;
+  inset: 0;
+  mix-blend-mode: multiply;
+  opacity: 0.35;
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%27400%27%20height=%27400%27%3E%3Cfilter%20id=%27p%27%3E%3CfeTurbulence%20type=%27fractalNoise%27%20baseFrequency=%270.04%27%20numOctaves=%274%27%20stitchTiles=%27stitch%27/%3E%3CfeColorMatrix%20values=%270%200%200%200%20.55%20%200%200%200%200%20.5%20%200%200%200%200%20.45%20%200%200%200%20.5%200%27/%3E%3C/filter%3E%3Crect%20width=%27400%27%20height=%27400%27%20filter=%27url%28%23p%29%27/%3E%3C/svg%3E");
+  background-size: 400px 400px;
+}
+.bg-parchment .edge {
+  position: absolute;
+  inset: 0;
+  box-shadow: inset 0 0 180px rgba(90, 60, 20, 0.35);
+}
+.bg-vellum {
+  background: #09080c;
+}
+.bg-vellum .glow {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 60% 50% at 50% 60%, rgba(120, 90, 30, 0.22), transparent 70%);
+}
+.bg-linen {
+  background: #1d2440;
+}
+.bg-linen .weave {
+  position: absolute;
+  inset: 0;
+  background:
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.04) 0 2px, transparent 2px 5px),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.04) 0 2px, transparent 2px 5px);
+}
+.bg-linen .light {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 60% 50% at 30% 10%, rgba(255, 230, 180, 0.16), transparent 65%);
+}
+.bg-dawn {
+  background: linear-gradient(to bottom, #f0b35a 0%, #a9633a 14%, #2b2a4a 40%, #101427 100%);
+}
+.bg-dawn .horizon {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 150px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(255, 220, 170, 0.5), transparent);
+}
+.bg-watercolour {
+  background: #f4efe6;
+}
+.bg-watercolour .wash {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 55% 45% at 78% 22%, rgba(60, 120, 160, 0.42), transparent 70%),
+    radial-gradient(ellipse 45% 40% at 20% 80%, rgba(220, 120, 90, 0.35), transparent 70%),
+    radial-gradient(ellipse 40% 35% at 60% 90%, rgba(120, 160, 110, 0.3), transparent 70%);
+}
+.bg-slate {
+  background: radial-gradient(ellipse 80% 70% at 50% 50%, #35443d, #222d28 100%);
+}
+.bg-slate .smear {
+  position: absolute;
+  inset: 0;
+  opacity: 0.5;
+  mix-blend-mode: screen;
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%27600%27%20height=%27600%27%3E%3Cfilter%20id=%27c%27%3E%3CfeTurbulence%20type=%27fractalNoise%27%20baseFrequency=%270.012%200.03%27%20numOctaves=%273%27%20stitchTiles=%27stitch%27/%3E%3CfeColorMatrix%20values=%270%200%200%200%201%20%200%200%200%200%201%20%200%200%200%200%201%20%200%200%200%20.12%200%27/%3E%3C/filter%3E%3Crect%20width=%27600%27%20height=%27600%27%20filter=%27url%28%23c%29%27/%3E%3C/svg%3E");
+  background-size: 600px 600px;
+}
+.bg-slate .frameln {
+  position: absolute;
+  inset: 60px;
+  border: 3px solid rgba(255, 255, 255, 0.18);
+  border-radius: 6px;
+}
+.bg-kitenge {
+  background: #120d0a;
+}
+.bg-kitenge .band {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 110px;
+  background: repeating-linear-gradient(90deg, #d4a017 0 40px, #1b1b1b 40px 50px, #c8102e 50px 90px, #1b1b1b 90px 100px, #1f7a3a 100px 140px, #1b1b1b 140px 150px);
+}
+.bg-kitenge .band::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(45deg, transparent 0 14px, rgba(0, 0, 0, 0.35) 14px 20px);
+}
+.bg-kitenge .band.top {
+  top: 0;
+}
+.bg-kitenge .band.bot {
+  bottom: 0;
+}
+.bg-candle {
+  background: #090604;
+}
+.bg-candle .light {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 48% 60% at 50% 72%, rgba(255, 170, 70, 0.55), rgba(120, 60, 10, 0.15) 55%, transparent 75%);
+}
+.bg-blueprint {
+  background: #0f2238;
+}
+.bg-blueprint .rules {
+  position: absolute;
+  inset: 0;
+  opacity: 0.35;
+  background: repeating-linear-gradient(180deg, rgba(140, 190, 230, 0.25) 0 1px, transparent 1px 28px);
+}
+.bg-blueprint .circle {
+  position: absolute;
+  right: -200px;
+  top: 50%;
+  width: 900px;
+  height: 900px;
+  transform: translateY(-50%);
+  border-radius: 50%;
+  border: 2px solid rgba(140, 190, 230, 0.35);
+}
+.bg-blueprint .circle::before,
+.bg-blueprint .circle::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid rgba(140, 190, 230, 0.25);
+}
+.bg-blueprint .circle::before {
+  inset: 70px;
+}
+.bg-blueprint .circle::after {
+  inset: 200px;
+  border-color: rgba(140, 190, 230, 0.2);
+}
+.bg-night {
+  background: radial-gradient(ellipse 70% 70% at 50% 50%, #1b1a2e, #0a0912);
 }

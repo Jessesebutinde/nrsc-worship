@@ -3,7 +3,7 @@
 
 import { html, useState, useEffect, useRef, useLayoutEffect } from '../ui/h.js';
 import { CHURCH_NAME } from './config.js';
-import { shownOn, lookOf, PRESET_INFO } from './state.js';
+import { shownOn, lookOf, PRESET_INFO, SCRIPTURE_INFO, scriptureLookOf, stepsOf } from './state.js';
 import { idbGet } from './idb.js';
 import { splitAtPauses } from './split.js';
 import { lineWidth, fontsReady as loadFonts } from './measure.js';
@@ -151,6 +151,7 @@ function Background({ bg, video }) {
 
 // Every environment except the plain ones gets film grain and a slow light sweep on top.
 const Texture = () => html`<i class="grain"></i><i class="sweep"></i>`;
+const Grain = () => html`<i class="grain"></i>`;
 
 function BgLayer({ kind, video }) {
   if (kind === 'none') return null;
@@ -181,6 +182,18 @@ function BgLayer({ kind, video }) {
     </div>`;
   if (kind === 'leaks')
     return html`<div class="bg-fill bg-leaks"><i class="l0"></i><i class="l1"></i><i class="l2"></i><${Texture} /><div class="vig"></div></div>`;
+  // Scripture environments (still: light sweeps would distract from reading).
+  if (kind === 'stone') return html`<div class="bg-fill bg-stone"><${Grain} /><div class="vig"></div></div>`;
+  if (kind === 'parchment') return html`<div class="bg-fill bg-parchment"><i class="paper"></i><i class="edge"></i></div>`;
+  if (kind === 'vellum') return html`<div class="bg-fill bg-vellum"><i class="glow"></i><${Grain} /><div class="vig"></div></div>`;
+  if (kind === 'linen') return html`<div class="bg-fill bg-linen"><i class="weave"></i><i class="light"></i><${Grain} /></div>`;
+  if (kind === 'dawn') return html`<div class="bg-fill bg-dawn"><i class="horizon"></i><${Grain} /></div>`;
+  if (kind === 'watercolour') return html`<div class="bg-fill bg-watercolour"><i class="wash"></i><i class="paper"></i></div>`;
+  if (kind === 'slate') return html`<div class="bg-fill bg-slate"><i class="smear"></i><${Grain} /><i class="frameln"></i></div>`;
+  if (kind === 'kitenge') return html`<div class="bg-fill bg-kitenge"><i class="band top"></i><i class="band bot"></i><${Grain} /></div>`;
+  if (kind === 'candle') return html`<div class="bg-fill bg-candle"><i class="light"></i><${Grain} /><div class="vig"></div></div>`;
+  if (kind === 'blueprint') return html`<div class="bg-fill bg-blueprint"><i class="rules"></i><i class="circle"></i><${Grain} /></div>`;
+  if (kind === 'night') return html`<div class="bg-fill bg-night"><${Grain} /><div class="vig"></div></div>`;
   return html`<div class="bg-fill bg-glow"><div class="glow"></div><${Texture} /><div class="vig"></div></div>`;
 }
 
@@ -307,8 +320,13 @@ function SongFrame({ item, index, lt, fill, caps, preset, textW, fontsReady, mar
   </div>`;
 }
 
-/** The verses on one slide, with a small number where a new verse starts (only when there are several). */
-function Verses({ slide, field, marks }) {
+/**
+ * The verses on one slide, with a small number where a new verse starts (only when there are
+ * several). With `reveal`, verse `cur` is the one being read: the ones before it dim, the ones
+ * after it wait unseen (keeping their room, so nothing moves when they come). `dropCap` hands the
+ * first letter to the look's illuminated capital.
+ */
+function Verses({ slide, field, marks, cur = 0, reveal = false, dropCap = false }) {
   const segs = (slide.verses || [{ verse: slide.verse, part: slide.part, primary: slide.primary, secondary: slide.secondary }]).filter(
     (g) => g[field],
   );
@@ -316,38 +334,108 @@ function Verses({ slide, field, marks }) {
   const key = field === 'primary' ? 'p' : 's';
   let start = 0;
   return segs.map((g, i) => {
-    const el = html`${i > 0 ? ' ' : ''}${many && (!g.part || g.part === 'a') && html`<sup class="vn">${g.verse}</sup>`}<${Words}
-        text=${g[field]}
-        field=${key}
-        start=${start}
-        marks=${marks}
-      />`;
-    start += String(g[field]).split(/\s+/).filter(Boolean).length;
+    const state = !reveal ? '' : i < cur ? ' read' : i === cur ? ' cur' : ' next';
+    const text = String(g[field]);
+    const cap = dropCap && i === 0 ? text.charAt(0) : '';
+    const el = html`${i > 0 ? ' ' : ''}<span class=${`vs${state}`}
+        >${many && (!g.part || g.part === 'a') && html`<sup class="vn">${g.verse}</sup>`}${cap && html`<span class="cap">${cap}</span>`}<${Words}
+          text=${cap ? text.slice(1) : text}
+          field=${key}
+          start=${start}
+          marks=${marks}
+      /></span>`;
+    start += text.split(/\s+/).filter(Boolean).length;
     return el;
   });
 }
 
-function ScriptureFrame({ item, index, lt, fill, textW, fontsReady, marks }) {
+// Room for the text in each scripture look (the environment's frame or heading takes the rest),
+// and how far fill mode may grow it (narrow columns grow less, so their lines stay readable).
+const SCRIP_H = { kitenge: 760, manuscript: 640, scroll: 700, parchment: 760 };
+const SCRIP_MAX = { parchment: 1.4, blueprint: 1.3, scroll: 1.4 };
+
+function ScriptureFrame({ item, index, lt, fill, textW, fontsReady, marks, look = 'ink', sub = 0, reveal = false }) {
   const s = item.slides[index];
   const box = useRef(null);
-  useFill(box, { on: fill && !lt, max: 1.8, min: 0.8, availH: SAFE_H * 0.92 }, [s && s.ref, s && s.primary, s && s.secondary, fill, textW, fontsReady]);
+  const steps = s && s.verses ? s.verses.length : 1;
+  const cur = Math.min(sub, steps - 1);
+  // Beside an illustration the Scroll's ribbon leaves room for its reference underneath.
+  const availH = (SCRIP_H[look] || SAFE_H * 0.92) * (look === 'scroll' && textW < SAFE_W ? 0.8 : 1);
+  useFill(box, { on: fill && !lt, max: SCRIP_MAX[look] || 1.8, min: 0.8, availH }, [
+    s && s.ref,
+    s && s.primary,
+    s && s.secondary,
+    fill,
+    textW,
+    fontsReady,
+    look,
+  ]);
   if (!s) return null;
   const more = index < item.slides.length - 1;
+  const v = (field, extra = {}) => html`<${Verses} slide=${s} field=${field} marks=${marks} cur=${cur} reveal=${reveal} ...${extra} />`;
   if (lt)
     return html`<div class="lt-band lt-scrip">
       <div class="ln ref" style="--i:0"><span class="tab">${s.ref}</span>${more && html`<span class="more">continues ›</span>`}</div>
-      ${s.primary && html`<div class="ln pri" style="--i:1"><${Verses} slide=${s} field="primary" marks=${marks} /></div>`}
-      ${s.secondary && html`<div class="ln sec" style="--i:2"><${Verses} slide=${s} field="secondary" marks=${marks} /></div>`}
+      ${s.primary && html`<div class="ln pri" style="--i:1">${v('primary')}</div>`}
+      ${s.secondary && html`<div class="ln sec" style="--i:2">${v('secondary')}</div>`}
     </div>`;
-  return html`<div class="scrip" ref=${box}>
-    <div class="bar"></div>
-    <div class="ln ref" style="--i:0">${s.ref}</div>
-    ${s.primary && html`<div class="ln pri" style="--i:1"><${Verses} slide=${s} field="primary" marks=${marks} /></div>`}
-    ${s.secondary &&
+  const cont = more && html`<div class="smore">continues ›</div>`;
+  const sec = (label = true) =>
+    s.secondary &&
     html`<div class="ln sec" style="--i:2">
-      ${item.secondaryLabel && s.primary && html`<span class="ver">${item.secondaryLabel}</span>`}<${Verses} slide=${s} field="secondary" marks=${marks} />
-    </div>`}
-  </div>`;
+      ${label && item.secondaryLabel && s.primary && html`<span class="ver">${item.secondaryLabel}</span>`}${v('secondary')}
+    </div>`;
+  if (look === 'parchment')
+    return html`<div class="ln sref" style="--i:0">${s.ref}</div>
+      <div class=${`scrip l-${look}`} ref=${box}>
+        ${s.primary && html`<div class="ln pri" style="--i:1">${v('primary')}</div>`}
+        <i class="rule"></i>
+        ${sec(false)}
+      </div>
+      ${cont}`;
+  if (look === 'manuscript') {
+    const chap = item.chapter ? `Chapter ${item.chapter} · ${item.v1 === item.v2 ? `verse ${item.v1}` : `verses ${item.v1}–${item.v2}`}` : s.ref;
+    return html`<div class="ln shead" style="--i:0">
+        <div class="book">${item.book ? `${item.book.lg} · ${item.book.en}` : s.ref}</div>
+        <div class="ch">${chap}</div>
+      </div>
+      <div class=${`scrip l-${look}`} ref=${box}>
+        ${s.primary && html`<div class="ln pri" style="--i:1">${v('primary', { dropCap: true })}</div>`}
+        ${sec(false)}
+      </div>
+      <div class="sorn">✦ ✦ ✦</div>
+      ${cont}`;
+  }
+  if (look === 'linen')
+    return html`<div class=${`scrip l-${look}`} ref=${box}>
+        <div class="card">
+          <div class="ln ref" style="--i:0">${s.ref}</div>
+          ${s.primary && html`<div class="ln pri" style="--i:1">${v('primary')}</div>`}
+          ${!s.primary && sec(false)}
+        </div>
+        ${s.primary &&
+        s.secondary &&
+        html`<div class="ln band" style="--i:2">${item.secondaryLabel && html`<b>${item.secondaryLabel}</b>`}<span class="sec">${v('secondary')}</span></div>`}
+      </div>
+      ${cont}`;
+  if (look === 'scroll')
+    return html`<div class=${`scrip l-${look}`} ref=${box}>
+        <div class="ribbon">
+          ${s.primary && html`<div class="ln pri" style="--i:1">${v('primary')}</div>`}
+          ${sec(false)}
+        </div>
+      </div>
+      <div class="ln sref" style="--i:0">${s.ref}</div>
+      ${cont}`;
+  // Stacked: Ink & stone, Dawn, Watercolour, Chalk & slate, Kitenge, Candlelight, Blueprint.
+  return html`<div class=${`scrip l-${look}`} ref=${box}>
+      <div class="bar"></div>
+      <div class="ln ref" style="--i:0">${s.ref}</div>
+      ${s.primary && html`<div class="ln pri" style="--i:1">${v('primary')}</div>`}
+      ${look === 'chalk' && s.primary && s.secondary && html`<i class="ul"></i>`}
+      ${sec()}
+    </div>
+    ${cont}`;
 }
 
 // Pictures and videos kept on this device (src "idb:<key>") become object URLs once.
@@ -406,10 +494,18 @@ function MediaFrame({ item, index, live }) {
   return html`<${MediaView} ...${slide} live=${live} loop=${item.loop} sound=${item.sound} />`;
 }
 
-const TitleFrame = ({ item }) => html`<div class="titlecard">
-  <div class="ln tc-title" style="--i:0">${item.title}</div>
-  <div class="ln tc-church" style="--i:1">${CHURCH_NAME}</div>
-</div>`;
+const TitleFrame = ({ item }) =>
+  item.kind === 'scripture' && item.book
+    ? html`<div class="titlecard tc-scrip">
+        <div class="ln ornt" style="--i:0">✦ ✦ ✦</div>
+        <div class="ln book" style="--i:1">${item.book.lg}</div>
+        <div class="ln book2" style="--i:1">${item.book.en}</div>
+        <div class="ln ch" style="--i:2">Chapter ${item.chapter} · ${item.v1 === item.v2 ? `verse ${item.v1}` : `verses ${item.v1}–${item.v2}`}</div>
+      </div>`
+    : html`<div class="titlecard">
+        <div class="ln tc-title" style="--i:0">${item.title}</div>
+        <div class="ln tc-church" style="--i:1">${CHURCH_NAME}</div>
+      </div>`;
 
 const LogoFrame = () => html`<div class="logo">
   <svg class="ln" style="--i:0" viewBox="0 0 40 56" width="56" height="78" aria-hidden="true">
@@ -427,9 +523,12 @@ export function frameOf(state, { titleFor = null, out = 'preview' } = {}) {
   if (!state || mode === 'black' || mode === 'clear') return { key: 'none', kind: 'none' };
   if (mode === 'logo' || !item) return { key: 'logo', kind: 'logo' };
   if (!shownOn(item, out)) return { key: 'none', kind: 'none' };
-  if (item.kind === 'song' && titleFor === item.id && index === 0) return { key: `title:${item.id}`, kind: 'title' };
+  if ((item.kind === 'song' || item.kind === 'scripture') && titleFor === item.id && index === 0 && !state.sub)
+    return { key: `title:${item.id}`, kind: 'title' };
   const kind = item.kind === 'scripture' ? 'scripture' : item.kind === 'media' ? 'media' : 'song';
-  return { key: `${item.id}:${index}`, kind, preset: kind === 'song' ? lookOf(state, item) : kind };
+  // A scripture look change crosses over like a slide change.
+  const key = kind === 'scripture' ? `${item.id}:${index}:${scriptureLookOf(state)}` : `${item.id}:${index}`;
+  return { key, kind, preset: kind === 'song' ? lookOf(state, item) : kind };
 }
 
 /**
@@ -438,7 +537,7 @@ export function frameOf(state, { titleFor = null, out = 'preview' } = {}) {
  * @param {'tv'|'stream'|'preview'} [p.out]  which output this is (media and illustrations are for the TV)
  * @param {'full'|'lowerthird'} [p.layout]
  * @param {'auto'|'key'|'none'} [p.background]  auto = the TV background from the state; key = black for the ATEM; none = transparent (OBS)
- * @param {boolean} [p.titleCards]   show the 2 s song title card (the real TV only)
+ * @param {boolean} [p.titleCards]   show the 2 s title card before a song or passage (the real TV only)
  * @param {string} [p.video]         background video URL chosen on this PC
  * @param {boolean} [p.safe]         draw the 5% safe margin
  */
@@ -449,7 +548,7 @@ export function Stage({ state, out = 'preview', layout = 'full', background = 'a
   const fontsReady = useFontsReady();
   const [titleFor, setTitleFor] = useState(null);
   const seen = useRef(st.item && st.item.id);
-  const itemId = st.item && st.item.kind === 'song' ? st.item.id : null;
+  const itemId = st.item && (st.item.kind === 'song' || st.item.kind === 'scripture') ? st.item.id : null;
   useEffect(() => {
     if (!titleCards || !itemId || seen.current === itemId) return undefined;
     seen.current = itemId;
@@ -472,9 +571,16 @@ export function Stage({ state, out = 'preview', layout = 'full', background = 'a
   const fill = st.fill !== false;
 
   // A look with its own environment brings it while the song is up (title card included).
-  const songLook = st.item && st.item.kind === 'song' && st.mode === 'show' && shownOn(st.item, out) ? lookOf(st, st.item) : null;
-  const env = songLook && st.lookBg !== 'mine' ? PRESET_INFO[songLook].env : null;
+  const up = st.item && st.mode === 'show' && shownOn(st.item, out) ? st.item.kind : null;
+  const songLook = up === 'song' ? lookOf(st, st.item) : null;
+  // Scripture looks always bring theirs: a light page is the look.
+  const sLook = scriptureLookOf(st);
+  const env = songLook && st.lookBg !== 'mine' ? PRESET_INFO[songLook].env : up === 'scripture' ? SCRIPTURE_INFO[sLook].env : null;
   const bg = background === 'none' ? 'none' : background === 'key' ? (lowerThird ? 'black' : 'key') : env || st.bg;
+  const keyed = bg === 'none' || bg === 'key' || bg === 'black';
+  // The thin bar through the passage.
+  const steps = stepsOf(st);
+  const prog = up === 'scripture' && st.progress !== false && !lowerThird && st.item.slides.length ? ((st.index || 0) + Math.min(steps, (st.sub || 0) + 1) / steps) / st.item.slides.length : null;
   const cls = [
     'stage',
     lowerThird ? 'is-lt' : '',
@@ -488,6 +594,9 @@ export function Stage({ state, out = 'preview', layout = 'full', background = 'a
     fill ? 'fill' : '',
     illus ? 'with-illus' : '',
     safe ? 'show-safe' : '',
+    `sl-${sLook}`,
+    `sfont-${st.sFont === 'sans' ? 'sans' : 'serif'}`,
+    keyed ? 'keyed' : '',
   ].join(' ');
   return html`<div class=${cls} style=${`--illus-w:${illusW}px`}>
     <${Background} bg=${bg} video=${st.bgVideo || video} />
@@ -498,7 +607,7 @@ export function Stage({ state, out = 'preview', layout = 'full', background = 'a
         ${kind === 'song' &&
         html`<${SongFrame} item=${data.item} index=${data.index} lt=${lowerThird} fill=${fill} caps=${st.caps !== false} preset=${data.f.preset} textW=${textW} fontsReady=${fontsReady} marks=${marksFor(st, data.item, data.index)} hero=${Boolean(st.hero)} place=${st.place || 'center'} mix=${Boolean(st.mixFonts)} />`}
         ${kind === 'scripture' &&
-        html`<${ScriptureFrame} item=${data.item} index=${data.index} lt=${lowerThird} fill=${fill} textW=${textW} fontsReady=${fontsReady} marks=${marksFor(st, data.item, data.index)} />`}
+        html`<${ScriptureFrame} item=${data.item} index=${data.index} lt=${lowerThird} fill=${fill} textW=${textW} fontsReady=${fontsReady} marks=${marksFor(st, data.item, data.index)} look=${sLook} sub=${data.index === (st.index || 0) ? st.sub || 0 : steps} reveal=${st.reveal !== false} />`}
         ${kind === 'media' && html`<${MediaFrame} item=${data.item} index=${data.index} live=${out !== 'preview' && !leaving} />`}
         ${kind === 'title' && html`<${TitleFrame} item=${data.item} />`}
         ${kind === 'logo' && html`<${LogoFrame} />`}
@@ -508,6 +617,7 @@ export function Stage({ state, out = 'preview', layout = 'full', background = 'a
     html`<div class="illus" key=${illus.src}>
       <${MediaView} ...${illus} live=${out !== 'preview'} loop=${true} sound=${false} blur=${false} />
     </div>`}
+    ${prog != null && html`<div class="progress"><i style=${`width:${(prog * 100).toFixed(1)}%`}></i></div>`}
     ${background !== 'none' && html`<div class=${`blackout ${st.mode === 'black' ? 'on' : ''}`}></div>`}
     <div class="safe-guide"></div>
   </div>`;
