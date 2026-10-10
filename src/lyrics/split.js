@@ -86,27 +86,57 @@ export function formatSlides(slides) {
 
 const PAUSE = /[,;:.!?)]["”’]?$/;
 const STRONG = /[.;:!?]["”’]?$/;
-// Little words a line shouldn't end on (English and Luganda).
+// Little words a line shouldn't end on: they belong to the word after them (English and Luganda).
 const WEAK = new Set(
-  'a an and the to of my in on for that with as at by or but your our his her ne na mu ku nga ya wa ba ye ka ki gwa kya lya bya za'.split(' '),
+  (
+    'a an and the to of my in on for that with as at by or but your our his her its their nor so yet is are was am be ' +
+    'ne na mu ku nga ya wa ba ye ka ki gwa kya lya bya za era naye nti oba'
+  ).split(' '),
 );
+// Words a line shouldn't start with: they close the phrase before them.
+const TAIL = new Set('too also again forever ever amen'.split(' '));
+const norm = (w) => w.toLowerCase().replace(/[^\p{L}\p{N}']/gu, '');
+
+/** Pairs of neighbouring words that repeat in the text ("holy holy", "alle alle"): kept together. */
+function repeatedPairs(words) {
+  const seen = new Map();
+  const out = new Set();
+  for (let i = 0; i + 1 < words.length; i++) {
+    const k = `${norm(words[i])} ${norm(words[i + 1])}`;
+    if (seen.has(k)) {
+      out.add(i);
+      out.add(seen.get(k));
+    } else seen.set(k, i);
+  }
+  return out;
+}
 
 /**
- * Best places to break a run of words into pieces: pieces close to `target` characters, none over `max`
- * (unless a single word is longer), breaks after punctuation preferred, very short pieces avoided.
+ * Best places to break a run of words into pieces, scored like a lyric editor would cut them:
+ * - pieces close to `target` and balanced with each other, none over `max` (a lone long word excepted);
+ * - a break after a comma or a full stop is good, after a little joining word (and, of, the, mu, nga) bad;
+ * - a repeated pair of words ("holy holy") and a closing word ("forever", "amen") stay with their phrase.
  * With `parts`, exactly that many pieces. Words are never split.
  */
 function breakWords(words, { target, max = Infinity, parts = 0, size = (t) => t.length }) {
   const n = words.length;
+  const pairs = repeatedPairs(words);
   const len = (i, j) => size(words.slice(i, j).join(' '));
   const cost = (i, j) => {
     const L = len(i, j);
     if (L > max && j - i > 1) return Infinity;
     const dev = (L - target) / target;
     let c = dev * dev * 10;
-    if (j < n && PAUSE.test(words[j - 1])) c -= STRONG.test(words[j - 1]) ? 3.5 : 3;
+    if (j < n) {
+      const last = norm(words[j - 1]);
+      if (PAUSE.test(words[j - 1])) c -= STRONG.test(words[j - 1]) ? 3.5 : 3;
+      if (WEAK.has(last)) c += 4;
+      if (TAIL.has(norm(words[j]))) c += 3;
+      if (pairs.has(j - 1)) c += 3;
+      // "Holy, holy, holy" style runs: break between repeats only at a pause.
+      if (norm(words[j]) === last && !PAUSE.test(words[j - 1])) c += 2;
+    }
     if (L < target * 0.4) c += 2;
-    if (j < n && WEAK.has(words[j - 1].toLowerCase())) c += 2;
     return c;
   };
   const maxParts = parts || n;
@@ -128,6 +158,19 @@ function breakWords(words, { target, max = Infinity, parts = 0, size = (t) => t.
   }
   let p = parts;
   if (!p) {
+    // Two balanced pieces beat two lopsided ones: a small extra cost for unequal halves.
+    for (let q = 2; q <= maxParts; q++) {
+      if (best[q][n] === Infinity) continue;
+      let j = n;
+      const lens = [];
+      for (let r = q; r > 0; r--) {
+        const i = from[r][j];
+        lens.push(len(i, j));
+        j = i;
+      }
+      const spread = (Math.max(...lens) - Math.min(...lens)) / target;
+      best[q][n] += spread * spread * 2;
+    }
     p = 1;
     for (let q = 2; q <= maxParts; q++) if (best[q][n] < best[p][n]) p = q;
   }
@@ -156,14 +199,15 @@ export function wrapLine(line, { target = 22, max = 26, size = (t) => t.length }
   return breakWords(t.split(' '), { target, max, size }) || t.split(' ');
 }
 
-function slideFits(lines, label, { size, max }) {
-  const maxLines = isChorus(label) ? 3 : 2;
-  return lines.length <= maxLines && lines.every((l) => size(l) <= max);
+export const MAX_LINES = 2;
+
+function slideFits(lines, { size, max }) {
+  return lines.length <= MAX_LINES && lines.every((l) => size(l) <= max);
 }
 
 /**
- * Pasted lyrics -> slide text: 2 lines per slide (a chorus may keep 3 rather than leave one line alone),
- * lines kept near `target` characters and never over `max`, words never split.
+ * Pasted lyrics -> slide text: never more than 2 lines per slide, lines kept near `target` characters
+ * and never over `max`, cut where a singer breathes (see breakWords), words never split.
  * Slides that already fit are left exactly as they are, so running it twice changes nothing.
  * `size` measures a line (see units()); without it, lengths are in characters.
  */
@@ -171,7 +215,7 @@ export function splitLyrics(text, preset = 'classic', size = null) {
   const u = units(preset, size);
   const out = [];
   for (const slide of parseSlides(text)) {
-    if (slideFits(slide.lines, slide.label, u)) {
+    if (slideFits(slide.lines, u)) {
       out.push(slide);
       continue;
     }
@@ -195,10 +239,6 @@ export function splitLyrics(text, preset = 'classic', size = null) {
         cur.push(...pieces.slice(i, i + 2));
       }
     }
-    // A chorus may keep a lone last line on the slide before rather than show it on its own.
-    const prev = out[out.length - 1];
-    if (cur.length === 1 && isChorus(slide.label) && prev && prev.label === slide.label && prev.lines.length === 2)
-      prev.lines.push(...cur.splice(0));
     flush();
   }
   return formatSlides(out);
@@ -227,9 +267,7 @@ export function lintSlides(slides, preset = 'classic', size = null) {
   const { max, size: measure } = units(preset, size);
   const out = [];
   slides.forEach((s, index) => {
-    const maxLines = isChorus(s.label) ? 3 : 2;
-    if (s.lines.length > maxLines)
-      out.push({ index, message: `${s.lines.length} lines (max ${maxLines}${maxLines === 2 ? ', 3 for a chorus' : ''})` });
+    if (s.lines.length > MAX_LINES) out.push({ index, message: `${s.lines.length} lines (max ${MAX_LINES})` });
     const long = s.lines.filter((l) => measure(l) > max);
     if (long.length)
       out.push({

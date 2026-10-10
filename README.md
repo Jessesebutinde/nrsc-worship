@@ -145,6 +145,19 @@ own** goes back). The four environments are also in Settings → TV background, 
 By default a look brings its environment; Settings → Words can keep the TV background under every look instead.
 The stream feed ignores looks and keeps its lower third.
 
+Every slide is at most **two lines**. Auto-split cuts where a singer breathes: after a comma or a full stop,
+never after a joining word (and, of, the, is, mu, nga, ne…), never before a closing word (forever, amen), and it
+keeps repeated pairs ("holy holy") and balanced halves together. Fill mode may re-break a one-line slide into two
+when that makes the letters clearly bigger, never into three.
+
+Each look moves like a lyric video: Worship's words drift up one by one, Praise cuts in, Poster's band wipes open
+and the lines slam down, Sunshine rises from under its shadow with the diamond turning in, Lines tracks the
+letters in, Beams flickers each word on like a lamp, Banner wipes from the left, Midnight pops the words in,
+Pixel types them word by word, Neon swells its glow and keeps it breathing, Grateful slides lines in
+from alternate sides, Film flickers like a projector and draws its rule. While a slide is up the block breathes
+slowly. All of it is transforms and opacity on the outputs only; **Calm mode**, the system's reduced-motion
+setting and the console's previews use plain crossfades.
+
 For the "two words on the screen" style, the editor's **Big slides** button breaks a song into one short burst
 per slide (1, 2 or 3 words; a comma or full stop ends a slide early). With fill mode the burst grows to the
 width of the screen.
