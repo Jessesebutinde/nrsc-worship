@@ -220,7 +220,7 @@ const hash = (a, b = 0) => {
  * `seed` (the slide number) and `hero` (the word to swell) are for songs; each word also gets a font
  * class and a fly-in direction that the Mix and Wild settings may use.
  */
-function Words({ text, field, start = 0, marks, seed = 0, hero = -1, head = null, tail = null }) {
+function Words({ text, field, start = 0, marks, seed = 0, hero = -1, head = null, tail = null, cur = null }) {
   const words = String(text || '').split(/\s+/).filter(Boolean);
   const last = words.length - 1;
   return words.map((w, i) => {
@@ -232,7 +232,9 @@ function Words({ text, field, start = 0, marks, seed = 0, hero = -1, head = null
     const fx = Math.round(Math.cos(angle) * r);
     const fy = Math.round(Math.sin(angle) * r * 0.7);
     const fr = Math.round((hash(seed + 29, n) - 0.5) * 80);
-    const cls = `w f${font}${n === hero ? ' hero' : ''}${m ? ` mk-${m.c}${m.b ? ' bend' : ''}` : ''}`;
+    // Following the singer: sung, being sung now, or still to come.
+    const at = cur ? (n < cur[0] ? ' sung' : n <= cur[1] ? (cur[0] === cur[1] ? ' now one' : ' now') : ' next') : '';
+    const cls = `w f${font}${n === hero ? ' hero' : ''}${m ? ` mk-${m.c}${m.b ? ' bend' : ''}` : ''}${at}`;
     // head / tail (an opening quote, a closing one, the dots of a verse that goes on) stay with their word.
     return html`${i > 0 ? ' ' : ''}<span class=${cls} style=${`--wi:${n};--li:${i};--fx:${fx}px;--fy:${fy}px;--fr:${fr}deg`}
       >${i === 0 ? head : null}${w}${i === last ? tail : null}</span
@@ -251,11 +253,11 @@ function heroOf(lines) {
 }
 
 /** Song lines; the words are numbered straight through the slide, however the lines are broken. */
-function Lines({ lines, marks, seed = 0, hero = -1 }) {
+function Lines({ lines, marks, seed = 0, hero = -1, cur = null }) {
   let start = 0;
   return lines.map((l, i) => {
     const n = String(l).split(/\s+/).filter(Boolean).length;
-    const el = html`<span class="ln" style=${`--i:${i}`}><${Words} text=${l} field="l" start=${start} marks=${marks} seed=${seed} hero=${hero} /></span>`;
+    const el = html`<span class="ln" style=${`--i:${i}`}><${Words} text=${l} field="l" start=${start} marks=${marks} seed=${seed} hero=${hero} cur=${cur} /></span>`;
     start += n;
     return el;
   });
@@ -294,7 +296,7 @@ function bestLines(lines, preset, caps, textW) {
   return best;
 }
 
-function SongFrame({ item, index, lt, fill, caps, preset, textW, fontsReady, marks, hero = false, place = 'center', mix = false }) {
+function SongFrame({ item, index, lt, fill, caps, preset, textW, fontsReady, marks, hero = false, place = 'center', mix = false, wc = null }) {
   const slide = item.slides[index];
   const box = useRef(null);
   const refill = fill && !lt;
@@ -319,10 +321,10 @@ function SongFrame({ item, index, lt, fill, caps, preset, textW, fontsReady, mar
   // The hero: with two lines the second line swells and the first takes the accent; with one, the longest word.
   const heroWord = hero && lines.length < 2 ? heroOf(lines) : -1;
   if (lt)
-    return html`<div class="lt-band"><div class="lt-lyric"><${Lines} lines=${slide.lines} marks=${marks} /></div></div>`;
+    return html`<div class="lt-band"><div class="lt-lyric"><${Lines} lines=${slide.lines} marks=${marks} cur=${wc} /></div></div>`;
   return html`<div class="safe">
     <div class=${`lyric place-${side}${hero ? ' hero-on' : ''}${hero && lines.length > 1 ? ' hero-line' : ''}`} ref=${box}>
-      <${Lines} lines=${lines} marks=${marks} seed=${index} hero=${heroWord} />
+      <${Lines} lines=${lines} marks=${marks} seed=${index} hero=${heroWord} cur=${wc} />
       ${PRESET_INFO[preset].subtitle && html`<div class="sub">${item.title}</div>`}
     </div>
     ${preset === 'classic' && html`<div class="songtag">${item.title}</div>`}
@@ -677,6 +679,7 @@ export function Stage({ state, out = 'preview', layout = 'full', background = 'a
     `sfont-${st.sFont === 'sans' ? 'sans' : 'serif'}`,
     lowerThird ? '' : `smo-${motion}`,
     st.reveal !== false ? 'reveal-on' : '',
+    st.followDim !== false ? 'follow-dim' : '',
     keyed ? 'keyed' : '',
   ].join(' ');
   return html`<div class=${cls} style=${`--illus-w:${illusW}px`}>
@@ -686,7 +689,7 @@ export function Stage({ state, out = 'preview', layout = 'full', background = 'a
       const preset = kind === 'song' ? data.f.preset : kind;
       return html`<div key=${k} class=${`frame k-${kind} p-${preset} ik-${data.item ? data.item.kind : 'none'} ${leaving ? 'out' : 'in'}`} style=${`--out:${o}ms`}>
         ${kind === 'song' &&
-        html`<${SongFrame} item=${data.item} index=${data.index} lt=${lowerThird} fill=${fill} caps=${st.caps !== false} preset=${data.f.preset} textW=${textW} fontsReady=${fontsReady} marks=${marksFor(st, data.item, data.index)} hero=${Boolean(st.hero)} place=${st.place || 'center'} mix=${Boolean(st.mixFonts)} />`}
+        html`<${SongFrame} item=${data.item} index=${data.index} lt=${lowerThird} fill=${fill} caps=${st.caps !== false} preset=${data.f.preset} textW=${textW} fontsReady=${fontsReady} marks=${marksFor(st, data.item, data.index)} hero=${Boolean(st.hero)} place=${st.place || 'center'} mix=${Boolean(st.mixFonts)} wc=${!leaving && data.index === (st.index || 0) && Array.isArray(st.wc) && (out !== 'stream' || st.followStream !== false) ? st.wc : null} />`}
         ${kind === 'scripture' &&
         html`<${ScriptureFrame} item=${data.item} index=${data.index} lt=${lowerThird} fill=${fill} textW=${textW} fontsReady=${fontsReady} marks=${marksFor(st, data.item, data.index)} look=${sLook} sub=${data.index === (st.index || 0) ? st.sub || 0 : steps} reveal=${st.reveal !== false} quotes=${st.quotes !== false} />`}
         ${kind === 'media' && html`<${MediaFrame} item=${data.item} index=${data.index} live=${out !== 'preview' && !leaving} />`}

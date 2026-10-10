@@ -3655,3 +3655,41 @@
     animation: none;
   }
 }
+
+/* ------------------------------------------------------------ following the singer */
+/* The word (or line) being sung swells a little and glows in the look's accent; words still to
+   come wait dimmer (filter, so it never fights the entrance animations' opacity). */
+
+.lyric .w,
+.lt-lyric .w {
+  transition: scale 220ms var(--ease), filter 300ms ease, color 200ms ease, text-shadow 200ms ease;
+}
+.lt-lyric .w {
+  display: inline-block;
+}
+.lyric .w.now,
+.lt-lyric .w.now {
+  color: var(--accent, #e3b75a);
+  /* A halo on top of the look's own shadow (Sunshine's long shadow, Neon's glow stay). */
+  filter: drop-shadow(0 0 16px color-mix(in srgb, var(--accent, #e3b75a) 55%, transparent));
+}
+/* One word swells; a whole line just glows, so its spaces stay. */
+.lyric .w.now.one,
+.lt-lyric .w.now.one {
+  scale: 1.08;
+}
+/* On the light bands a halo would smudge: colour and swell only. */
+.p-poster .lyric .w.now,
+.p-banner .lyric .w.now {
+  filter: none;
+}
+.follow-dim .lyric .w.next,
+.follow-dim .lt-lyric .w.next {
+  filter: opacity(0.42);
+}
+@media (prefers-reduced-motion: reduce) {
+  .lyric .w.now.one,
+  .lt-lyric .w.now.one {
+    scale: 1;
+  }
+}

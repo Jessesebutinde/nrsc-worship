@@ -111,6 +111,16 @@ first click. Both outputs follow the laptop directly, so nothing depends on the 
 second remote (**More ways** → scan the QR code); that one goes through the relay. On a narrow window or a phone
 the remote shows tabs instead of columns, with the same buttons under **Show on TV**.
 
+## This console
+
+**Settings → This console** sets how the laptop's own screen looks; the TV and the stream never change with it.
+**Theme**: Midnight (the church purple, the default), Studio (graphite and amber, the least glare in a dark
+hall), Daylight (light, for bright rooms and rehearsals) or Kampala (bark brown, terracotta and gold). The ☀ / ☾
+button in the header switches to Daylight and back. **Layout** (laptop-wide windows): Console (library, live and
+outputs side by side), Focus (a big live picture with Next / Back; the library and the outputs open from slim side
+rails, Esc closes them) or Compact (tuned for 1366 × 768: the live picture beside Next / Back, a narrow outputs
+column). **Font**: Montserrat, System (the laptop's own) or Serif. The choice is kept on this laptop only.
+
 ## Words that use the screen
 
 By default the words **grow to fill the TV**: each slide is measured in the real font and sized as large as fits
@@ -178,6 +188,20 @@ and in the stream's lower third at once. Tapping it again with the same pen take
 and **Clear all** remove them. Marks stay while you step back and forth through the passage and go when a new
 song or passage is shown.
 
+## Follow the singer: J and F
+
+While a song is up, tap **J** as each word is sung: that word swells a little and glows in the look's accent colour
+on the TV, the words already sung stay bright and the ones still to come wait dimmer. **F** steps back a word. After
+the last word of a slide, **J** moves on to the next slide and lights its first word, so you can keep tapping through
+the whole song. **U** lights the next whole line at once, which is easier on fast songs. The same keys work on the TV
+page (there, double-click toggles fullscreen).
+
+Under the live slide, **Follow the singer** shows where the cursor is (word 3 of 6) with the same moves as buttons
+and **Off**; in the Emphasis strip, the **▶ Follow** pen jumps the cursor to the word you tap. Changing slide any
+other way (Space, the arrows, a click) starts the new slide with no word lit. In Settings → Words you can pick other
+letters (kept on this laptop; Space, B, C, L and V are taken), turn off the dimming, and keep the stream's lower third
+plain. Scripture is not followed word by word; it has verse by verse.
+
 ## Light on the laptop
 
 The console's three previews are still pictures: no environment motion, no blur. Motion runs only on the TV and
@@ -218,8 +242,8 @@ type, best first, with the reference in both languages and the matching words un
 pick one, **to end** shows from that verse to the end of the chapter. Old and modern English count as the same
 ("leads" finds "leadeth", "you" finds "thee"), and the **World English Bible** (modern English, public domain, also
 a third built-in version) is always searched too, so "love is patient, love is kind" finds 1 Corinthians 13:4. The
-search runs on the laptop; the books load in the
-background the first time (most-read first, all 66 in about two seconds on a good connection).
+search runs on the laptop; the books start loading in
+the background when the Scripture tab opens (most-read first; all 66 in a few seconds on a good connection).
 
 Press the **microphone** and speak: a reference ("Psalm twenty three verse one to four", "John three sixteen",
 "first John chapter one verse nine", "Zabbuli amakumi abiri mu ssatu olunyiriri olusooka") appears as **Heard …**
@@ -332,8 +356,13 @@ or the other way round. Videos play with sound; **Loop video** repeats one.
   never on "and", "the", "mu", "nga"…) and never inside a word. Slides that already fit are left alone.
 - The preview shows the slide under the cursor exactly as the TV will. A slide is flagged if a line would wrap on
   the TV (measured in the real font) or has too many lines. Sizes never shrink to fit.
-- **Spelling** underlines words not found in the Luganda 1968 Bible, the KJV or your other songs, and offers a
-  one-tap fix. **It's right** teaches it a word.
+- **Suggestions** sit under the lyrics as you type: each word that looks wrong gets a small tag showing the fix.
+  Tap the tag to fix it, or its **×** if the word is right (it is not suggested again). Amber is spelling
+  (`erinya` → `erinnya`, `okuyinba` → `okuyimba`, checked against the Luganda 1968 Bible and the KJV), teal is
+  grammar (`na omwana` → `n'omwana`), red is punctuation (`n' essanyu` → `n'essanyu`, spaces around commas), gold
+  is a capital on a sacred name (`Katonda`, `Mukama`, `Yesu`). Hover a tag for the reason. **Fix all safe ones**
+  applies all but the spelling tags. It would rather miss a mistake than tag a right word: on the Psalms and John
+  nearly every verse gets no tag. Words in the title and your other songs count as right.
 - Each song has a look:
 
 | Look | Style | Text | Position | Change |

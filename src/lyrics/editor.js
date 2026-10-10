@@ -1,22 +1,25 @@
 // Song editor: the slide text on one side, the slide as the TV will show it on the other,
-// with length warnings and Luganda / English spelling suggestions.
+// with length warnings and a proof view of Luganda / English suggestions under the lyrics.
 
 import { html, useState, useEffect, useMemo, useRef } from '../ui/h.js';
 import { Fit, Stage } from './stage.js';
 import { parseSlides, splitLyrics, splitShort, lintSlides } from './split.js';
 import { PRESETS, PRESET_INFO } from './state.js';
 import { makeSong } from './library.js';
-import { checkText, applyFix, Dictionary } from './spell.js';
+import { Dictionary, wordsOf } from './spell.js';
+import { checkLyrics, applyLyricFix, applyLyricFixes, proofLines, SAFE_KINDS } from './luganda.js';
 import { fontsReady, sizer } from './measure.js';
 
 // ------------------------------------------------------------------ dictionary (loaded once)
 
-const LS_IGNORED = 'ls-dict-ignored';
+const LS_IGNORED = 'ls-dict-ignored'; // what "It's right" remembers: words, and keys like "na omwana"
+const PROOF_DELAY = 250; // ms after the last key before the proof view catches up
 let dictPromise = null;
 
-function ignored() {
+function readIgnored() {
   try {
-    return JSON.parse(localStorage.getItem(LS_IGNORED) || '[]');
+    const list = JSON.parse(localStorage.getItem(LS_IGNORED) || '[]');
+    return Array.isArray(list) ? list : [];
   } catch {
     return [];
   }
@@ -31,16 +34,58 @@ async function wordList(url) {
   }
 }
 
-function loadDictionary(songs) {
+/** The Luganda 1968 Bible and KJV word lists, as the named lists 'lg' and 'en'. */
+function loadDictionary() {
   if (!dictPromise) {
     dictPromise = Promise.all([wordList('bibles/lug68/words.txt'), wordList('bibles/kjv/words.txt')]).then(
-      ([lg, en]) => new Dictionary(ignored(), en, lg),
+      ([lg, en]) => new Dictionary().addList('lg', lg).addList('en', en),
     );
   }
-  return dictPromise.then((d) => {
-    for (const s of songs) d.addText(s.text);
-    return d;
-  });
+  return dictPromise;
+}
+
+/** Proof view: the lyrics line by line, each suggestion as a small tag under its word. */
+function Proof({ lines, flags, onFix, onFixAll, onIgnore }) {
+  const safe = flags.filter((f) => SAFE_KINDS.includes(f.kind));
+  const word = (p) => html`<span class=${`pw${p.under ? ` u-${p.under}` : ''}`}>
+    <span class="pw-text">${p.text}</span>
+    ${p.flags.map(
+      (f) => html`<span class=${`tag k-${f.kind}`}>
+        <button class="tag-fix" title=${`${f.why} · tap to fix`} onClick=${() => onFix(f)}>${f.label}</button>
+        <button class="tag-x" title="It's right: stop suggesting this" aria-label=${`It's right: keep “${f.word.trim()}”`} onClick=${() => onIgnore(f)}>×</button>
+      </span>`,
+    )}
+  </span>`;
+  return html`<section class="proof" aria-label="Suggestions">
+    <header class="proof-head">
+      <b>Suggestions · ${flags.length}</b>
+      ${safe.length > 0 &&
+      html`<button class="chip proof-all" onClick=${onFixAll} title="Grammar, punctuation and capitals. Spelling stays for you to check.">
+        Fix all safe ones · ${safe.length}
+      </button>`}
+    </header>
+    ${flags.length
+      ? html`<div class="proof-sub small">
+            <span class="muted">Tap a tag to fix it · × if it's right</span>
+            <span class="proof-key">
+              <i class="k-spelling">spelling</i><i class="k-grammar">grammar</i><i class="k-punctuation">punctuation</i><i class="k-capital">capital</i>
+            </span>
+          </div>
+          <div class="proof-text">
+            ${lines.map((line) =>
+              line.label
+                ? html`<div class="proof-label">${line.text}</div>`
+                : line.empty
+                  ? html`<div class="proof-gap"></div>`
+                  : html`<div class="proof-line">
+                      ${line.parts.map((p) =>
+                        p.word ? word(p) : html`<span class=${`ps${p.under ? ` u-${p.under}` : ''}`}>${p.text}</span>`,
+                      )}
+                    </div>`,
+            )}
+          </div>`
+      : html`<small class="muted">No suggestions for these lyrics.</small>`}
+  </section>`;
 }
 
 /** Which slide (index) the caret is in. */
@@ -63,22 +108,36 @@ export function SongEditor({ song, songs, onSave, onDelete, onClose, onShow }) {
   const [fontsOk, setFontsOk] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [bigWords, setBigWords] = useState(2);
+  const [ignored, setIgnored] = useState(readIgnored);
+  // The proof view follows the lyrics a moment behind the typing, so typing stays quick.
+  const [proofText, setProofText] = useState(text);
   const ta = useRef(null);
 
   const slides = useMemo(() => parseSlides(text), [text]);
   // Once the font is loaded, lines are measured in it; until then, counted in characters.
   const size = useMemo(() => (fontsOk ? sizer(preset) : null), [fontsOk, preset]);
   const lint = useMemo(() => lintSlides(slides, preset, size), [slides, preset, size]);
-  const flags = useMemo(() => {
-    if (!dict) return [];
-    const inTitle = new Set(title.toLowerCase().match(/\p{L}+/gu) || []);
-    return checkText(text, dict).filter((f) => !inTitle.has(f.word.toLowerCase()));
-  }, [text, dict, title]);
+  // Words from the user's other songs are taken as right.
+  const songWords = useMemo(
+    () => new Set(songs.filter((s) => !song || s.id !== song.id).flatMap((s) => wordsOf(s.text))),
+    [songs],
+  );
+  const flags = useMemo(
+    () => (dict ? checkLyrics(proofText, dict, { ignored, title, language, known: songWords }) : []),
+    [proofText, dict, ignored, title, language, songWords],
+  );
+  const proof = useMemo(() => proofLines(proofText, flags), [proofText, flags]);
 
   useEffect(() => {
-    loadDictionary(songs.filter((s) => !song || s.id !== song.id)).then(setDict);
+    loadDictionary().then(setDict);
     fontsReady().then(() => setFontsOk(true));
   }, []);
+
+  useEffect(() => {
+    if (text === proofText) return undefined;
+    const t = setTimeout(() => setProofText(text), PROOF_DELAY);
+    return () => clearTimeout(t);
+  }, [text]);
 
   const index = Math.min(cur, Math.max(0, slides.length - 1));
   const previewState = {
@@ -115,21 +174,34 @@ export function SongEditor({ song, songs, onSave, onDelete, onClose, onShow }) {
 
   const save = () => canSave && onSave(build());
 
-  const ignore = (word) => {
-    const list = [...new Set([...ignored(), word.toLowerCase()])];
-    localStorage.setItem(LS_IGNORED, JSON.stringify(list));
-    dict.add(word);
-    setDict(Object.assign(Object.create(Object.getPrototypeOf(dict)), dict));
+  // Tags were made from proofText; if the lyrics moved on since, catch up first (the tags redraw).
+  const edit = (next) => {
+    if (next === text) return;
+    setText(next);
+    setProofText(next);
+  };
+  const fixOne = (flag) => (text === proofText ? edit(applyLyricFix(text, flag)) : setProofText(text));
+  const fixAll = () =>
+    text === proofText ? edit(applyLyricFixes(text, flags.filter((f) => SAFE_KINDS.includes(f.kind)))) : setProofText(text);
+
+  const ignore = (flag) => {
+    const list = [...new Set([...readIgnored(), flag.key])];
+    try {
+      localStorage.setItem(LS_IGNORED, JSON.stringify(list));
+    } catch {
+      // Private window: remembered until the editor closes.
+    }
+    setIgnored(list);
   };
 
   const problems = new Map();
   for (const l of lint) problems.set(l.index, [...(problems.get(l.index) || []), l.message]);
 
-  // Underline flagged words inside each slide card.
+  // Underline misspelt words inside each slide card.
+  const misspelt = useMemo(() => new Set(flags.filter((f) => f.kind === 'spelling').map((f) => f.word)), [flags]);
   const marked = (line) => {
-    const words = new Set(flags.map((f) => f.word));
-    if (!words.size) return line;
-    return line.split(/(\p{L}+)/u).map((part) => (words.has(part) ? html`<mark class="sp">${part}</mark>` : part));
+    if (!misspelt.size) return line;
+    return line.split(/(\p{L}+)/u).map((part) => (misspelt.has(part) ? html`<mark class="sp">${part}</mark>` : part));
   };
 
   return html`<div class="sheet editor" role="dialog" aria-label="Edit song">
@@ -188,23 +260,8 @@ export function SongEditor({ song, songs, onSave, onDelete, onClose, onShow }) {
           <span class="muted small">${slides.length} slide${slides.length === 1 ? '' : 's'}</span>
         </div>
         ${dict &&
-        flags.length > 0 &&
-        html`<div class="spell">
-          <b>Spelling</b> <span class="muted small">from the Luganda & English Bibles and your songs</span>
-          <ul>
-            ${flags.slice(0, 12).map(
-              (f) => html`<li>
-                <mark class="sp">${f.word}</mark>
-                ${f.suggestions.map(
-                  (s) => html`<button class="chip" onClick=${() => setText(applyFix(text, f, s))}>Fix → ${s}</button>`,
-                )}
-                ${!f.suggestions.length && html`<span class="muted small">no suggestion</span>`}
-                <button class="chip ghost" onClick=${() => ignore(f.word)}>It's right</button>
-              </li>`,
-            )}
-          </ul>
-          ${flags.length > 12 && html`<small class="muted">${flags.length - 12} more…</small>`}
-        </div>`}
+        proofText.trim() &&
+        html`<${Proof} lines=${proof} flags=${flags} onFix=${fixOne} onFixAll=${fixAll} onIgnore=${ignore} />`}
       </div>
       <div class="editor-right">
         <div class="preview-wrap">
