@@ -216,7 +216,9 @@ The Scripture box takes a reference (`Zabbuli 23:1-4`, `Ps 23`, `Yk 3:16`) **or 
 Luganda or English: "the lord is my shep", "Mukama ye musumba", "faith is the substance". Suggestions appear as you
 type, best first, with the reference in both languages and the matching words underlined; **↑ ↓** and **Enter**
 pick one, **to end** shows from that verse to the end of the chapter. Old and modern English count as the same
-("leads" finds "leadeth", "you" finds "thee"). The search runs on the laptop over both Bibles; the books load in the
+("leads" finds "leadeth", "you" finds "thee"), and the **World English Bible** (modern English, public domain, also
+a third built-in version) is always searched too, so "love is patient, love is kind" finds 1 Corinthians 13:4. The
+search runs on the laptop; the books load in the
 background the first time (most-read first, all 66 in about two seconds on a good connection).
 
 Press the **microphone** and speak: a reference ("Psalm twenty three verse one to four", "John three sixteen",
@@ -296,13 +298,14 @@ when they arrive. **Back** retraces, and goes back to the previous slide with al
 bar** is a thin line along the bottom of the TV that fills through the passage. The status under the live slide
 reads "3/8 · verse 2 of 3" while a slide is being revealed.
 
-Two versions are built in: **Luganda 1968** and the **KJV**. They are stored as one small JSON file per book in
+Three versions are built in: **Luganda 1968**, the **KJV** and the **World English Bible**. They are stored as one small JSON file per book in
 `lyrics/bibles/`, so the remote downloads only the book it needs. Other versions can be imported in Settings (VPL
 lines like `PSA 23:1 text`, tab separated, USFM, JSON or Bible XML); an import stays on that device. To rebuild:
 
 ```sh
 node scripts/build-bible.mjs LugandaBible.xml lyrics/bibles/lug68 --lug68
 node scripts/build-bible.mjs eng-kjv_vpl.txt lyrics/bibles/kjv --kjv     # from ebible.org/Scriptures/eng-kjv_vpl.zip
+node scripts/build-bible.mjs eng-web_vpl.txt lyrics/bibles/web --kjv     # from ebible.org/Scriptures/eng-web_vpl.zip
 ```
 
 `--lug68` repairs stray markup in the source file (seven verses in Amos had lost the name "Amosi"; Exodus 5:14 had

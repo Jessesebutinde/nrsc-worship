@@ -6,7 +6,7 @@
 const ARCHAIC = {
   thee: 'you', thou: 'you', ye: 'you', thy: 'your', thine: 'your', hath: 'has', hast: 'has', doth: 'does',
   dost: 'does', art: 'are', saith: 'says', shalt: 'shall', wilt: 'will', canst: 'can', didst: 'did',
-  unto: 'to', spake: 'spoke', yea: 'yes', nay: 'no',
+  unto: 'to', spake: 'spoke', yea: 'yes', nay: 'no', yahweh: 'lord', jehovah: 'lord',
 };
 
 /** The search form of a word: lower case, no accents; English loses its endings (leadeth, leads -> lead). */

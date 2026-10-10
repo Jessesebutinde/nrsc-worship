@@ -746,7 +746,7 @@ function suggestVerses(query, ids, partial) {
     for (const r of e.ix.search(query, { limit: 8, partial })) {
       const k = `${r.book}.${r.chapter}.${r.verse}`;
       const cur = best.get(k);
-      if (!cur || r.score > cur.score) best.set(k, { ...r, lang: e.ix.lang, keys: e.ix.keyTerms(query, partial) });
+      if (!cur || r.score > cur.score) best.set(k, { ...r, lang: e.ix.lang, keys: e.ix.keyTerms(query, partial), from: id });
     }
   }
   return [...best.values()].sort((a, b) => b.score - a.score).slice(0, 5);
@@ -802,16 +802,18 @@ function Scripture({ prefs, setPrefs, onShow, look = 'ink', font = 'serif' }) {
   const lastShown = useRef('');
   const versions = allVersions();
   const ids = [prefs.primary, prefs.secondary].filter(Boolean);
+  // The World English Bible is always searched too, so a verse quoted in today's words is found.
+  const searchIds = [...new Set([...ids, 'web'])];
   const ref = parseRef(text);
   const micLang = SPEECH_LANGS[prefs.micLang] ? prefs.micLang : 'en-GB';
 
   // Indexes load once words (not a reference) are typed, or when the mic is on.
   const wantsSearch = listening || (!ref && wordCount(text) >= 2);
-  const loaded = useIndexes(ids, wantsSearch);
+  const loaded = useIndexes(searchIds, wantsSearch);
   const query = useDebounced(listening ? voiceQuery : ref ? '' : text, 160);
   const results = useMemo(
-    () => (wordCount(query) >= 2 ? suggestVerses(query, ids, !listening) : []),
-    [query, ids.join('|'), loaded, listening],
+    () => (wordCount(query) >= 2 ? suggestVerses(query, searchIds, !listening) : []),
+    [query, searchIds.join('|'), loaded, listening],
   );
   useEffect(() => setSel(0), [query]);
 
@@ -965,7 +967,7 @@ function Scripture({ prefs, setPrefs, onShow, look = 'ink', font = 'serif' }) {
         ${results.map(
           (r, i) => html`<li class=${i === sel ? 'on' : ''}>
             <button class="sg" onClick=${() => showVerse(r)} onMouseEnter=${() => setSel(i)}>
-              <span class="sg-ref">${formatRef(BOOKS[r.book - 1], r.chapter, r.verse)}</span>
+              <span class="sg-ref">${formatRef(BOOKS[r.book - 1], r.chapter, r.verse)}${!ids.includes(r.from) && versionById(r.from) ? html` <em>matched in ${versionById(r.from).label}</em>` : ''}</span>
               <span class="sg-text"><${Snippet} text=${r.text} query=${r.keys} lang=${r.lang} /></span>
             </button>
             <button class="chip ghost" onClick=${() => showVerse(r, true)} title="From this verse to the end of the chapter">to end</button>

@@ -43,6 +43,17 @@ test('a few remembered words find the verse (KJV), modern or old English', () =>
   for (const [q, want] of Object.entries(cases)) assert.equal(top(en, q), want, q);
 });
 
+test('a verse quoted in modern English is found through the World English Bible', () => {
+  const web = new VerseIndex('en');
+  for (const n of BOOK_ORDER) web.addBook(n, book('web', n));
+  assert.ok(web.size > 31100, `${web.size} verses`);
+  assert.equal(top(web, 'love is patient love is kind'), '1 Corinthians 13:4');
+  assert.equal(top(web, 'come to me all you who are weary'), 'Matthew 11:28');
+  assert.equal(top(web, 'be strong and courageous'), 'Joshua 1:9');
+  // Its "Yahweh" is the KJV's "LORD".
+  assert.equal(top(web, 'the lord is my shepherd I lack nothing'), 'Psalms 23:1');
+});
+
 test('Luganda words find the verse in the 1968 Bible', () => {
   const cases = {
     'Mukama ye musumba wange': 'Psalms 23:1',

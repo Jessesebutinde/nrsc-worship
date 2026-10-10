@@ -576,6 +576,12 @@ main {
   letter-spacing: 0.06em;
   color: var(--gold);
 }
+.sg-ref em {
+  font-style: normal;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--muted);
+}
 .sg-text {
   font-size: 0.9rem;
   line-height: 1.35;
