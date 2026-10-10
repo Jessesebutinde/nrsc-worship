@@ -1501,3 +1501,156 @@
     translate: none !important;
   }
 }
+
+/* ------------------------------------------------------------ Wild: words fly in from all over and snap into place */
+
+.stage.play-wild {
+  --amp: 2.2;
+  --stag: 0.7;
+  --sway: 14px;
+  --wob: 5deg;
+  --breath: 1.06;
+  --sweep-s: 5s;
+}
+@keyframes ls-word-fly {
+  0% { opacity: 0; transform: translate(var(--fx), var(--fy)) rotate(var(--fr)) scale(0.4); }
+  55% { opacity: 1; transform: translate(calc(var(--fx) * -0.08), calc(var(--fy) * -0.08)) rotate(calc(var(--fr) * -0.15)) scale(1.18); }
+  80% { transform: translate(0, 0) rotate(0deg) scale(0.94); }
+  100% { opacity: 1; transform: none; }
+}
+.stage.play-wild .frame.in .lyric .w {
+  animation-name: ls-word-fly;
+  animation-duration: 650ms;
+  animation-timing-function: cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+.stage.play-wild:not(.calm):not(.still) .frame.in.k-song .lyric .w {
+  animation-name: ls-word-fly, ls-sway-word, ls-wobble-word;
+  animation-duration: 650ms, 4s, 2.6s;
+  animation-timing-function: cubic-bezier(0.2, 0.9, 0.3, 1), ease-in-out, ease-in-out;
+}
+/* The Grateful lean comes back once a Wild word has landed. */
+.stage.play-wild .p-grateful .lyric .ln .w {
+  animation-fill-mode: forwards, none, none;
+}
+
+/* ------------------------------------------------------------ Mix: a different font on each word; a hero word that swells */
+
+.mix-fonts .lyric .w.f1 { font-family: 'Anton', 'Montserrat', sans-serif; font-weight: 400; }
+.mix-fonts .lyric .w.f2 { font-family: 'Archivo Black', 'Montserrat', sans-serif; font-weight: 400; }
+.mix-fonts .lyric .w.f3 { font-family: 'Montserrat', sans-serif; font-weight: 900; }
+.mix-fonts .lyric .w.f4 { font-family: 'Montserrat', sans-serif; font-weight: 300; letter-spacing: 0.08em; }
+.mix-fonts .lyric .w.f5 { font-family: 'Montserrat', sans-serif; font-weight: 700; font-style: italic; }
+.mix-fonts .p-pixel .lyric .w { font-family: 'VT323', monospace; font-weight: 400; font-style: normal; }
+
+.lyric.hero-on .w.hero {
+  font-size: 1.35em;
+  color: var(--accent, #e3b75a);
+  vertical-align: baseline;
+}
+/* Two lines: the first takes the accent and shrinks, the second swells, like GOD I'M JUST / GRATEFUL. */
+.lyric.hero-line .ln:first-child {
+  font-size: 0.78em;
+  color: var(--accent, #e3b75a);
+}
+.lyric.hero-line .ln:last-child {
+  font-size: 1.22em;
+}
+.p-poster .lyric,
+.p-banner .lyric,
+.p-grateful .lyric,
+.p-film .lyric {
+  --accent: #f26b5b;
+}
+.p-sunshine .lyric {
+  --accent: #cfe04d;
+}
+.p-lines .lyric,
+.p-beams .lyric,
+.p-neon .lyric {
+  --accent: #35e0d0;
+}
+.p-banner .lyric {
+  --accent: #15306e;
+}
+.p-worship .lyric,
+.p-classic .lyric,
+.p-praise .lyric,
+.p-midnight .lyric,
+.p-pixel .lyric {
+  --accent: #e3b75a;
+}
+/* The hero word keeps swelling and settling while it is up. */
+.stage:not(.calm):not(.still) .frame.in.k-song .lyric.hero-on .w.hero {
+  animation-name: var(--enter, ls-word-rise), ls-swell, ls-wobble-word;
+  animation-duration: var(--enter-ms, 420ms), 2.4s, 3.7s;
+}
+.stage.play-wild:not(.calm):not(.still) .frame.in.k-song .lyric.hero-on .w.hero {
+  animation-name: ls-word-fly, ls-swell, ls-wobble-word;
+  animation-duration: 650ms, 2s, 2.6s;
+}
+@keyframes ls-swell {
+  from { translate: 0 0; scale: 1; }
+  to { translate: 0 calc(var(--sway) * -0.5); scale: 1.08; }
+}
+
+/* ------------------------------------------------------------ Place: where the words sit */
+
+.lyric.place-left {
+  text-align: left;
+  right: 22%;
+}
+.lyric.place-right {
+  text-align: right;
+  left: 22%;
+}
+.lyric.place-lines .ln:nth-child(odd) {
+  text-align: left;
+}
+.lyric.place-lines .ln:nth-child(even) {
+  text-align: right;
+}
+/* Bands stay edge to edge; their text moves inside them. */
+.p-poster .lyric.place-left,
+.p-poster .lyric.place-right,
+.p-banner .lyric.place-left,
+.p-banner .lyric.place-right {
+  left: 0;
+  right: 0;
+}
+.p-poster .lyric.place-left,
+.p-banner .lyric.place-left {
+  padding-right: 24%;
+}
+.p-poster .lyric.place-right,
+.p-banner .lyric.place-right {
+  padding-left: 24%;
+}
+.p-poster .lyric.place-left {
+  left: -96px;
+}
+.p-poster .lyric.place-right {
+  right: -96px;
+}
+
+/* Under Wild the words fly in from outside the band, so the band fades instead of wiping. */
+.stage.play-wild .frame.in.p-poster .lyric,
+.stage.play-wild .frame.in.p-banner .lyric {
+  animation-name: ls-fade-in;
+  animation-duration: 250ms;
+  clip-path: none;
+  overflow: visible;
+}
+.stage.play-wild .frame.in .lyric {
+  overflow: visible;
+}
+
+/* While the fill is measured (before paint), nothing moves. */
+.lyric.measuring,
+.lyric.measuring .ln,
+.lyric.measuring .w {
+  animation: none !important;
+  transform: none !important;
+  translate: none !important;
+  rotate: none !important;
+  scale: none !important;
+}

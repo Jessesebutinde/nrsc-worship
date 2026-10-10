@@ -6,7 +6,7 @@ import { html, render, useState, useEffect, useRef, useMemo } from '../ui/h.js';
 import { Fit, Stage } from './stage.js';
 import { Link, normalizeCode } from './link.js';
 import { ROOM } from './config.js';
-import { emptyState, reduce, songItem, mediaItem, BACKGROUNDS, BACKGROUND_INFO, PRESETS, PRESET_INFO, STREAM_LAYOUTS, ILLUSTRATION_SIZES, MARK_COLORS, PLAY_LEVELS, lookOf, slideWords, markKey } from './state.js';
+import { emptyState, reduce, songItem, mediaItem, BACKGROUNDS, BACKGROUND_INFO, PRESETS, PRESET_INFO, STREAM_LAYOUTS, ILLUSTRATION_SIZES, MARK_COLORS, PLAY_LEVELS, PLACES, lookOf, slideWords, markKey } from './state.js';
 import { loadSongs, saveSongs, visibleSongs, upsertSong, removeSong, searchSongs, mergeSongs, exportLibrary, importLibrary } from './library.js';
 import { parseRef } from './books.js';
 import { allVersions, importVersion, removeVersion, passageItem, BUILTIN_VERSIONS } from './bible.js';
@@ -486,9 +486,20 @@ function Live({ state, act, info, goTab, onOutputs, wide }) {
       ${PRESETS.map(
         (p) => html`<button class=${`chip ${state.look === p ? 'on' : ''}`} onClick=${() => act({ type: 'set', patch: { look: p } })} title=${PRESET_INFO[p].hint}>${PRESET_INFO[p].name}</button>`,
       )}
+    </div>
+    <div class="wordplay row wrap">
       <span class="seg play" role="group" aria-label="How much the words play">
         ${Object.entries(PLAY_LEVELS).map(
           ([k, l]) => html`<button class=${(state.play || 'mid') === k ? 'on' : ''} onClick=${() => act({ type: 'set', patch: { play: k } })}>${l}</button>`,
+        )}
+      </span>
+      <span class="seg" role="group" aria-label="Mix">
+        <button class=${state.mixFonts ? 'on' : ''} onClick=${() => act({ type: 'set', patch: { mixFonts: !state.mixFonts } })} title="A different font on each word">Mixed fonts</button>
+        <button class=${state.hero ? 'on' : ''} onClick=${() => act({ type: 'set', patch: { hero: !state.hero } })} title="One word (or the second line) swells, like GOD I'M JUST / GRATEFUL">Hero word</button>
+      </span>
+      <span class="seg" role="group" aria-label="Where the words sit">
+        ${Object.entries(PLACES).map(
+          ([k, l]) => html`<button class=${(state.place || 'center') === k ? 'on' : ''} onClick=${() => act({ type: 'set', patch: { place: k } })}>${l}</button>`,
         )}
       </span>
     </div>`}
@@ -925,7 +936,22 @@ function Settings({ state, act, info, prefs, setPrefs, songs, setSongs, session,
             ([k, l]) => html`<button class=${(state.play || 'mid') === k ? 'on' : ''} onClick=${() => act({ type: 'set', patch: { play: k } })}>${l}</button>`,
           )}
         </div>
-        <small class="muted">Gentle: short, soft entrances. Lively: the lyric-video motion. Playful: words travel further, bounce on arrival and wobble while they are up.</small>
+        <small class="muted">Gentle: short, soft entrances. Lively: the lyric-video motion. Playful: words travel further, bounce on arrival and wobble while they are up. Wild: words fly in fast from all over the screen, spinning, and snap into place.</small>
+      </div>
+      <div class="field"><span>Mix</span>
+        <div class="seg">
+          <button class=${state.mixFonts ? 'on' : ''} onClick=${() => act({ type: 'set', patch: { mixFonts: !state.mixFonts } })}>Mixed fonts</button>
+          <button class=${state.hero ? 'on' : ''} onClick=${() => act({ type: 'set', patch: { hero: !state.hero } })}>Hero word</button>
+        </div>
+        <small class="muted">Mixed fonts: a different font on each word. Hero word: the longest word swells and plays; with two lines the second line swells and the first takes the accent colour (GOD I'M JUST / GRATEFUL).</small>
+      </div>
+      <div class="field"><span>Where the words sit</span>
+        <div class="seg">
+          ${Object.entries(PLACES).map(
+            ([k, l]) => html`<button class=${(state.place || 'center') === k ? 'on' : ''} onClick=${() => act({ type: 'set', patch: { place: k } })}>${l}</button>`,
+          )}
+        </div>
+        <small class="muted">Alternate: left, then right, then centre, slide by slide. Left / right: the first line left and the second right. Random: a different side each slide.</small>
       </div>
       <label class="toggle">
         <input type="checkbox" checked=${state.lookBg !== 'mine'} onChange=${(e) => act({ type: 'set', patch: { lookBg: e.target.checked ? 'look' : 'mine' } })} />
