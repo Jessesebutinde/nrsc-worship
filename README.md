@@ -111,6 +111,16 @@ first click. Both outputs follow the laptop directly, so nothing depends on the 
 second remote (**More ways** → scan the QR code); that one goes through the relay. On a narrow window or a phone
 the remote shows tabs instead of columns, with the same buttons under **Show on TV**.
 
+## This console
+
+**Settings → This console** sets how the laptop's own screen looks; the TV and the stream never change with it.
+**Theme**: Midnight (the church purple, the default), Studio (graphite and amber, the least glare in a dark
+hall), Daylight (light, for bright rooms and rehearsals) or Kampala (bark brown, terracotta and gold). The ☀ / ☾
+button in the header switches to Daylight and back. **Layout** (laptop-wide windows): Console (library, live and
+outputs side by side), Focus (a big live picture with Next / Back; the library and the outputs open from slim side
+rails, Esc closes them) or Compact (tuned for 1366 × 768: the live picture beside Next / Back, a narrow outputs
+column). **Font**: Montserrat, System (the laptop's own) or Serif. The choice is kept on this laptop only.
+
 ## Words that use the screen
 
 By default the words **grow to fill the TV**: each slide is measured in the real font and sized as large as fits
@@ -332,8 +342,13 @@ or the other way round. Videos play with sound; **Loop video** repeats one.
   never on "and", "the", "mu", "nga"…) and never inside a word. Slides that already fit are left alone.
 - The preview shows the slide under the cursor exactly as the TV will. A slide is flagged if a line would wrap on
   the TV (measured in the real font) or has too many lines. Sizes never shrink to fit.
-- **Spelling** underlines words not found in the Luganda 1968 Bible, the KJV or your other songs, and offers a
-  one-tap fix. **It's right** teaches it a word.
+- **Suggestions** sit under the lyrics as you type: each word that looks wrong gets a small tag showing the fix.
+  Tap the tag to fix it, or its **×** if the word is right (it is not suggested again). Amber is spelling
+  (`erinya` → `erinnya`, `okuyinba` → `okuyimba`, checked against the Luganda 1968 Bible and the KJV), teal is
+  grammar (`na omwana` → `n'omwana`), red is punctuation (`n' essanyu` → `n'essanyu`, spaces around commas), gold
+  is a capital on a sacred name (`Katonda`, `Mukama`, `Yesu`). Hover a tag for the reason. **Fix all safe ones**
+  applies all but the spelling tags. It would rather miss a mistake than tag a right word: on the Psalms and John
+  nearly every verse gets no tag. Words in the title and your other songs count as right.
 - Each song has a look:
 
 | Look | Style | Text | Position | Change |
