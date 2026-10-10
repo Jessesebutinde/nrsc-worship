@@ -67,6 +67,8 @@ export function emptyState() {
     // environment unless lookBg is 'mine' (keep the TV background).
     look: '',
     lookBg: 'look',
+    // How much the words play: 'low' (gentle), 'mid' (lively), 'high' (playful: further, bouncier, wobbling).
+    play: 'mid',
     // Words the operator tapped for emphasis: { "<item id>:<slide index>": { "<field>:<word>": { c: 'gold', b: true } } }.
     marks: {},
   };
@@ -98,6 +100,8 @@ export function slideWords(item, slide) {
   }
   return [];
 }
+
+export const PLAY_LEVELS = { low: 'Gentle', mid: 'Lively', high: 'Playful' };
 
 export const ILLUSTRATION_SIZES = { small: 'Small', half: 'Half', large: 'Large' };
 

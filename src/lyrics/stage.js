@@ -433,6 +433,7 @@ export function Stage({ state, out = 'preview', layout = 'full', background = 'a
     lowerThird ? 'is-lt' : '',
     background === 'none' ? 'is-transparent' : '',
     st.calm ? 'calm' : '',
+    `play-${st.play || 'mid'}`,
     still === true ? 'still' : '',
     still ? 'still-bg' : '',
     st.caps !== false ? 'caps' : '',
