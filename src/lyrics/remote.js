@@ -910,9 +910,10 @@ function Scripture({ prefs, setPrefs, onShow, look = 'ink', font = 'serif' }) {
   const ref = parseRef(text);
   const micLang = SPEECH_LANGS[prefs.micLang] ? prefs.micLang : 'en-GB';
 
-  // Indexes load once words (not a reference) are typed, or when the mic is on.
+  // The books start loading as soon as the Scripture tab opens (once per visit; the browser keeps
+  // them), so the search is complete by the time words are typed or said.
   const wantsSearch = listening || (!ref && wordCount(text) >= 2);
-  const loaded = useIndexes(searchIds, wantsSearch);
+  const loaded = useIndexes(searchIds, true);
   const query = useDebounced(listening ? voiceQuery : ref ? '' : text, 160);
   const results = useMemo(
     () => (wordCount(query) >= 2 ? suggestVerses(query, searchIds, !listening) : []),
