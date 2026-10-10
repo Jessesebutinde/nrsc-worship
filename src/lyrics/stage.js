@@ -142,6 +142,9 @@ function Background({ bg, video }) {
   );
 }
 
+// Every environment except the plain ones gets film grain and a slow light sweep on top.
+const Texture = () => html`<i class="grain"></i><i class="sweep"></i>`;
+
 function BgLayer({ kind, video }) {
   if (kind === 'none') return null;
   if (kind === 'black') return html`<div class="bg-fill bg-black"></div>`;
@@ -151,27 +154,27 @@ function BgLayer({ kind, video }) {
     </div>`;
   if (kind === 'key') return html`<div class="bg-fill bg-key"><div class="bg-keyband"></div></div>`;
   if (kind === 'crowd')
-    return html`<div class="bg-fill bg-crowd"><i class="lights"></i><i class="haze"></i><i class="grain"></i><div class="vig"></div></div>`;
-  if (kind === 'wood') return html`<div class="bg-fill bg-wood"><i class="grainlines"></i><i class="corner"></i></div>`;
-  if (kind === 'arcs') return html`<div class="bg-fill bg-arcs"><i class="art"></i><i class="marks"></i></div>`;
+    return html`<div class="bg-fill bg-crowd"><i class="lights"></i><i class="haze"></i><${Texture} /><div class="vig"></div></div>`;
+  if (kind === 'wood') return html`<div class="bg-fill bg-wood"><i class="grainlines"></i><i class="corner"></i><${Texture} /></div>`;
+  if (kind === 'arcs') return html`<div class="bg-fill bg-arcs"><i class="art"></i><i class="marks"></i><${Texture} /></div>`;
   if (kind === 'beams')
-    return html`<div class="bg-fill bg-beams"><i class="beam"></i><i class="scan"></i><i class="floor"></i><div class="vig"></div></div>`;
+    return html`<div class="bg-fill bg-beams"><i class="beam"></i><i class="scan"></i><i class="floor"></i><${Texture} /><div class="vig"></div></div>`;
   if (kind === 'bluestage')
-    return html`<div class="bg-fill bg-bluestage"><i class="glows"></i><i class="truss"></i><i class="haze"></i><i class="grain"></i><div class="vig"></div></div>`;
+    return html`<div class="bg-fill bg-bluestage"><i class="glows"></i><i class="truss"></i><i class="haze"></i><${Texture} /><div class="vig"></div></div>`;
   if (kind === 'forest')
-    return html`<div class="bg-fill bg-forest"><i class="trees"></i><i class="g1"></i><i class="g2"></i><i class="g3"></i><i class="grain"></i></div>`;
-  if (kind === 'darkglow') return html`<div class="bg-fill bg-darkglow"><i class="glow"></i></div>`;
+    return html`<div class="bg-fill bg-forest"><i class="trees"></i><i class="g1"></i><i class="g2"></i><i class="g3"></i><${Texture} /></div>`;
+  if (kind === 'darkglow') return html`<div class="bg-fill bg-darkglow"><i class="glow"></i><${Texture} /></div>`;
   if (kind === 'mono')
-    return html`<div class="bg-fill bg-mono"><i class="light"></i><i class="crowd"></i><i class="grain"></i><i class="tint"></i></div>`;
+    return html`<div class="bg-fill bg-mono"><i class="light"></i><i class="crowd"></i><${Texture} /><i class="tint"></i></div>`;
   if (kind === 'film')
-    return html`<div class="bg-fill bg-film"><i class="leak"></i><i class="grain"></i><div class="vig"></div></div>`;
+    return html`<div class="bg-fill bg-film"><i class="leak"></i><${Texture} /><div class="vig"></div></div>`;
   if (kind === 'bokeh')
     return html`<div class="bg-fill bg-bokeh">
-      ${[0, 1, 2, 3, 4, 5, 6, 7].map((i) => html`<i class=${`b${i}`}></i>`)}<div class="vig"></div>
+      ${[0, 1, 2, 3, 4, 5, 6, 7].map((i) => html`<i class=${`b${i}`}></i>`)}<${Texture} /><div class="vig"></div>
     </div>`;
   if (kind === 'leaks')
-    return html`<div class="bg-fill bg-leaks"><i class="l0"></i><i class="l1"></i><i class="l2"></i><div class="vig"></div></div>`;
-  return html`<div class="bg-fill bg-glow"><div class="glow"></div><div class="vig"></div></div>`;
+    return html`<div class="bg-fill bg-leaks"><i class="l0"></i><i class="l1"></i><i class="l2"></i><${Texture} /><div class="vig"></div></div>`;
+  return html`<div class="bg-fill bg-glow"><div class="glow"></div><${Texture} /><div class="vig"></div></div>`;
 }
 
 // ------------------------------------------------------------------ frames
