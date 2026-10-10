@@ -1,0 +1,1656 @@
+/* The screen picture (1920x1080 canvas). Sizes are the Namasuba screen standard, in output pixels. */
+
+@font-face {
+  font-family: 'Montserrat';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: block;
+  src: url(fonts/montserrat-latin-ext.woff2) format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF,
+    U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Montserrat';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: block;
+  src: url(fonts/montserrat-latin.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+.fit {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+}
+.fit-fill {
+  aspect-ratio: auto;
+  height: 100%;
+}
+.fit-inner {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+}
+
+.stage {
+  --screen-bg: #0e0b14;
+  --purple: #3d2766;
+  --gold: #e3b75a;
+  --white: #f5f3ee;
+  --shadow: 0 6px 30px rgba(0, 0, 0, 0.6);
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: var(--screen-bg);
+  color: var(--white);
+  font-family: 'Montserrat', 'Noto Sans', system-ui, sans-serif;
+  font-synthesis: none;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  /* Luganda: never break or hyphenate a word. */
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: manual;
+  contain: strict;
+}
+.stage.is-transparent,
+.stage.is-lt {
+  background: transparent;
+}
+
+/* ------------------------------------------------------------ backgrounds */
+
+.bg,
+.bg-fill {
+  position: absolute;
+  inset: 0;
+}
+.bg-in {
+  animation: ls-fade-in 800ms ease both;
+}
+.bg-out {
+  animation: ls-fade-out 800ms ease forwards;
+}
+.vig {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 45%, rgba(0, 0, 0, 0.55) 100%);
+}
+.bg-glow {
+  background: var(--screen-bg);
+  overflow: hidden;
+}
+.bg-glow .glow {
+  position: absolute;
+  inset: -20%;
+  background:
+    radial-gradient(ellipse 60% 50% at 30% 70%, rgba(61, 39, 102, 0.95), transparent 62%),
+    radial-gradient(ellipse 50% 45% at 75% 25%, rgba(227, 183, 90, 0.2), transparent 60%);
+  animation: ls-drift 40s ease-in-out infinite alternate;
+  will-change: transform;
+}
+@keyframes ls-drift {
+  from {
+    transform: translate(-3%, -2%) scale(1);
+  }
+  to {
+    transform: translate(3%, 2%) scale(1.06);
+  }
+}
+
+.bg-bokeh {
+  background: radial-gradient(ellipse 90% 70% at 50% 100%, #1a1226 0%, #0b0810 70%);
+  overflow: hidden;
+}
+.bg-bokeh i {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--c) 0%, var(--c) 30%, transparent 70%);
+  will-change: transform;
+  animation: ls-float 70s ease-in-out infinite alternate;
+}
+.bg-bokeh .b0 { left: 10%; top: 16%; width: 300px; height: 300px; --c: rgba(255, 190, 120, 0.22); }
+.bg-bokeh .b1 { left: 62%; top: 10%; width: 210px; height: 210px; --c: rgba(255, 220, 180, 0.16); animation-duration: 85s; animation-delay: -20s; }
+.bg-bokeh .b2 { left: 72%; top: 52%; width: 400px; height: 400px; --c: rgba(120, 90, 200, 0.26); animation-duration: 95s; animation-delay: -40s; }
+.bg-bokeh .b3 { left: 28%; top: 58%; width: 170px; height: 170px; --c: rgba(227, 183, 90, 0.18); animation-duration: 75s; animation-delay: -10s; }
+.bg-bokeh .b4 { left: 45%; top: 27%; width: 130px; height: 130px; --c: rgba(255, 240, 220, 0.12); animation-duration: 65s; animation-delay: -30s; }
+.bg-bokeh .b5 { left: 2%; top: 64%; width: 360px; height: 360px; --c: rgba(90, 58, 140, 0.3); animation-duration: 100s; animation-delay: -55s; }
+.bg-bokeh .b6 { left: 86%; top: 24%; width: 160px; height: 160px; --c: rgba(255, 200, 150, 0.14); animation-duration: 80s; animation-delay: -5s; }
+.bg-bokeh .b7 { left: 53%; top: 72%; width: 240px; height: 240px; --c: rgba(160, 120, 230, 0.16); animation-duration: 90s; animation-delay: -65s; }
+@keyframes ls-float {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(60px, -40px) scale(1.08);
+  }
+  100% {
+    transform: translate(-50px, 30px) scale(0.94);
+  }
+}
+
+.bg-leaks {
+  background: #07050a;
+  overflow: hidden;
+}
+.bg-leaks i {
+  position: absolute;
+  will-change: transform, opacity;
+  animation: ls-leak 50s ease-in-out infinite alternate;
+}
+.bg-leaks .l0 {
+  inset: -30% 40% 20% -30%;
+  background: radial-gradient(ellipse at 30% 40%, rgba(255, 150, 70, 0.28), transparent 60%);
+}
+.bg-leaks .l1 {
+  inset: 30% -30% -30% 45%;
+  background: radial-gradient(ellipse at 60% 60%, rgba(230, 110, 90, 0.18), transparent 60%);
+  animation-duration: 64s;
+  animation-delay: -25s;
+}
+.bg-leaks .l2 {
+  inset: -10%;
+  background: linear-gradient(115deg, transparent 38%, rgba(255, 235, 200, 0.08) 50%, transparent 62%);
+  animation-duration: 45s;
+  animation-delay: -12s;
+}
+@keyframes ls-leak {
+  from {
+    transform: translateX(-4%) rotate(-2deg);
+    opacity: 0.7;
+  }
+  to {
+    transform: translateX(4%) rotate(2deg);
+    opacity: 1;
+  }
+}
+
+.bg-video video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.bg-dim {
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 6, 12, 0.5);
+}
+.bg-key,
+.bg-black {
+  background: #000;
+}
+.bg-keyband {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 45%;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.85), rgba(0, 0, 0, 0));
+}
+
+/* ------------------------------------------------------------ frames & motion */
+
+.frame {
+  position: absolute;
+  inset: 0;
+  --d0: 0ms;
+  --stagger: 0ms;
+}
+.frame.out {
+  animation: ls-fade-out var(--out, 250ms) ease forwards;
+}
+.frame.in .ln {
+  animation: ls-rise 350ms var(--ease) both;
+  animation-delay: calc(var(--d0) + var(--i, 0) * var(--stagger));
+}
+/* Classic: fade + 24px rise, 70 ms between lines. Starts as the old slide is nearly gone. */
+.frame.p-classic {
+  --d0: 150ms;
+  --stagger: 70ms;
+}
+/* Worship: 400 ms crossfade. */
+.frame.p-worship.in .ln {
+  animation: ls-fade-in 400ms ease both;
+}
+/* Praise: quick 200 ms fade, both lines together (feels like a cut). */
+.frame.p-praise.in .ln {
+  animation: ls-fade-in 200ms ease both;
+}
+/* Scripture: reference, then the first language, then the second, 120 ms apart. */
+.frame.p-scripture,
+.frame.p-title {
+  --d0: 150ms;
+  --stagger: 120ms;
+}
+.frame.p-logo.in .ln {
+  animation: ls-fade-in 800ms ease both;
+  animation-delay: calc(var(--i, 0) * 120ms);
+}
+.frame.k-song .songtag,
+.frame.k-song .songtitle {
+  animation: ls-fade-in 400ms ease both;
+}
+
+/* Calm mode / reduced motion: crossfades only. */
+.calm .frame.in .ln {
+  animation: ls-fade-in 400ms ease both !important;
+  animation-delay: 0ms !important;
+}
+.calm .bg-glow .glow,
+.calm .bg-bokeh i,
+.calm .bg-leaks i {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .frame.in .ln {
+    animation: ls-fade-in 400ms ease both !important;
+    animation-delay: 0ms !important;
+  }
+  .bg-glow .glow,
+  .bg-bokeh i,
+  .bg-leaks i {
+    animation: none;
+  }
+}
+
+@keyframes ls-rise {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes ls-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes ls-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.blackout {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  opacity: 0;
+  transition: opacity 400ms ease;
+  pointer-events: none;
+}
+.blackout.on {
+  opacity: 1;
+}
+
+/* Safe area: everything stays 5% from every edge. */
+.safe {
+  position: absolute;
+  inset: 54px 96px;
+}
+.safe-guide {
+  position: absolute;
+  inset: 54px 96px;
+  border: 2px dashed rgba(255, 255, 255, 0.22);
+  pointer-events: none;
+  display: none;
+}
+.show-safe .safe-guide {
+  display: block;
+}
+
+/* ------------------------------------------------------------ lyrics */
+
+.lyric {
+  position: absolute;
+  left: 0;
+  right: 0;
+  text-align: center;
+  text-shadow: var(--shadow);
+  text-wrap: balance;
+}
+.lyric .ln {
+  display: block;
+}
+/* Classic (Namasuba): SemiBold 140 px, dead centre. --fs grows the text to use the screen (fill mode). */
+.p-classic .lyric {
+  top: 50%;
+  transform: translateY(-50%);
+  font-weight: 600;
+  font-size: calc(140px * var(--fs, 1));
+  line-height: 1.18;
+}
+/* Worship (Hillsong-style): Medium 130 px, block centred 74% down the screen. */
+.p-worship .lyric {
+  top: 745px; /* 74% of 1080, inside the safe area */
+  transform: translateY(-50%);
+  font-weight: 500;
+  font-size: calc(130px * var(--fs, 1));
+  line-height: 1.15;
+  letter-spacing: -0.005em;
+}
+/* Praise (Elevation-style): ExtraBold 125 px caps, block centred 70% down. */
+.p-praise .lyric {
+  top: 702px; /* 70% of 1080 */
+  transform: translateY(-50%);
+  font-weight: 800;
+  font-size: calc(125px * var(--fs, 1));
+  line-height: 1.08;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+/* Fill mode: the block sits in the middle of the safe area and grows until it meets the edges. */
+.fill .lyric {
+  top: 50%;
+  transform: translateY(-50%);
+}
+.fill .lyric .ln {
+  white-space: nowrap;
+}
+.fill .lyric.squeeze .ln {
+  white-space: normal;
+}
+/* Capitals for lyrics (the operator's choice; scripture stays in sentence case). */
+.caps .lyric,
+.caps .lt-lyric {
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+}
+.songtag {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  font-size: 36px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(227, 183, 90, 0.9);
+}
+/* Faded with colour, not opacity: the fade-in animation owns opacity. */
+.songtitle {
+  position: absolute;
+  right: 0;
+  top: 0;
+  font-size: 36px;
+  font-weight: 500;
+  color: rgba(245, 243, 238, 0.4);
+}
+
+/* ------------------------------------------------------------ scripture (stacked bilingual) */
+
+.scrip {
+  position: absolute;
+  left: 154px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1613px; /* 84% */
+  padding-left: 56px;
+  text-align: left;
+  text-shadow: var(--shadow);
+}
+.scrip .bar {
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 8px;
+  border-radius: 8px;
+  background: var(--gold);
+  animation: ls-fade-in 300ms ease both;
+}
+.frame.out .scrip .bar {
+  animation: none;
+}
+.scrip .ref {
+  font-size: calc(48px * var(--fs, 1));
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: calc(40px * var(--fs, 1));
+}
+.scrip .pri {
+  font-size: calc(92px * var(--fs, 1));
+  font-weight: 600;
+  line-height: 1.22;
+}
+.scrip .sec {
+  font-size: calc(64px * var(--fs, 1));
+  font-weight: 500;
+  line-height: 1.3;
+  color: rgba(245, 243, 238, 0.68);
+  margin-top: calc(44px * var(--fs, 1));
+}
+.scrip .ref + .sec {
+  font-size: calc(92px * var(--fs, 1));
+  font-weight: 600;
+  color: var(--white);
+}
+.scrip .ver {
+  display: block;
+  font-size: calc(30px * var(--fs, 1));
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.6;
+  margin-bottom: 10px;
+}
+
+/* ------------------------------------------------------------ title card & logo */
+
+.titlecard,
+.logo {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  text-shadow: var(--shadow);
+}
+.tc-title {
+  font-size: 120px;
+  font-weight: 600;
+  line-height: 1.12;
+  max-width: 1600px;
+  text-wrap: balance;
+}
+.tc-church {
+  margin-top: 36px;
+  font-size: 40px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+.logo svg {
+  color: var(--gold);
+  margin-bottom: 44px;
+}
+.logo-name {
+  font-size: 80px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  padding-left: 0.2em;
+}
+.logo-sub {
+  margin-top: 22px;
+  font-size: 34px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(227, 183, 90, 0.85);
+}
+
+/* ------------------------------------------------------------ verse numbers (several verses on one slide) */
+
+.vn {
+  font-size: 0.42em;
+  font-weight: 700;
+  color: var(--gold);
+  vertical-align: top;
+  line-height: 1;
+  margin-right: 0.3em;
+  position: relative;
+  top: 0.35em;
+}
+
+/* ------------------------------------------------------------ pictures and videos */
+
+.mf {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  overflow: hidden;
+}
+.mf-blur {
+  position: absolute;
+  inset: -5%;
+  width: 110%;
+  height: 110%;
+  object-fit: cover;
+  filter: blur(40px) brightness(0.5);
+}
+.mf-main {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.frame.k-media.in .mf {
+  animation: ls-fade-in 600ms ease both;
+}
+
+/* ------------------------------------------------------------ lower third (stream / ATEM / OBS) */
+/* A dark band keys out almost fully on a luma key, so over the camera only the text and the gold tab show. */
+
+.lt-band {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  min-height: 300px;
+  max-height: 560px;
+  padding: 44px 154px 64px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  background: linear-gradient(to top, rgba(8, 6, 12, 0.9) 0%, rgba(8, 6, 12, 0.8) 60%, rgba(8, 6, 12, 0) 100%);
+  text-shadow: 0 3px 14px rgba(0, 0, 0, 0.6);
+}
+.lt-lyric {
+  text-align: center;
+  font-size: 64px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-wrap: balance;
+}
+.lt-lyric .ln {
+  display: block;
+}
+.lt-scrip {
+  text-align: left;
+}
+.lt-scrip .ref {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  margin-bottom: 18px;
+}
+.lt-scrip .tab {
+  display: inline-block;
+  padding: 8px 18px;
+  border-left: 8px solid var(--gold);
+  background: rgba(227, 183, 90, 0.16);
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+.lt-scrip .more {
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(245, 243, 238, 0.45);
+}
+.lt-scrip .pri {
+  font-size: 56px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+.lt-scrip .sec {
+  font-size: 40px;
+  font-weight: 500;
+  line-height: 1.25;
+  color: rgba(245, 243, 238, 0.72);
+  margin-top: 10px;
+}
+.is-lt .p-praise .lt-lyric {
+  text-transform: uppercase;
+  font-weight: 800;
+}
+
+/* ------------------------------------------------------------ illustration beside the words (TV only) */
+
+.with-illus .safe .lyric {
+  right: calc(var(--illus-w) + 48px);
+}
+.with-illus .scrip {
+  width: calc(1613px - var(--illus-w) - 48px);
+}
+.with-illus .songtitle {
+  display: none;
+}
+.illus {
+  position: absolute;
+  top: 54px;
+  bottom: 54px;
+  right: 96px;
+  width: var(--illus-w);
+  border-radius: 28px;
+  overflow: hidden;
+  background: #000;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  animation: ls-fade-in 600ms ease both;
+}
+.illus .mf-main {
+  object-fit: cover;
+}
+
+/* ------------------------------------------------------------ display font for the Poster look */
+
+@font-face {
+  font-family: 'Anton';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url(fonts/anton-latin-ext.woff2) format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF,
+    U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Anton';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url(fonts/anton-latin.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* ------------------------------------------------------------ environments (backgrounds with life in them) */
+
+/* Stage & crowd: warm and cool stage light, haze, film grain. */
+.bg-crowd {
+  background: #130b12;
+  overflow: hidden;
+}
+.bg-crowd i {
+  position: absolute;
+  inset: 0;
+}
+.bg-crowd .lights {
+  inset: -15%;
+  background:
+    radial-gradient(ellipse 34% 30% at 72% 22%, rgba(255, 176, 92, 0.6), transparent 65%),
+    radial-gradient(ellipse 30% 40% at 14% 58%, rgba(80, 110, 255, 0.45), transparent 65%),
+    radial-gradient(ellipse 50% 26% at 50% 104%, rgba(230, 70, 110, 0.35), transparent 65%),
+    radial-gradient(ellipse 20% 18% at 40% 30%, rgba(255, 240, 200, 0.18), transparent 70%);
+  will-change: transform;
+  animation: ls-drift 36s ease-in-out infinite alternate;
+}
+.bg-crowd .haze {
+  background: linear-gradient(170deg, rgba(255, 255, 255, 0.07) 0%, transparent 35%, transparent 65%, rgba(255, 200, 160, 0.06) 100%);
+}
+.bg-crowd .grain {
+  inset: -4%;
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%27320%27%20height=%27320%27%3E%3Cfilter%20id=%27n%27%3E%3CfeTurbulence%20type=%27fractalNoise%27%20baseFrequency=%270.9%27%20numOctaves=%272%27%20stitchTiles=%27stitch%27/%3E%3CfeColorMatrix%20values=%270%200%200%200%201%20%200%200%200%200%201%20%200%200%200%200%201%20%200%200%200%200.6%200%27/%3E%3C/filter%3E%3Crect%20width=%27320%27%20height=%27320%27%20filter=%27url%28%23n%29%27/%3E%3C/svg%3E");
+  background-size: 320px 320px;
+  opacity: 0.26;
+  mix-blend-mode: overlay;
+  animation: ls-grain 0.7s steps(3) infinite;
+}
+@keyframes ls-grain {
+  0% { transform: translate(0, 0); }
+  33% { transform: translate(-2.5%, 1.5%); }
+  66% { transform: translate(1.5%, -2%); }
+  100% { transform: translate(-1%, 2.5%); }
+}
+
+/* Sunny woodgrain: bent lines drifting slowly, a teal corner. */
+.bg-wood {
+  background: #f6b400;
+  overflow: hidden;
+}
+.bg-wood .grainlines {
+  position: absolute;
+  left: -140px;
+  top: -60px;
+  width: 2200px;
+  height: 1200px;
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%272200%27%20height=%271200%27%20viewBox=%270%200%202200%201200%27%3E%3Cdefs%3E%3Cfilter%20id=%27f%27%20x=%27-5%25%27%20y=%27-10%25%27%20width=%27110%25%27%20height=%27120%25%27%3E%3CfeTurbulence%20type=%27fractalNoise%27%20baseFrequency=%270.0025%200.011%27%20numOctaves=%272%27%20seed=%2711%27/%3E%3CfeDisplacementMap%20in=%27SourceGraphic%27%20scale=%27110%27%20xChannelSelector=%27R%27%20yChannelSelector=%27G%27/%3E%3C/filter%3E%3C/defs%3E%3Crect%20width=%272200%27%20height=%271200%27%20fill=%27%23f6b400%27/%3E%3Cg%20filter=%27url%28%23f%29%27%20stroke=%27%23e39600%27%20stroke-width=%2710%27%20fill=%27none%27%20stroke-linecap=%27round%27%3E%3Cpath%20d=%27M-200%20-60%20H2400%27/%3E%3Cpath%20d=%27M-200%20-24%20H2400%27/%3E%3Cpath%20d=%27M-200%2012%20H2400%27/%3E%3Cpath%20d=%27M-200%2048%20H2400%27/%3E%3Cpath%20d=%27M-200%2084%20H2400%27/%3E%3Cpath%20d=%27M-200%20120%20H2400%27/%3E%3Cpath%20d=%27M-200%20156%20H2400%27/%3E%3Cpath%20d=%27M-200%20192%20H2400%27/%3E%3Cpath%20d=%27M-200%20228%20H2400%27/%3E%3Cpath%20d=%27M-200%20264%20H2400%27/%3E%3Cpath%20d=%27M-200%20300%20H2400%27/%3E%3Cpath%20d=%27M-200%20336%20H2400%27/%3E%3Cpath%20d=%27M-200%20372%20H2400%27/%3E%3Cpath%20d=%27M-200%20408%20H2400%27/%3E%3Cpath%20d=%27M-200%20444%20H2400%27/%3E%3Cpath%20d=%27M-200%20480%20H2400%27/%3E%3Cpath%20d=%27M-200%20516%20H2400%27/%3E%3Cpath%20d=%27M-200%20552%20H2400%27/%3E%3Cpath%20d=%27M-200%20588%20H2400%27/%3E%3Cpath%20d=%27M-200%20624%20H2400%27/%3E%3Cpath%20d=%27M-200%20660%20H2400%27/%3E%3Cpath%20d=%27M-200%20696%20H2400%27/%3E%3Cpath%20d=%27M-200%20732%20H2400%27/%3E%3Cpath%20d=%27M-200%20768%20H2400%27/%3E%3Cpath%20d=%27M-200%20804%20H2400%27/%3E%3Cpath%20d=%27M-200%20840%20H2400%27/%3E%3Cpath%20d=%27M-200%20876%20H2400%27/%3E%3Cpath%20d=%27M-200%20912%20H2400%27/%3E%3Cpath%20d=%27M-200%20948%20H2400%27/%3E%3Cpath%20d=%27M-200%20984%20H2400%27/%3E%3Cpath%20d=%27M-200%201020%20H2400%27/%3E%3Cpath%20d=%27M-200%201056%20H2400%27/%3E%3Cpath%20d=%27M-200%201092%20H2400%27/%3E%3Cpath%20d=%27M-200%201128%20H2400%27/%3E%3Cpath%20d=%27M-200%201164%20H2400%27/%3E%3Cpath%20d=%27M-200%201200%20H2400%27/%3E%3Cpath%20d=%27M-200%201236%20H2400%27/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 2200px 1200px;
+  will-change: transform;
+  animation: ls-wood 50s ease-in-out infinite alternate;
+}
+@keyframes ls-wood {
+  from { transform: translate(0, 0); }
+  to { transform: translate(130px, 40px); }
+}
+.bg-wood .corner {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 0;
+  height: 0;
+  border-left: 470px solid #38c0c5;
+  border-top: 470px solid transparent;
+  filter: drop-shadow(14px -14px 0 #fff);
+}
+
+/* Teal line-art on navy. */
+.bg-arcs {
+  background: radial-gradient(ellipse 80% 70% at 30% 60%, #0f2a39, #081a25 70%);
+  overflow: hidden;
+}
+.bg-arcs i {
+  position: absolute;
+  inset: 0;
+  background-size: 1920px 1080px;
+  background-position: center;
+}
+.bg-arcs .art {
+  will-change: transform;
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%271920%27%20height=%271080%27%20viewBox=%270%200%201920%201080%27%3E%3Cg%20fill=%27none%27%20stroke=%27%231fb3ae%27%20stroke-width=%275%27%20opacity=%270.55%27%3E%3Ccircle%20cx=%27-260%27%20cy=%27640%27%20r=%27520%27/%3E%3Ccircle%20cx=%27-260%27%20cy=%27640%27%20r=%27586%27/%3E%3Ccircle%20cx=%27-260%27%20cy=%27640%27%20r=%27652%27/%3E%3Ccircle%20cx=%27-260%27%20cy=%27640%27%20r=%27718%27/%3E%3Ccircle%20cx=%27-260%27%20cy=%27640%27%20r=%27784%27/%3E%3Ccircle%20cx=%27-260%27%20cy=%27640%27%20r=%27850%27/%3E%3Ccircle%20cx=%27-260%27%20cy=%27640%27%20r=%27916%27/%3E%3Ccircle%20cx=%27-260%27%20cy=%27640%27%20r=%27982%27/%3E%3Ccircle%20cx=%27-260%27%20cy=%27640%27%20r=%271048%27/%3E%3Ccircle%20cx=%27-260%27%20cy=%27640%27%20r=%271114%27/%3E%3Ccircle%20cx=%27-260%27%20cy=%27640%27%20r=%271180%27/%3E%3Ccircle%20cx=%27-260%27%20cy=%27640%27%20r=%271246%27/%3E%3Ccircle%20cx=%27-260%27%20cy=%27640%27%20r=%271312%27/%3E%3Ccircle%20cx=%27-260%27%20cy=%27640%27%20r=%271378%27/%3E%3Ccircle%20cx=%27-260%27%20cy=%27640%27%20r=%271444%27/%3E%3Ccircle%20cx=%27-260%27%20cy=%27640%27%20r=%271510%27/%3E%3Ccircle%20cx=%27-260%27%20cy=%27640%27%20r=%271576%27/%3E%3Ccircle%20cx=%27-260%27%20cy=%27640%27%20r=%271642%27/%3E%3Ccircle%20cx=%27-260%27%20cy=%27640%27%20r=%271708%27/%3E%3Ccircle%20cx=%27-260%27%20cy=%27640%27%20r=%271774%27/%3E%3Ccircle%20cx=%27-260%27%20cy=%27640%27%20r=%271840%27/%3E%3Ccircle%20cx=%27-260%27%20cy=%27640%27%20r=%271906%27/%3E%3Ccircle%20cx=%27-260%27%20cy=%27640%27%20r=%271972%27/%3E%3Ccircle%20cx=%27-260%27%20cy=%27640%27%20r=%272038%27/%3E%3Ccircle%20cx=%27-260%27%20cy=%27640%27%20r=%272104%27/%3E%3Ccircle%20cx=%27-260%27%20cy=%27640%27%20r=%272170%27/%3E%3Ccircle%20cx=%27-260%27%20cy=%27640%27%20r=%272236%27/%3E%3Ccircle%20cx=%27-260%27%20cy=%27640%27%20r=%272302%27/%3E%3Ccircle%20cx=%27-260%27%20cy=%27640%27%20r=%272368%27/%3E%3Ccircle%20cx=%27-260%27%20cy=%27640%27%20r=%272434%27/%3E%3C/g%3E%3Cg%20fill=%27none%27%20stroke=%27%231fb3ae%27%20stroke-width=%274%27%20opacity=%270.35%27%3E%3Ccircle%20cx=%272140%27%20cy=%27-320%27%20r=%27360%27/%3E%3Ccircle%20cx=%272140%27%20cy=%27-320%27%20r=%27426%27/%3E%3Ccircle%20cx=%272140%27%20cy=%27-320%27%20r=%27492%27/%3E%3Ccircle%20cx=%272140%27%20cy=%27-320%27%20r=%27558%27/%3E%3Ccircle%20cx=%272140%27%20cy=%27-320%27%20r=%27624%27/%3E%3Ccircle%20cx=%272140%27%20cy=%27-320%27%20r=%27690%27/%3E%3Ccircle%20cx=%272140%27%20cy=%27-320%27%20r=%27756%27/%3E%3Ccircle%20cx=%272140%27%20cy=%27-320%27%20r=%27822%27/%3E%3Ccircle%20cx=%272140%27%20cy=%27-320%27%20r=%27888%27/%3E%3Ccircle%20cx=%272140%27%20cy=%27-320%27%20r=%27954%27/%3E%3Ccircle%20cx=%272140%27%20cy=%27-320%27%20r=%271020%27/%3E%3Ccircle%20cx=%272140%27%20cy=%27-320%27%20r=%271086%27/%3E%3Ccircle%20cx=%272140%27%20cy=%27-320%27%20r=%271152%27/%3E%3Ccircle%20cx=%272140%27%20cy=%27-320%27%20r=%271218%27/%3E%3Ccircle%20cx=%272140%27%20cy=%27-320%27%20r=%271284%27/%3E%3Ccircle%20cx=%272140%27%20cy=%27-320%27%20r=%271350%27/%3E%3Ccircle%20cx=%272140%27%20cy=%27-320%27%20r=%271416%27/%3E%3Ccircle%20cx=%272140%27%20cy=%27-320%27%20r=%271482%27/%3E%3Ccircle%20cx=%272140%27%20cy=%27-320%27%20r=%271548%27/%3E%3Ccircle%20cx=%272140%27%20cy=%27-320%27%20r=%271614%27/%3E%3Ccircle%20cx=%272140%27%20cy=%27-320%27%20r=%271680%27/%3E%3C/g%3E%3C/svg%3E");
+  animation: ls-breathe 40s ease-in-out infinite alternate;
+}
+.bg-arcs .marks {
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%271920%27%20height=%271080%27%20viewBox=%270%200%201920%201080%27%20fill=%27%232ad0c6%27%3E%3Cpath%20d=%27M120%20120%20L230%20120%20L120%20230%20Z%27%20opacity=%27.9%27/%3E%3Cpath%20d=%27M1800%20120%20L1690%20120%20L1800%20230%20Z%27%20opacity=%27.9%27/%3E%3Cpath%20d=%27M120%20960%20L230%20960%20L120%20850%20Z%27%20opacity=%27.9%27/%3E%3Cpath%20d=%27M1800%20960%20L1690%20960%20L1800%20850%20Z%27%20opacity=%27.9%27/%3E%3Cpath%20d=%27M960%20930%20L985%20980%20L960%201030%20L935%20980%20Z%27%20opacity=%27.8%27/%3E%3Cpath%20d=%27M880%201000%20L892%201020%20L880%201040%20L868%201020%20Z%27%20opacity=%27.6%27/%3E%3Cpath%20d=%27M1040%201000%20L1052%201020%20L1040%201040%20L1028%201020%20Z%27%20opacity=%27.6%27/%3E%3C/svg%3E");
+}
+@keyframes ls-breathe {
+  from { transform: scale(1) rotate(0deg); }
+  to { transform: scale(1.06) rotate(1.5deg); }
+}
+
+/* Light beams: cyan rays from the top-right, scanlines, a lit floor. */
+.bg-beams {
+  background: #03090d;
+  overflow: hidden;
+}
+.bg-beams i {
+  position: absolute;
+}
+.bg-beams .beam {
+  /* Drawn at a quarter of the size and scaled up: the blur then costs a sixteenth of the work. */
+  left: 67.5%;
+  top: 0;
+  width: 32.5%;
+  height: 40%;
+  transform-origin: 100% 0;
+  will-change: transform;
+  background: conic-gradient(from 180deg at 100% 0%, transparent 4deg, rgba(40,220,255,.33) 6deg, rgba(40,220,255,.33) 9deg, transparent 11deg, transparent 16deg, rgba(40,220,255,.33) 18deg, rgba(40,220,255,.33) 21deg, transparent 23deg, transparent 28deg, rgba(40,220,255,.33) 30deg, rgba(40,220,255,.33) 33deg, transparent 35deg, transparent 40deg, rgba(40,220,255,.33) 42deg, rgba(40,220,255,.33) 45deg, transparent 47deg, transparent 52deg, rgba(40,220,255,.33) 54deg, rgba(40,220,255,.33) 57deg, transparent 59deg, transparent 64deg, rgba(40,220,255,.33) 66deg, rgba(40,220,255,.33) 69deg, transparent 71deg, transparent 76deg, rgba(40,220,255,.33) 78deg, rgba(40,220,255,.33) 81deg, transparent 83deg, transparent 360deg);
+  filter: blur(4px);
+  animation: ls-sway 28s ease-in-out infinite alternate;
+}
+@keyframes ls-sway {
+  from { transform: scale(4) rotate(-3deg); opacity: 0.85; }
+  to { transform: scale(4) rotate(3deg); opacity: 1; }
+}
+.bg-beams .scan {
+  inset: 0;
+  background: repeating-linear-gradient(180deg, rgba(0, 230, 255, 0.1) 0 3px, transparent 3px 7px);
+}
+.bg-beams .floor {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 36%;
+  background:
+    repeating-linear-gradient(100deg, rgba(0, 220, 255, 0.14) 0 8px, transparent 8px 26px),
+    linear-gradient(to top, rgba(0, 200, 230, 0.22), transparent);
+  mask-image: linear-gradient(to top, #000 30%, transparent);
+}
+
+/* ------------------------------------------------------------ looks: type on top of those environments */
+
+/* Poster: chunky coral capitals on a cream band edge to edge. */
+.p-poster .lyric {
+  top: 50%;
+  transform: translateY(-50%);
+  left: -96px;
+  right: -96px;
+  padding: 28px 130px 36px;
+  background: #f1e6c9;
+  border-top: 18px solid #e8716b;
+  border-bottom: 18px solid #e8716b;
+  color: #e8716b;
+  font-family: 'Anton', 'Montserrat', sans-serif;
+  font-weight: 400;
+  font-size: calc(200px * var(--fs, 1));
+  line-height: 0.98;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  text-shadow: none;
+}
+
+/* Sunshine: white block capitals with a long shadow and a green diamond behind. */
+.p-sunshine .lyric {
+  top: 50%;
+  transform: translateY(-50%);
+  font-weight: 900;
+  font-size: calc(150px * var(--fs, 1));
+  line-height: 1.05;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #fff;
+  text-shadow: 2px 2px 0 #d58f00, 4px 4px 0 #d58f00, 6px 6px 0 #d58f00, 8px 8px 0 #d58f00, 10px 10px 0 #d58f00, 12px 12px 0 #d58f00, 14px 14px 0 #d58f00, 16px 16px 0 #d58f00, 18px 18px 0 #d58f00, 20px 20px 0 #d58f00, 22px 22px 0 #d58f00, 24px 24px 0 #d58f00, 26px 26px 0 #d58f00, 28px 28px 0 #d58f00, 30px 30px 0 #d58f00, 32px 32px 0 #d58f00, 34px 34px 0 #d58f00, 36px 36px 0 #d58f00, 38px 38px 0 #d58f00, 40px 40px 0 #d58f00, 42px 42px 0 #d58f00, 44px 44px 0 #d58f00, 46px 46px 0 #d58f00, 48px 48px 0 #d58f00, 50px 50px 0 #d58f00, 52px 52px 0 #d58f00, 54px 54px 0 #d58f00, 56px 56px 0 #d58f00, 58px 58px 0 #d58f00, 60px 60px 0 #d58f00, 62px 62px 0 #d58f00, 64px 64px 0 #d58f00, 66px 66px 0 #d58f00, 68px 68px 0 #d58f00, 70px 70px 0 #d58f00, 72px 72px 0 #d58f00, 74px 74px 0 #d58f00, 76px 76px 0 #d58f00, 78px 78px 0 #d58f00, 80px 80px 0 #d58f00, 82px 82px 0 #d58f00, 84px 84px 0 #d58f00, 86px 86px 0 #d58f00, 88px 88px 0 #d58f00, 90px 90px 0 #d58f00, 92px 92px 0 #d58f00, 94px 94px 0 #d58f00, 96px 96px 0 #d58f00, 98px 98px 0 #d58f00, 100px 100px 0 #d58f00, 102px 102px 0 #d58f00, 104px 104px 0 #d58f00, 106px 106px 0 #d58f00, 108px 108px 0 #d58f00;
+}
+.p-sunshine .lyric .ln,
+.p-sunshine .lyric .sub {
+  position: relative;
+  z-index: 1;
+}
+.p-sunshine .lyric::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 62%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%) rotate(45deg) scale(0.6);
+  background: linear-gradient(135deg, #cfe04d, #a9c43a);
+  z-index: 0;
+}
+.p-sunshine .sub {
+  font-size: calc(34px * var(--fs, 1));
+  font-weight: 600;
+  letter-spacing: 0.34em;
+  margin-top: 0.35em;
+  text-shadow: none;
+}
+
+/* Lines: light teal capitals, wide spacing. */
+.p-lines .lyric {
+  top: 50%;
+  transform: translateY(-50%);
+  font-weight: 300;
+  font-size: calc(120px * var(--fs, 1));
+  line-height: 1.15;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #2fd4c9;
+  text-shadow: 0 0 40px rgba(10, 40, 50, 0.8);
+}
+.p-lines .sub {
+  font-size: calc(32px * var(--fs, 1));
+  font-weight: 500;
+  letter-spacing: 0.36em;
+  margin-top: 0.5em;
+  opacity: 0.85;
+}
+
+/* Beams: glowing cyan capitals. */
+.p-beams .lyric {
+  top: 50%;
+  transform: translateY(-50%);
+  font-weight: 500;
+  font-size: calc(140px * var(--fs, 1));
+  line-height: 1.1;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #dcfcff;
+  text-shadow: 0 0 22px rgba(90, 235, 255, 0.9), 0 0 70px rgba(0, 200, 255, 0.55), 0 0 140px rgba(0, 160, 220, 0.35);
+}
+.p-beams .sub {
+  font-size: calc(32px * var(--fs, 1));
+  font-weight: 500;
+  letter-spacing: 0.34em;
+  margin-top: 0.5em;
+  color: rgba(180, 240, 255, 0.8);
+  text-shadow: none;
+}
+.lyric .sub {
+  display: block;
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------------------ emphasis: words the operator tapped */
+
+.w.mk-gold {
+  color: #e3b75a;
+}
+.w.mk-coral {
+  color: #ff6b5e;
+}
+.w.mk-teal {
+  color: #35e0d0;
+}
+.w.mk-white {
+  color: #ffffff;
+}
+.w.bend {
+  display: inline-block;
+  transform: skewX(-12deg);
+}
+
+/* ------------------------------------------------------------ still previews (the console): no motion, no blur */
+
+.stage.still-bg .bg-fill,
+.stage.still-bg .bg-fill * {
+  animation: none !important;
+}
+.stage.still-bg .bg-fill .grain,
+.stage.still-bg .bg-fill .sweep {
+  display: none;
+}
+.stage.still-bg .bg-beams .beam {
+  filter: none;
+}
+.stage.still .bg,
+.stage.still .frame {
+  animation-duration: 0s !important;
+}
+
+/* ------------------------------------------------------------ fonts for the Pixel and Grateful looks */
+
+@font-face {
+  font-family: 'VT323';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url(fonts/vt323-latin-ext.woff2) format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF,
+    U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'VT323';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url(fonts/vt323-latin.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Archivo Black';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url(fonts/archivo-black-latin-ext.woff2) format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF,
+    U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Archivo Black';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url(fonts/archivo-black-latin.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* ------------------------------------------------------------ more environments */
+
+.bg-bluestage,
+.bg-forest,
+.bg-darkglow,
+.bg-mono,
+.bg-film {
+  overflow: hidden;
+}
+.bg-bluestage i,
+.bg-forest i,
+.bg-darkglow i,
+.bg-mono i,
+.bg-film i {
+  position: absolute;
+  inset: 0;
+}
+.bg-bluestage .grain,
+.bg-forest .grain,
+.bg-mono .grain,
+.bg-film .grain {
+  inset: -4%;
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%27320%27%20height=%27320%27%3E%3Cfilter%20id=%27n%27%3E%3CfeTurbulence%20type=%27fractalNoise%27%20baseFrequency=%270.9%27%20numOctaves=%272%27%20stitchTiles=%27stitch%27/%3E%3CfeColorMatrix%20values=%270%200%200%200%201%20%200%200%200%200%201%20%200%200%200%200%201%20%200%200%200%200.6%200%27/%3E%3C/filter%3E%3Crect%20width=%27320%27%20height=%27320%27%20filter=%27url%28%23n%29%27/%3E%3C/svg%3E");
+  background-size: 320px 320px;
+  mix-blend-mode: overlay;
+  animation: ls-grain 0.7s steps(3) infinite;
+}
+
+/* Blue stage: cold blue wash, a bright truss of lights, haze. */
+.bg-bluestage {
+  background: radial-gradient(ellipse 70% 60% at 50% 40%, #1b55b8 0%, #0b2d6e 45%, #051636 100%);
+}
+.bg-bluestage .glows {
+  inset: -10%;
+  background:
+    radial-gradient(ellipse 30% 25% at 30% 18%, rgba(140, 200, 255, 0.55), transparent 70%),
+    radial-gradient(ellipse 30% 25% at 72% 20%, rgba(140, 200, 255, 0.45), transparent 70%),
+    radial-gradient(ellipse 60% 30% at 50% 100%, rgba(10, 60, 160, 0.9), transparent 70%);
+  will-change: transform;
+  animation: ls-drift 30s ease-in-out infinite alternate;
+}
+.bg-bluestage .truss {
+  top: 14%;
+  height: 60px;
+  background-image: radial-gradient(circle, #fff 0 7px, rgba(255, 255, 255, 0.5) 9px, transparent 16px);
+  background-size: 56px 60px;
+  background-position: center;
+  filter: drop-shadow(0 0 18px rgba(200, 230, 255, 0.9));
+  mask-image: linear-gradient(to right, transparent, #000 15%, #000 85%, transparent);
+  animation: ls-twinkle 3s ease-in-out infinite alternate;
+}
+@keyframes ls-twinkle {
+  from { opacity: 0.75; }
+  to { opacity: 1; }
+}
+.bg-bluestage .haze {
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.08), transparent 40%, rgba(0, 10, 40, 0.4));
+}
+.bg-bluestage .grain {
+  opacity: 0.22;
+}
+
+/* Dark forest: tree silhouettes against a teal dusk, glitch blocks blinking. */
+.bg-forest {
+  background: linear-gradient(to bottom, #12332f 0%, #0a1f1f 55%, #050e0f 100%);
+}
+.bg-forest .trees {
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%271920%27%20height=%271080%27%20viewBox=%270%200%201920%201080%27%3E%3Cg%20fill=%27%2304100f%27%3E%3Cpath%20d=%27M-60%20906%20L11%20682%20L82%20906%20Z%27/%3E%3Cpath%20d=%27M-60%20773%20L-2%20550%20L56%20773%20Z%27/%3E%3Cpath%20d=%27M-60%20640%20L-15%20417%20L31%20640%20Z%27/%3E%3Cpath%20d=%27M-60%20508%20L-27%20284%20L5%20508%20Z%27/%3E%3Crect%20x=%271%27%20y=%27871%27%20width=%2720%27%20height=%27209%27/%3E%3Cpath%20d=%27M65%20897%20L162%20662%20L258%20897%20Z%27/%3E%3Cpath%20d=%27M65%20757%20L144%20523%20L223%20757%20Z%27/%3E%3Cpath%20d=%27M65%20618%20L127%20384%20L189%20618%20Z%27/%3E%3Cpath%20d=%27M65%20479%20L109%20244%20L154%20479%20Z%27/%3E%3Crect%20x=%27152%27%20y=%27860%27%20width=%2720%27%20height=%27220%27/%3E%3Cpath%20d=%27M212%20982%20L296%20855%20L381%20982%20Z%27/%3E%3Cpath%20d=%27M212%20907%20L281%20781%20L351%20907%20Z%27/%3E%3Cpath%20d=%27M212%20832%20L266%20706%20L320%20832%20Z%27/%3E%3Cpath%20d=%27M212%20757%20L251%20631%20L290%20757%20Z%27/%3E%3Crect%20x=%27286%27%20y=%27962%27%20width=%2720%27%20height=%27118%27/%3E%3Cpath%20d=%27M323%20902%20L381%20674%20L439%20902%20Z%27/%3E%3Cpath%20d=%27M323%20767%20L371%20539%20L418%20767%20Z%27/%3E%3Cpath%20d=%27M323%20631%20L360%20404%20L397%20631%20Z%27/%3E%3Cpath%20d=%27M323%20496%20L350%20268%20L376%20496%20Z%27/%3E%3Crect%20x=%27371%27%20y=%27866%27%20width=%2720%27%20height=%27214%27/%3E%3Cpath%20d=%27M423%20971%20L502%20831%20L580%20971%20Z%27/%3E%3Cpath%20d=%27M423%20888%20L487%20748%20L552%20888%20Z%27/%3E%3Cpath%20d=%27M423%20805%20L473%20665%20L523%20805%20Z%27/%3E%3Cpath%20d=%27M423%20722%20L459%20582%20L495%20722%20Z%27/%3E%3Crect%20x=%27492%27%20y=%27949%27%20width=%2720%27%20height=%27131%27/%3E%3Cpath%20d=%27M563%20954%20L642%20792%20L721%20954%20Z%27/%3E%3Cpath%20d=%27M563%20857%20L628%20695%20L693%20857%20Z%27/%3E%3Cpath%20d=%27M563%20761%20L614%20599%20L664%20761%20Z%27/%3E%3Cpath%20d=%27M563%20665%20L599%20503%20L636%20665%20Z%27/%3E%3Crect%20x=%27632%27%20y=%27928%27%20width=%2720%27%20height=%27152%27/%3E%3Cpath%20d=%27M712%20972%20L804%20834%20L895%20972%20Z%27/%3E%3Cpath%20d=%27M712%20890%20L787%20752%20L862%20890%20Z%27/%3E%3Cpath%20d=%27M712%20808%20L771%20670%20L829%20808%20Z%27/%3E%3Cpath%20d=%27M712%20726%20L754%20588%20L796%20726%20Z%27/%3E%3Crect%20x=%27794%27%20y=%27950%27%20width=%2720%27%20height=%27130%27/%3E%3Cpath%20d=%27M823%20984%20L892%20860%20L960%20984%20Z%27/%3E%3Cpath%20d=%27M823%20910%20L879%20787%20L935%20910%20Z%27/%3E%3Cpath%20d=%27M823%20837%20L867%20713%20L911%20837%20Z%27/%3E%3Cpath%20d=%27M823%20763%20L855%20640%20L886%20763%20Z%27/%3E%3Crect%20x=%27882%27%20y=%27964%27%20width=%2720%27%20height=%27116%27/%3E%3Cpath%20d=%27M955%20949%20L1022%20782%20L1088%20949%20Z%27/%3E%3Cpath%20d=%27M955%20850%20L1010%20683%20L1064%20850%20Z%27/%3E%3Cpath%20d=%27M955%20751%20L998%20583%20L1040%20751%20Z%27/%3E%3Cpath%20d=%27M955%20651%20L986%20484%20L1016%20651%20Z%27/%3E%3Crect%20x=%271012%27%20y=%27923%27%20width=%2720%27%20height=%27157%27/%3E%3Cpath%20d=%27M1084%20965%20L1144%20817%20L1203%20965%20Z%27/%3E%3Cpath%20d=%27M1084%20877%20L1133%20730%20L1182%20877%20Z%27/%3E%3Cpath%20d=%27M1084%20790%20L1122%20642%20L1160%20790%20Z%27/%3E%3Cpath%20d=%27M1084%20702%20L1111%20554%20L1139%20702%20Z%27/%3E%3Crect%20x=%271134%27%20y=%27942%27%20width=%2720%27%20height=%27138%27/%3E%3Cpath%20d=%27M1181%20906%20L1276%20683%20L1370%20906%20Z%27/%3E%3Cpath%20d=%27M1181%20774%20L1258%20551%20L1336%20774%20Z%27/%3E%3Cpath%20d=%27M1181%20642%20L1241%20419%20L1302%20642%20Z%27/%3E%3Cpath%20d=%27M1181%20509%20L1224%20287%20L1268%20509%20Z%27/%3E%3Crect%20x=%271266%27%20y=%27871%27%20width=%2720%27%20height=%27209%27/%3E%3Cpath%20d=%27M1317%20969%20L1380%20827%20L1443%20969%20Z%27/%3E%3Cpath%20d=%27M1317%20885%20L1369%20743%20L1420%20885%20Z%27/%3E%3Cpath%20d=%27M1317%20800%20L1357%20658%20L1398%20800%20Z%27/%3E%3Cpath%20d=%27M1317%20716%20L1346%20574%20L1375%20716%20Z%27/%3E%3Crect%20x=%271370%27%20y=%27947%27%20width=%2720%27%20height=%27133%27/%3E%3Cpath%20d=%27M1397%20984%20L1465%20862%20L1533%20984%20Z%27/%3E%3Cpath%20d=%27M1397%20912%20L1453%20790%20L1509%20912%20Z%27/%3E%3Cpath%20d=%27M1397%20839%20L1441%20717%20L1484%20839%20Z%27/%3E%3Cpath%20d=%27M1397%20767%20L1428%20645%20L1460%20767%20Z%27/%3E%3Crect%20x=%271455%27%20y=%27965%27%20width=%2720%27%20height=%27115%27/%3E%3Cpath%20d=%27M1504%20964%20L1570%20816%20L1635%20964%20Z%27/%3E%3Cpath%20d=%27M1504%20876%20L1558%20727%20L1611%20876%20Z%27/%3E%3Cpath%20d=%27M1504%20788%20L1546%20639%20L1588%20788%20Z%27/%3E%3Cpath%20d=%27M1504%20700%20L1534%20551%20L1564%20700%20Z%27/%3E%3Crect%20x=%271560%27%20y=%27941%27%20width=%2720%27%20height=%27139%27/%3E%3Cpath%20d=%27M1621%20945%20L1688%20772%20L1756%20945%20Z%27/%3E%3Cpath%20d=%27M1621%20842%20L1676%20670%20L1732%20842%20Z%27/%3E%3Cpath%20d=%27M1621%20740%20L1664%20567%20L1707%20740%20Z%27/%3E%3Cpath%20d=%27M1621%20637%20L1652%20464%20L1683%20637%20Z%27/%3E%3Crect%20x=%271678%27%20y=%27918%27%20width=%2720%27%20height=%27162%27/%3E%3Cpath%20d=%27M1770%20898%20L1865%20666%20L1960%20898%20Z%27/%3E%3Cpath%20d=%27M1770%20760%20L1848%20527%20L1926%20760%20Z%27/%3E%3Cpath%20d=%27M1770%20622%20L1831%20389%20L1892%20622%20Z%27/%3E%3Cpath%20d=%27M1770%20484%20L1814%20251%20L1857%20484%20Z%27/%3E%3Crect%20x=%271855%27%20y=%27862%27%20width=%2720%27%20height=%27218%27/%3E%3Cpath%20d=%27M1876%20962%20L1975%20810%20L2074%20962%20Z%27/%3E%3Cpath%20d=%27M1876%20872%20L1957%20721%20L2038%20872%20Z%27/%3E%3Cpath%20d=%27M1876%20782%20L1939%20631%20L2003%20782%20Z%27/%3E%3Cpath%20d=%27M1876%20692%20L1922%20541%20L1967%20692%20Z%27/%3E%3Crect%20x=%271965%27%20y=%27938%27%20width=%2720%27%20height=%27142%27/%3E%3Cpath%20d=%27M1981%20936%20L2055%20752%20L2129%20936%20Z%27/%3E%3Cpath%20d=%27M1981%20827%20L2042%20642%20L2102%20827%20Z%27/%3E%3Cpath%20d=%27M1981%20717%20L2028%20533%20L2076%20717%20Z%27/%3E%3Cpath%20d=%27M1981%20608%20L2015%20423%20L2049%20608%20Z%27/%3E%3Crect%20x=%272045%27%20y=%27907%27%20width=%2720%27%20height=%27173%27/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 1920px 1080px;
+  background-position: center bottom;
+}
+.bg-forest .g1,
+.bg-forest .g2,
+.bg-forest .g3 {
+  inset: auto;
+  background: rgba(220, 240, 235, 0.55);
+  mix-blend-mode: screen;
+  animation: ls-glitch 7s steps(1) infinite;
+}
+.bg-forest .g1 { left: 44%; top: 8%; width: 20%; height: 7%; }
+.bg-forest .g2 { left: 52%; top: 18%; width: 9%; height: 4%; animation-delay: -2.3s; }
+.bg-forest .g3 { left: 38%; top: 24%; width: 14%; height: 3%; animation-delay: -4.1s; }
+@keyframes ls-glitch {
+  0% { opacity: 0; }
+  6% { opacity: 0.8; transform: translateX(0); }
+  8% { opacity: 0.4; transform: translateX(3%); }
+  11% { opacity: 0; }
+  60% { opacity: 0; }
+  62% { opacity: 0.6; transform: translateX(-2%); }
+  64% { opacity: 0; }
+  100% { opacity: 0; }
+}
+.bg-forest .grain {
+  opacity: 0.3;
+}
+
+/* Black with a soft glow low on the screen. */
+.bg-darkglow {
+  background: #000;
+}
+.bg-darkglow .glow {
+  inset: -10%;
+  background: radial-gradient(ellipse 45% 28% at 50% 92%, rgba(120, 220, 220, 0.38), transparent 70%);
+  will-change: transform;
+  animation: ls-breathe 18s ease-in-out infinite alternate;
+}
+
+/* Mono crowd: a grainy black-and-white crowd under a bright stage, tinted coral at the edges. */
+.bg-mono {
+  background: #050505;
+}
+.bg-mono .light {
+  background: linear-gradient(to bottom, #d9d9d9 0%, #9a9a9a 30%, #2a2a2a 62%, #050505 80%);
+}
+.bg-mono .crowd {
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%271920%27%20height=%271080%27%20viewBox=%270%200%201920%201080%27%3E%3Cg%20fill=%27%230a0a0a%27%3E%3Ccircle%20cx=%27908%27%20cy=%27751%27%20r=%2734%27/%3E%3Crect%20x=%27874%27%20y=%27779%27%20width=%2768%27%20height=%27400%27/%3E%3Crect%20x=%27860%27%20y=%27597%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%27909%27%20cy=%27601%27%20r=%2736%27/%3E%3Crect%20x=%27873%27%20y=%27631%27%20width=%2772%27%20height=%27400%27/%3E%3Ccircle%20cx=%271222%27%20cy=%27580%27%20r=%2738%27/%3E%3Crect%20x=%271184%27%20y=%27612%27%20width=%2776%27%20height=%27400%27/%3E%3Crect%20x=%271274%27%20y=%27436%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%27281%27%20cy=%27646%27%20r=%2733%27/%3E%3Crect%20x=%27248%27%20y=%27673%27%20width=%2766%27%20height=%27400%27/%3E%3Crect%20x=%27227%27%20y=%27548%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%271545%27%20cy=%27756%27%20r=%2729%27/%3E%3Crect%20x=%271516%27%20y=%27779%27%20width=%2758%27%20height=%27400%27/%3E%3Ccircle%20cx=%27379%27%20cy=%27674%27%20r=%2739%27/%3E%3Crect%20x=%27340%27%20y=%27707%27%20width=%2778%27%20height=%27400%27/%3E%3Ccircle%20cx=%271542%27%20cy=%27696%27%20r=%2732%27/%3E%3Crect%20x=%271510%27%20y=%27722%27%20width=%2764%27%20height=%27400%27/%3E%3Crect%20x=%271589%27%20y=%27601%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%27368%27%20cy=%27562%27%20r=%2739%27/%3E%3Crect%20x=%27329%27%20y=%27595%27%20width=%2778%27%20height=%27400%27/%3E%3Crect%20x=%27417%27%20y=%27410%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%27244%27%20cy=%27572%27%20r=%2733%27/%3E%3Crect%20x=%27211%27%20y=%27599%27%20width=%2766%27%20height=%27400%27/%3E%3Crect%20x=%27176%27%20y=%27482%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%27208%27%20cy=%27661%27%20r=%2732%27/%3E%3Crect%20x=%27176%27%20y=%27687%27%20width=%2764%27%20height=%27400%27/%3E%3Crect%20x=%27166%27%20y=%27502%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%271839%27%20cy=%27568%27%20r=%2742%27/%3E%3Crect%20x=%271797%27%20y=%27604%27%20width=%2784%27%20height=%27400%27/%3E%3Crect%20x=%271878%27%20y=%27453%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%27820%27%20cy=%27595%27%20r=%2738%27/%3E%3Crect%20x=%27782%27%20y=%27627%27%20width=%2776%27%20height=%27400%27/%3E%3Crect%20x=%27760%27%20y=%27487%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%27313%27%20cy=%27581%27%20r=%2727%27/%3E%3Crect%20x=%27286%27%20y=%27602%27%20width=%2754%27%20height=%27400%27/%3E%3Crect%20x=%27252%27%20y=%27457%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%271469%27%20cy=%27577%27%20r=%2729%27/%3E%3Crect%20x=%271440%27%20y=%27600%27%20width=%2758%27%20height=%27400%27/%3E%3Ccircle%20cx=%27784%27%20cy=%27681%27%20r=%2731%27/%3E%3Crect%20x=%27753%27%20y=%27706%27%20width=%2762%27%20height=%27400%27/%3E%3Ccircle%20cx=%2748%27%20cy=%27747%27%20r=%2742%27/%3E%3Crect%20x=%276%27%20y=%27783%27%20width=%2784%27%20height=%27400%27/%3E%3Ccircle%20cx=%271546%27%20cy=%27604%27%20r=%2737%27/%3E%3Crect%20x=%271509%27%20y=%27635%27%20width=%2774%27%20height=%27400%27/%3E%3Crect%20x=%271582%27%20y=%27488%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%27783%27%20cy=%27661%27%20r=%2744%27/%3E%3Crect%20x=%27739%27%20y=%27699%27%20width=%2788%27%20height=%27400%27/%3E%3Ccircle%20cx=%27736%27%20cy=%27728%27%20r=%2726%27/%3E%3Crect%20x=%27710%27%20y=%27748%27%20width=%2752%27%20height=%27400%27/%3E%3Crect%20x=%27691%27%20y=%27582%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%27512%27%20cy=%27726%27%20r=%2728%27/%3E%3Crect%20x=%27484%27%20y=%27748%27%20width=%2756%27%20height=%27400%27/%3E%3Crect%20x=%27537%27%20y=%27570%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%271565%27%20cy=%27588%27%20r=%2726%27/%3E%3Crect%20x=%271539%27%20y=%27608%27%20width=%2752%27%20height=%27400%27/%3E%3Crect%20x=%271602%27%20y=%27454%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%271412%27%20cy=%27687%27%20r=%2744%27/%3E%3Crect%20x=%271368%27%20y=%27725%27%20width=%2788%27%20height=%27400%27/%3E%3Ccircle%20cx=%27830%27%20cy=%27678%27%20r=%2729%27/%3E%3Crect%20x=%27801%27%20y=%27701%27%20width=%2758%27%20height=%27400%27/%3E%3Ccircle%20cx=%27781%27%20cy=%27750%27%20r=%2743%27/%3E%3Crect%20x=%27738%27%20y=%27787%27%20width=%2786%27%20height=%27400%27/%3E%3Crect%20x=%27808%27%20y=%27627%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%2720%27%20cy=%27585%27%20r=%2731%27/%3E%3Crect%20x=%27-11%27%20y=%27610%27%20width=%2762%27%20height=%27400%27/%3E%3Crect%20x=%27-21%27%20y=%27477%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%27-16%27%20cy=%27584%27%20r=%2727%27/%3E%3Crect%20x=%27-43%27%20y=%27605%27%20width=%2754%27%20height=%27400%27/%3E%3Crect%20x=%2715%27%20y=%27493%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%271939%27%20cy=%27741%27%20r=%2735%27/%3E%3Crect%20x=%271904%27%20y=%27770%27%20width=%2770%27%20height=%27400%27/%3E%3Crect%20x=%271965%27%20y=%27640%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%271490%27%20cy=%27711%27%20r=%2729%27/%3E%3Crect%20x=%271461%27%20y=%27734%27%20width=%2758%27%20height=%27400%27/%3E%3Crect%20x=%271516%27%20y=%27572%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%271164%27%20cy=%27646%27%20r=%2734%27/%3E%3Crect%20x=%271130%27%20y=%27674%27%20width=%2768%27%20height=%27400%27/%3E%3Ccircle%20cx=%271762%27%20cy=%27813%27%20r=%2737%27/%3E%3Crect%20x=%271725%27%20y=%27844%27%20width=%2774%27%20height=%27400%27/%3E%3Crect%20x=%271716%27%20y=%27656%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%27222%27%20cy=%27648%27%20r=%2728%27/%3E%3Crect%20x=%27194%27%20y=%27670%27%20width=%2756%27%20height=%27400%27/%3E%3Crect%20x=%27157%27%20y=%27557%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%27375%27%20cy=%27650%27%20r=%2741%27/%3E%3Crect%20x=%27334%27%20y=%27685%27%20width=%2782%27%20height=%27400%27/%3E%3Crect%20x=%27399%27%20y=%27538%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%271083%27%20cy=%27806%27%20r=%2744%27/%3E%3Crect%20x=%271039%27%20y=%27844%27%20width=%2788%27%20height=%27400%27/%3E%3Ccircle%20cx=%271056%27%20cy=%27594%27%20r=%2726%27/%3E%3Crect%20x=%271030%27%20y=%27614%27%20width=%2752%27%20height=%27400%27/%3E%3Ccircle%20cx=%271158%27%20cy=%27783%27%20r=%2743%27/%3E%3Crect%20x=%271115%27%20y=%27820%27%20width=%2786%27%20height=%27400%27/%3E%3Crect%20x=%271092%27%20y=%27624%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%271916%27%20cy=%27713%27%20r=%2728%27/%3E%3Crect%20x=%271888%27%20y=%27735%27%20width=%2756%27%20height=%27400%27/%3E%3Ccircle%20cx=%271435%27%20cy=%27630%27%20r=%2729%27/%3E%3Crect%20x=%271406%27%20y=%27653%27%20width=%2758%27%20height=%27400%27/%3E%3Crect%20x=%271471%27%20y=%27533%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%27963%27%20cy=%27587%27%20r=%2726%27/%3E%3Crect%20x=%27937%27%20y=%27607%27%20width=%2752%27%20height=%27400%27/%3E%3Crect%20x=%27992%27%20y=%27450%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%271645%27%20cy=%27813%27%20r=%2733%27/%3E%3Crect%20x=%271612%27%20y=%27840%27%20width=%2766%27%20height=%27400%27/%3E%3Crect%20x=%271588%27%20y=%27717%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%271348%27%20cy=%27769%27%20r=%2739%27/%3E%3Crect%20x=%271309%27%20y=%27802%27%20width=%2778%27%20height=%27400%27/%3E%3Ccircle%20cx=%27125%27%20cy=%27656%27%20r=%2727%27/%3E%3Crect%20x=%2798%27%20y=%27677%27%20width=%2754%27%20height=%27400%27/%3E%3Ccircle%20cx=%27331%27%20cy=%27603%27%20r=%2728%27/%3E%3Crect%20x=%27303%27%20y=%27625%27%20width=%2756%27%20height=%27400%27/%3E%3Crect%20x=%27370%27%20y=%27445%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%27932%27%20cy=%27573%27%20r=%2728%27/%3E%3Crect%20x=%27904%27%20y=%27595%27%20width=%2756%27%20height=%27400%27/%3E%3Crect%20x=%27954%27%20y=%27424%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%271913%27%20cy=%27789%27%20r=%2744%27/%3E%3Crect%20x=%271869%27%20y=%27827%27%20width=%2788%27%20height=%27400%27/%3E%3Crect%20x=%271950%27%20y=%27682%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%27177%27%20cy=%27738%27%20r=%2733%27/%3E%3Crect%20x=%27144%27%20y=%27765%27%20width=%2766%27%20height=%27400%27/%3E%3Crect%20x=%27133%27%20y=%27620%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%27182%27%20cy=%27616%27%20r=%2727%27/%3E%3Crect%20x=%27155%27%20y=%27637%27%20width=%2754%27%20height=%27400%27/%3E%3Crect%20x=%27133%27%20y=%27513%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%271477%27%20cy=%27572%27%20r=%2740%27/%3E%3Crect%20x=%271437%27%20y=%27606%27%20width=%2780%27%20height=%27400%27/%3E%3Ccircle%20cx=%27370%27%20cy=%27749%27%20r=%2728%27/%3E%3Crect%20x=%27342%27%20y=%27771%27%20width=%2756%27%20height=%27400%27/%3E%3Crect%20x=%27416%27%20y=%27593%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%271358%27%20cy=%27661%27%20r=%2726%27/%3E%3Crect%20x=%271332%27%20y=%27681%27%20width=%2752%27%20height=%27400%27/%3E%3Crect%20x=%271290%27%20y=%27558%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%271023%27%20cy=%27773%27%20r=%2727%27/%3E%3Crect%20x=%27996%27%20y=%27794%27%20width=%2754%27%20height=%27400%27/%3E%3Ccircle%20cx=%27933%27%20cy=%27721%27%20r=%2733%27/%3E%3Crect%20x=%27900%27%20y=%27748%27%20width=%2766%27%20height=%27400%27/%3E%3Ccircle%20cx=%271355%27%20cy=%27700%27%20r=%2730%27/%3E%3Crect%20x=%271325%27%20y=%27724%27%20width=%2760%27%20height=%27400%27/%3E%3Crect%20x=%271306%27%20y=%27559%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%271866%27%20cy=%27563%27%20r=%2735%27/%3E%3Crect%20x=%271831%27%20y=%27592%27%20width=%2770%27%20height=%27400%27/%3E%3Ccircle%20cx=%27153%27%20cy=%27575%27%20r=%2736%27/%3E%3Crect%20x=%27117%27%20y=%27605%27%20width=%2772%27%20height=%27400%27/%3E%3Crect%20x=%27194%27%20y=%27444%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%27967%27%20cy=%27737%27%20r=%2738%27/%3E%3Crect%20x=%27929%27%20y=%27769%27%20width=%2776%27%20height=%27400%27/%3E%3Crect%20x=%27921%27%20y=%27609%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%27905%27%20cy=%27798%27%20r=%2744%27/%3E%3Crect%20x=%27861%27%20y=%27836%27%20width=%2788%27%20height=%27400%27/%3E%3Crect%20x=%27932%27%20y=%27666%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%27783%27%20cy=%27590%27%20r=%2736%27/%3E%3Crect%20x=%27747%27%20y=%27620%27%20width=%2772%27%20height=%27400%27/%3E%3Crect%20x=%27822%27%20y=%27497%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%27346%27%20cy=%27668%27%20r=%2737%27/%3E%3Crect%20x=%27309%27%20y=%27699%27%20width=%2774%27%20height=%27400%27/%3E%3Ccircle%20cx=%27241%27%20cy=%27603%27%20r=%2736%27/%3E%3Crect%20x=%27205%27%20y=%27633%27%20width=%2772%27%20height=%27400%27/%3E%3Ccircle%20cx=%271930%27%20cy=%27757%27%20r=%2732%27/%3E%3Crect%20x=%271898%27%20y=%27783%27%20width=%2764%27%20height=%27400%27/%3E%3Ccircle%20cx=%271539%27%20cy=%27731%27%20r=%2728%27/%3E%3Crect%20x=%271511%27%20y=%27753%27%20width=%2756%27%20height=%27400%27/%3E%3Crect%20x=%271576%27%20y=%27612%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%271735%27%20cy=%27725%27%20r=%2742%27/%3E%3Crect%20x=%271693%27%20y=%27761%27%20width=%2784%27%20height=%27400%27/%3E%3Ccircle%20cx=%27908%27%20cy=%27561%27%20r=%2735%27/%3E%3Crect%20x=%27873%27%20y=%27590%27%20width=%2770%27%20height=%27400%27/%3E%3Ccircle%20cx=%27380%27%20cy=%27596%27%20r=%2733%27/%3E%3Crect%20x=%27347%27%20y=%27623%27%20width=%2766%27%20height=%27400%27/%3E%3Crect%20x=%27403%27%20y=%27495%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%27265%27%20cy=%27728%27%20r=%2731%27/%3E%3Crect%20x=%27234%27%20y=%27753%27%20width=%2762%27%20height=%27400%27/%3E%3Ccircle%20cx=%271003%27%20cy=%27766%27%20r=%2738%27/%3E%3Crect%20x=%27965%27%20y=%27798%27%20width=%2776%27%20height=%27400%27/%3E%3Crect%20x=%27949%27%20y=%27631%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%27695%27%20cy=%27698%27%20r=%2732%27/%3E%3Crect%20x=%27663%27%20y=%27724%27%20width=%2764%27%20height=%27400%27/%3E%3Crect%20x=%27735%27%20y=%27585%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%271597%27%20cy=%27651%27%20r=%2744%27/%3E%3Crect%20x=%271553%27%20y=%27689%27%20width=%2788%27%20height=%27400%27/%3E%3Crect%20x=%271640%27%20y=%27559%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%27530%27%20cy=%27805%27%20r=%2742%27/%3E%3Crect%20x=%27488%27%20y=%27841%27%20width=%2784%27%20height=%27400%27/%3E%3Ccircle%20cx=%271346%27%20cy=%27778%27%20r=%2728%27/%3E%3Crect%20x=%271318%27%20y=%27800%27%20width=%2756%27%20height=%27400%27/%3E%3Crect%20x=%271292%27%20y=%27631%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 1920px 1080px;
+  background-position: center;
+  filter: blur(1.5px);
+}
+.bg-mono .grain {
+  opacity: 0.55;
+}
+.bg-mono .tint {
+  box-shadow: inset 0 0 260px rgba(242, 107, 91, 0.55);
+}
+
+/* Film grain: dark grey with a drifting light leak, heavy grain, vignette. */
+.bg-film {
+  background: #1c1c1c;
+}
+.bg-film .leak {
+  inset: -20%;
+  background: radial-gradient(ellipse 40% 55% at 20% 30%, rgba(255, 255, 255, 0.28), transparent 65%);
+  will-change: transform;
+  animation: ls-drift 26s ease-in-out infinite alternate;
+}
+.bg-film .grain {
+  opacity: 0.5;
+}
+
+/* ------------------------------------------------------------ the looks' type */
+
+/* Banner: blue bold capitals on a peach band. */
+.p-banner .lyric {
+  top: 50%;
+  transform: translateY(-50%);
+  left: 0;
+  right: 0;
+  padding: 44px 90px 52px;
+  background: #f3a58a;
+  color: #2b58b5;
+  font-weight: 700;
+  font-size: calc(150px * var(--fs, 1));
+  line-height: 1;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  text-shadow: none;
+}
+
+/* Midnight: white bold capitals on the blue stage. */
+.p-midnight .lyric {
+  top: 50%;
+  transform: translateY(-50%);
+  font-weight: 800;
+  font-size: calc(150px * var(--fs, 1));
+  line-height: 1;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  color: #fff;
+  text-shadow: 0 8px 40px rgba(0, 20, 80, 0.8);
+}
+
+/* Pixel: terminal capitals. */
+.p-pixel .lyric {
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: 'VT323', monospace;
+  font-weight: 400;
+  font-size: calc(200px * var(--fs, 1));
+  line-height: 0.95;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #f2f7f2;
+  text-shadow: 0 0 14px rgba(255, 255, 255, 0.6), 0 0 2px #fff;
+}
+
+/* Neon: huge white capitals with a soft glow. */
+.p-neon .lyric {
+  top: 50%;
+  transform: translateY(-50%);
+  font-weight: 900;
+  font-size: calc(160px * var(--fs, 1));
+  line-height: 0.98;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  color: #fff;
+  text-shadow: 0 0 18px #fff, 0 0 60px rgba(140, 235, 235, 0.75), 0 0 140px rgba(60, 200, 220, 0.5);
+}
+.p-neon .sub {
+  font-size: calc(30px * var(--fs, 1));
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  margin-top: 0.9em;
+  text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+}
+
+/* Grateful: chunky slanted capitals, coral then white, line by line. */
+.p-grateful .lyric {
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: 'Archivo Black', 'Montserrat', sans-serif;
+  font-weight: 400;
+  font-size: calc(150px * var(--fs, 1));
+  line-height: 1.02;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #f1f1f1;
+  text-shadow: 0 6px 30px rgba(0, 0, 0, 0.7);
+}
+/* Slanted with a skew on the words, not the lines, so a line measures its true width. */
+.p-grateful .lyric .ln .w {
+  display: inline-block;
+  transform: skewX(-8deg);
+}
+.p-grateful .lyric .ln:nth-child(odd) {
+  color: #f26b5b;
+}
+.p-grateful .lyric {
+  /* The skew leans each word about 4% past its box: measure with that much to spare. */
+  padding: 0 70px;
+}
+
+/* Film: tall white capitals with a coral rule. */
+.p-film .lyric {
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: 'Anton', 'Montserrat', sans-serif;
+  font-weight: 400;
+  font-size: calc(200px * var(--fs, 1));
+  line-height: 0.98;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  color: #f4f4f4;
+  text-shadow: 0 6px 30px rgba(0, 0, 0, 0.7);
+  padding-bottom: 0.14em;
+}
+.p-film .lyric::after {
+  content: '';
+  display: block;
+  width: 3em;
+  height: 0.07em;
+  margin: 0.08em auto 0;
+  background: #f26b5b;
+}
+
+
+/* ------------------------------------------------------------ texture and a light sweep on every environment */
+
+.bg-fill > .grain {
+  position: absolute;
+  inset: -4%;
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%27320%27%20height=%27320%27%3E%3Cfilter%20id=%27n%27%3E%3CfeTurbulence%20type=%27fractalNoise%27%20baseFrequency=%270.9%27%20numOctaves=%272%27%20stitchTiles=%27stitch%27/%3E%3CfeColorMatrix%20values=%270%200%200%200%201%20%200%200%200%200%201%20%200%200%200%200%201%20%200%200%200%200.6%200%27/%3E%3C/filter%3E%3Crect%20width=%27320%27%20height=%27320%27%20filter=%27url%28%23n%29%27/%3E%3C/svg%3E");
+  background-size: 320px 320px;
+  mix-blend-mode: overlay;
+  opacity: 0.3;
+  animation: ls-grain 0.7s steps(3) infinite;
+  pointer-events: none;
+}
+.bg-wood > .grain {
+  opacity: 0.18;
+}
+/* A soft diagonal light passing every 14 s, like a lamp swinging across a set. */
+.bg-fill > .sweep {
+  position: absolute;
+  inset: -40% -60%;
+  background: linear-gradient(105deg, transparent 42%, rgba(255, 255, 255, 0.07) 50%, transparent 58%);
+  will-change: transform;
+  animation: ls-sweep var(--sweep-s) ease-in-out infinite;
+  pointer-events: none;
+}
+.bg-wood > .sweep,
+.bg-bluestage > .sweep {
+  background: linear-gradient(105deg, transparent 42%, rgba(255, 255, 255, 0.14) 50%, transparent 58%);
+}
+@keyframes ls-sweep {
+  0% { transform: translateX(-45%); }
+  60% { transform: translateX(45%); }
+  100% { transform: translateX(45%); }
+}
+
+/* ------------------------------------------------------------ lyric-video motion: word by word (outputs; calm and still = crossfade) */
+
+/* How much the words play. --amp scales every entrance distance, --stag the stagger, --sway and --wob the
+   idle sway and wobble, --breath the block's breath; Playful also overshoots on arrival. */
+.stage {
+  --amp: 1;
+  --stag: 1;
+  --sway: 3px;
+  --wob: 0deg;
+  --breath: 1.015;
+  --sweep-s: 14s;
+}
+.stage.play-low {
+  --amp: 0.45;
+  --stag: 1.3;
+  --sway: 1px;
+  --breath: 1.008;
+  --sweep-s: 20s;
+}
+.stage.play-high {
+  --amp: 1.7;
+  --stag: 0.85;
+  --sway: 9px;
+  --wob: 2.5deg;
+  --breath: 1.035;
+  --sweep-s: 8s;
+  --enter-ease: cubic-bezier(0.2, 1.5, 0.3, 1);
+}
+.stage.play-high .frame.in .lyric .w {
+  animation-timing-function: cubic-bezier(0.2, 1.5, 0.3, 1);
+}
+
+/* Every word carries --wi (its number on the slide). Entrances stagger on it; the idle sway uses the
+   `translate` and `rotate` properties so they compose with the entrance's transform. */
+.frame.in .lyric .w {
+  display: inline-block;
+  animation: var(--enter, ls-word-rise) var(--enter-ms, 420ms) var(--enter-ease, var(--ease)) both;
+  animation-delay: calc(var(--d0, 80ms) + var(--wi, 0) * var(--wstag, 55ms) * var(--stag));
+}
+.frame.in .lyric .ln {
+  animation: none;
+}
+/* While a slide is up, the words sway a touch, each on its own phase, and the block breathes. */
+.stage:not(.calm):not(.still) .frame.in.k-song .lyric .w {
+  translate: 0 0;
+  rotate: 0deg;
+  animation-name: var(--enter, ls-word-rise), ls-sway-word, ls-wobble-word;
+  animation-duration: var(--enter-ms, 420ms), 5s, 3.7s;
+  animation-timing-function: var(--enter-ease, var(--ease)), ease-in-out, ease-in-out;
+  animation-iteration-count: 1, infinite, infinite;
+  animation-direction: normal, alternate, alternate;
+  animation-fill-mode: both, none, none;
+  animation-delay: calc(var(--d0, 80ms) + var(--wi, 0) * var(--wstag, 55ms) * var(--stag)), calc(var(--wi, 0) * -1.3s), calc(var(--wi, 0) * -0.9s);
+}
+@keyframes ls-sway-word {
+  from { translate: 0 var(--sway); }
+  to { translate: 0 calc(var(--sway) * -1); }
+}
+@keyframes ls-wobble-word {
+  from { rotate: var(--wob); }
+  to { rotate: calc(var(--wob) * -1); }
+}
+.stage:not(.calm):not(.still) .frame.in.k-song .lyric {
+  animation: ls-breathe-y 7s ease-in-out infinite alternate;
+}
+@keyframes ls-breathe-y {
+  from { scale: 1; }
+  to { scale: var(--breath); }
+}
+.stage.play-high .frame.in .lyric .w {
+  animation-timing-function: cubic-bezier(0.2, 1.5, 0.3, 1), ease-in-out, ease-in-out;
+}
+
+/* The entrances, one per look. */
+@keyframes ls-word-rise {
+  from { opacity: 0; transform: translateY(calc(40px * var(--amp))); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes ls-word-rise-far {
+  from { opacity: 0; transform: translateY(calc(90px * var(--amp))); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes ls-word-snap {
+  from { opacity: 0; transform: scale(calc(1 + 0.25 * var(--amp))); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes ls-word-slam {
+  0% { opacity: 0; transform: scale(calc(1 + 0.6 * var(--amp))); }
+  70% { opacity: 1; transform: scale(0.96); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes ls-word-pop {
+  0% { opacity: 0; transform: scale(calc(1 - 0.5 * var(--amp))); }
+  70% { opacity: 1; transform: scale(calc(1 + 0.08 * var(--amp))); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes ls-word-track {
+  from { opacity: 0; transform: scaleX(calc(1 + 0.5 * var(--amp))); letter-spacing: 0.4em; }
+  to { opacity: 1; transform: none; letter-spacing: inherit; }
+}
+@keyframes ls-word-flicker {
+  0% { opacity: 0; }
+  20% { opacity: 0.8; }
+  35% { opacity: 0.2; }
+  50% { opacity: 1; }
+  65% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+@keyframes ls-word-type {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes ls-word-glow {
+  from { opacity: 0; transform: scale(1.1); filter: blur(10px); }
+  to { opacity: 1; transform: none; filter: blur(0); }
+}
+@keyframes ls-word-left {
+  from { opacity: 0; transform: translateX(calc(-90px * var(--amp))) skewX(-8deg); }
+  to { opacity: 1; transform: skewX(-8deg); }
+}
+@keyframes ls-word-right {
+  from { opacity: 0; transform: translateX(calc(90px * var(--amp))) skewX(-8deg); }
+  to { opacity: 1; transform: skewX(-8deg); }
+}
+@keyframes ls-word-tilt {
+  from { opacity: 0; transform: translateY(calc(50px * var(--amp))) rotate(calc(-6deg * var(--amp))); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes ls-word-drop {
+  0% { opacity: 0; transform: translateY(calc(-60px * var(--amp))); }
+  60% { opacity: 1; transform: translateY(calc(8px * var(--amp))); }
+  100% { opacity: 1; transform: none; }
+}
+
+.frame.p-worship { --enter: ls-word-rise; --enter-ms: 480ms; --wstag: 50ms; }
+.frame.p-classic { --enter: ls-word-rise; --enter-ms: 400ms; --wstag: 45ms; --d0: 150ms; }
+.frame.p-praise { --enter: ls-word-snap; --enter-ms: 220ms; --wstag: 35ms; --d0: 0ms; --enter-ease: cubic-bezier(0.2, 0.8, 0.2, 1); }
+.frame.p-poster { --enter: ls-word-slam; --enter-ms: 300ms; --wstag: 70ms; --d0: 220ms; --enter-ease: cubic-bezier(0.2, 0.9, 0.3, 1.2); }
+.frame.p-sunshine { --enter: ls-word-rise-far; --enter-ms: 500ms; --wstag: 70ms; --enter-ease: cubic-bezier(0.2, 0.8, 0.2, 1); }
+.frame.p-lines { --enter: ls-word-track; --enter-ms: 650ms; --wstag: 80ms; --enter-ease: cubic-bezier(0.2, 0.8, 0.2, 1); }
+.frame.p-beams { --enter: ls-word-flicker; --enter-ms: 520ms; --wstag: 70ms; --enter-ease: steps(1); }
+.frame.p-banner { --enter: ls-word-drop; --enter-ms: 420ms; --wstag: 55ms; --d0: 260ms; --enter-ease: cubic-bezier(0.2, 0.8, 0.2, 1); }
+.frame.p-midnight { --enter: ls-word-pop; --enter-ms: 380ms; --wstag: 50ms; --enter-ease: cubic-bezier(0.2, 0.9, 0.3, 1.3); }
+.frame.p-pixel { --enter: ls-word-type; --enter-ms: 1ms; --wstag: 110ms; --d0: 0ms; --enter-ease: steps(1); }
+.frame.p-neon { --enter: ls-word-glow; --enter-ms: 600ms; --wstag: 90ms; --enter-ease: ease-out; }
+.frame.p-grateful { --enter: ls-word-left; --enter-ms: 420ms; --wstag: 60ms; --enter-ease: cubic-bezier(0.2, 0.8, 0.2, 1); }
+.frame.p-grateful .lyric .ln:nth-child(even) { --enter: ls-word-right; }
+.frame.p-film { --enter: ls-word-tilt; --enter-ms: 450ms; --wstag: 60ms; --enter-ease: cubic-bezier(0.2, 0.8, 0.2, 1); }
+
+/* The Grateful words keep their lean; the entrance above ends on the same skew. */
+.p-grateful .lyric .ln .w {
+  transform: skewX(-8deg);
+}
+
+/* Bands, shadows and rules that come in with the words. */
+.frame.p-poster.in .lyric {
+  animation: ls-wipe 320ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes ls-wipe {
+  from { clip-path: inset(0 50% 0 50%); }
+  to { clip-path: inset(0 0 0 0); }
+}
+.frame.p-banner.in .lyric {
+  animation: ls-wipe-left 380ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes ls-wipe-left {
+  from { clip-path: inset(0 100% 0 0); }
+  to { clip-path: inset(0 0 0 0); }
+}
+.frame.p-sunshine.in .lyric::before {
+  animation: ls-diamond 700ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes ls-diamond {
+  from { transform: translate(-50%, -50%) rotate(25deg) scale(0.3); opacity: 0; }
+  to { transform: translate(-50%, -50%) rotate(45deg) scale(0.6); opacity: 1; }
+}
+.frame.p-film.in .lyric::after {
+  animation: ls-rule 500ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: 500ms;
+}
+@keyframes ls-rule {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+.stage:not(.calm):not(.still) .frame.in.p-neon .lyric {
+  animation: ls-breathe-y 7s ease-in-out infinite alternate, ls-glow-breathe 3s ease-in-out infinite alternate;
+}
+@keyframes ls-glow-breathe {
+  from { text-shadow: 0 0 18px #fff, 0 0 60px rgba(140, 235, 235, 0.75), 0 0 140px rgba(60, 200, 220, 0.5); }
+  to { text-shadow: 0 0 22px #fff, 0 0 90px rgba(140, 235, 235, 0.95), 0 0 180px rgba(60, 200, 220, 0.7); }
+}
+/* The Poster band holds the block (its own clip wipe); the breath would move its edges. */
+.stage .frame.in.p-poster .lyric,
+.stage .frame.in.p-banner .lyric {
+  animation-name: ls-wipe;
+}
+.stage .frame.in.p-banner .lyric {
+  animation-name: ls-wipe-left;
+}
+/* The sub line (song title) fades in after the words. */
+.frame.in .lyric .sub {
+  animation: ls-fade-in 500ms ease both;
+  animation-delay: 700ms;
+}
+
+/* Calm mode, reduced motion and the console's still previews: plain crossfades, nothing else. */
+.calm .frame.in .lyric,
+.still .frame.in .lyric,
+.calm .frame.in .lyric::before,
+.still .frame.in .lyric::before,
+.calm .frame.in .lyric::after,
+.still .frame.in .lyric::after {
+  animation: none !important;
+}
+.calm .frame.in .lyric .w,
+.still .frame.in .lyric .w,
+.calm .frame.in .lyric .ln,
+.still .frame.in .lyric .ln {
+  animation: ls-fade-in 400ms ease both !important;
+  animation-delay: 0ms !important;
+  translate: none !important;
+  rotate: none !important;
+}
+.still .frame.in .lyric .ln,
+.still .frame.in .lyric .w {
+  animation-duration: 0s !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .frame.in .lyric,
+  .frame.in .lyric::before,
+  .frame.in .lyric::after {
+    animation: none !important;
+  }
+  .frame.in .lyric .w,
+  .frame.in .lyric .ln {
+    animation: ls-fade-in 400ms ease both !important;
+    animation-delay: 0ms !important;
+    translate: none !important;
+  }
+}
+
+/* ------------------------------------------------------------ Wild: words fly in from all over and snap into place */
+
+.stage.play-wild {
+  --amp: 2.2;
+  --stag: 0.7;
+  --sway: 14px;
+  --wob: 5deg;
+  --breath: 1.06;
+  --sweep-s: 5s;
+}
+@keyframes ls-word-fly {
+  0% { opacity: 0; transform: translate(var(--fx), var(--fy)) rotate(var(--fr)) scale(0.4); }
+  55% { opacity: 1; transform: translate(calc(var(--fx) * -0.08), calc(var(--fy) * -0.08)) rotate(calc(var(--fr) * -0.15)) scale(1.18); }
+  80% { transform: translate(0, 0) rotate(0deg) scale(0.94); }
+  100% { opacity: 1; transform: none; }
+}
+.stage.play-wild .frame.in .lyric .w {
+  animation-name: ls-word-fly;
+  animation-duration: 650ms;
+  animation-timing-function: cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+.stage.play-wild:not(.calm):not(.still) .frame.in.k-song .lyric .w {
+  animation-name: ls-word-fly, ls-sway-word, ls-wobble-word;
+  animation-duration: 650ms, 4s, 2.6s;
+  animation-timing-function: cubic-bezier(0.2, 0.9, 0.3, 1), ease-in-out, ease-in-out;
+}
+/* The Grateful lean comes back once a Wild word has landed. */
+.stage.play-wild .p-grateful .lyric .ln .w {
+  animation-fill-mode: forwards, none, none;
+}
+
+/* ------------------------------------------------------------ Mix: a different font on each word; a hero word that swells */
+
+.mix-fonts .lyric .w.f1 { font-family: 'Anton', 'Montserrat', sans-serif; font-weight: 400; }
+.mix-fonts .lyric .w.f2 { font-family: 'Archivo Black', 'Montserrat', sans-serif; font-weight: 400; }
+.mix-fonts .lyric .w.f3 { font-family: 'Montserrat', sans-serif; font-weight: 900; }
+.mix-fonts .lyric .w.f4 { font-family: 'Montserrat', sans-serif; font-weight: 300; letter-spacing: 0.08em; }
+.mix-fonts .lyric .w.f5 { font-family: 'Montserrat', sans-serif; font-weight: 700; font-style: italic; }
+.mix-fonts .p-pixel .lyric .w { font-family: 'VT323', monospace; font-weight: 400; font-style: normal; }
+
+.lyric.hero-on .w.hero {
+  font-size: 1.35em;
+  color: var(--accent, #e3b75a);
+  vertical-align: baseline;
+}
+/* Two lines: the first takes the accent and shrinks, the second swells, like GOD I'M JUST / GRATEFUL. */
+.lyric.hero-line .ln:first-child {
+  font-size: 0.78em;
+  color: var(--accent, #e3b75a);
+}
+.lyric.hero-line .ln:last-child {
+  font-size: 1.22em;
+}
+.p-poster .lyric,
+.p-banner .lyric,
+.p-grateful .lyric,
+.p-film .lyric {
+  --accent: #f26b5b;
+}
+.p-sunshine .lyric {
+  --accent: #cfe04d;
+}
+.p-lines .lyric,
+.p-beams .lyric,
+.p-neon .lyric {
+  --accent: #35e0d0;
+}
+.p-banner .lyric {
+  --accent: #15306e;
+}
+.p-worship .lyric,
+.p-classic .lyric,
+.p-praise .lyric,
+.p-midnight .lyric,
+.p-pixel .lyric {
+  --accent: #e3b75a;
+}
+/* The hero word keeps swelling and settling while it is up. */
+.stage:not(.calm):not(.still) .frame.in.k-song .lyric.hero-on .w.hero {
+  animation-name: var(--enter, ls-word-rise), ls-swell, ls-wobble-word;
+  animation-duration: var(--enter-ms, 420ms), 2.4s, 3.7s;
+}
+.stage.play-wild:not(.calm):not(.still) .frame.in.k-song .lyric.hero-on .w.hero {
+  animation-name: ls-word-fly, ls-swell, ls-wobble-word;
+  animation-duration: 650ms, 2s, 2.6s;
+}
+@keyframes ls-swell {
+  from { translate: 0 0; scale: 1; }
+  to { translate: 0 calc(var(--sway) * -0.5); scale: 1.08; }
+}
+
+/* ------------------------------------------------------------ Place: where the words sit */
+
+.lyric.place-left {
+  text-align: left;
+  right: 22%;
+}
+.lyric.place-right {
+  text-align: right;
+  left: 22%;
+}
+.lyric.place-lines .ln:nth-child(odd) {
+  text-align: left;
+}
+.lyric.place-lines .ln:nth-child(even) {
+  text-align: right;
+}
+/* Bands stay edge to edge; their text moves inside them. */
+.p-poster .lyric.place-left,
+.p-poster .lyric.place-right,
+.p-banner .lyric.place-left,
+.p-banner .lyric.place-right {
+  left: 0;
+  right: 0;
+}
+.p-poster .lyric.place-left,
+.p-banner .lyric.place-left {
+  padding-right: 24%;
+}
+.p-poster .lyric.place-right,
+.p-banner .lyric.place-right {
+  padding-left: 24%;
+}
+.p-poster .lyric.place-left {
+  left: -96px;
+}
+.p-poster .lyric.place-right {
+  right: -96px;
+}
+
+/* Under Wild the words fly in from outside the band, so the band fades instead of wiping. */
+.stage.play-wild .frame.in.p-poster .lyric,
+.stage.play-wild .frame.in.p-banner .lyric {
+  animation-name: ls-fade-in;
+  animation-duration: 250ms;
+  clip-path: none;
+  overflow: visible;
+}
+.stage.play-wild .frame.in .lyric {
+  overflow: visible;
+}
+
+/* While the fill is measured (before paint), nothing moves. */
+.lyric.measuring,
+.lyric.measuring .ln,
+.lyric.measuring .w {
+  animation: none !important;
+  transform: none !important;
+  translate: none !important;
+  rotate: none !important;
+  scale: none !important;
+}
