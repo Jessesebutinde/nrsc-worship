@@ -8,8 +8,11 @@ import { Link, normalizeCode } from './link.js';
 import { ROOM } from './config.js';
 import { emptyState, reduce, songItem, mediaItem, BACKGROUNDS, BACKGROUND_INFO, PRESETS, PRESET_INFO, STREAM_LAYOUTS, ILLUSTRATION_SIZES, MARK_COLORS, PLAY_LEVELS, PLACES, SCRIPTURE_LOOKS, SCRIPTURE_INFO, SCRIPTURE_GROUPS, SCRIPTURE_MOTIONS, scriptureLookOf, stepsOf, lookOf, slideWords, markKey } from './state.js';
 import { loadSongs, saveSongs, visibleSongs, upsertSong, removeSong, searchSongs, mergeSongs, exportLibrary, importLibrary } from './library.js';
-import { parseRef, bookByCode } from './books.js';
-import { allVersions, importVersion, removeVersion, passageItem, BUILTIN_VERSIONS } from './bible.js';
+import { parseRef, bookByCode, BOOKS, formatRef } from './books.js';
+import { VerseIndex, fillIndex, highlight } from './search.js';
+import { spokenRef, refText } from './spoken.js';
+import { Listener, canListen, SPEECH_LANGS } from './voice.js';
+import { allVersions, importVersion, removeVersion, passageItem, BUILTIN_VERSIONS, loadBook, versionById } from './bible.js';
 import { relayConfig, cloudConfigured, loadSession, captureSession, sendMagicLink, signOut, pullSongs, pushSongs } from './cloud.js';
 import { canCast, castTo, displayPermission, extraDisplays, openOn, displayOf, platform } from './cast.js';
 import { fontsReady, scriptureFit } from './measure.js';
@@ -695,29 +698,132 @@ function Songs({ songs, onShow, onEdit, onNew, liveId }) {
 
 // ------------------------------------------------------------------ scripture
 
+// ------------------------------------------------------------------ finding a passage by words or voice
+
+// One search index per Bible version, filled book by book in the background the first time it is needed.
+const indexes = new Map();
+function versionIndex(id) {
+  let e = indexes.get(id);
+  if (!e && versionById(id)) {
+    const v = versionById(id);
+    e = { ix: new VerseIndex(v.lang === 'lg' ? 'lg' : 'en'), books: 0, subs: new Set() };
+    indexes.set(id, e);
+    fillIndex(e.ix, (n) => loadBook(id, n), (c) => {
+      e.books = c;
+      e.subs.forEach((f) => f());
+    });
+  }
+  return e || null;
+}
+
+/** Starts the indexes for these versions and re-renders as books arrive (every few books). */
+function useIndexes(ids, on) {
+  const [, tick] = useState(0);
+  useEffect(() => {
+    if (!on) return undefined;
+    const es = ids.map(versionIndex).filter(Boolean);
+    let last = 0;
+    const f = () => {
+      const n = Math.min(...es.map((e) => e.books));
+      if (n - last >= 6 || n === 66) {
+        last = n;
+        tick((x) => x + 1);
+      }
+    };
+    es.forEach((e) => e.subs.add(f));
+    return () => es.forEach((e) => e.subs.delete(f));
+  }, [ids.join('|'), on]);
+  const es = ids.map((id) => indexes.get(id)).filter(Boolean);
+  return es.length ? Math.min(...es.map((e) => e.books)) : 0;
+}
+
+/** The best verses for some words, from every version searched, one entry per verse. */
+function suggestVerses(query, ids, partial) {
+  const best = new Map();
+  for (const id of ids) {
+    const e = indexes.get(id);
+    if (!e) continue;
+    for (const r of e.ix.search(query, { limit: 8, partial })) {
+      const k = `${r.book}.${r.chapter}.${r.verse}`;
+      const cur = best.get(k);
+      if (!cur || r.score > cur.score) best.set(k, { ...r, lang: e.ix.lang, keys: e.ix.keyTerms(query, partial) });
+    }
+  }
+  return [...best.values()].sort((a, b) => b.score - a.score).slice(0, 5);
+}
+
+function useDebounced(value, ms) {
+  const [v, setV] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setV(value), ms);
+    return () => clearTimeout(t);
+  }, [value, ms]);
+  return v;
+}
+
+const wordCount = (t) => (String(t || '').match(/[\p{L}]+/gu) || []).length;
+
+/** A verse's text cut to about `n` characters around its first matched word, with the matches marked. */
+function Snippet({ text, query, lang, n = 120 }) {
+  const parts = highlight(text, query, lang);
+  let first = 0;
+  for (let i = 0, at = 0; i < parts.length; at += parts[i].length, i++) if (i % 2 === 1) {
+    first = at;
+    break;
+  }
+  const start = Math.max(0, Math.min(first - 30, text.length - n));
+  let at = 0;
+  const out = [];
+  parts.forEach((p, i) => {
+    const a = at;
+    at += p.length;
+    const lo = Math.max(a, start) - a;
+    const hi = Math.min(at, start + n) - a;
+    if (hi <= lo) return;
+    const piece = p.slice(lo, hi);
+    out.push(i % 2 ? html`<mark>${piece}</mark>` : piece);
+  });
+  return html`${start > 0 ? '…' : ''}${out}${start + n < text.length ? '…' : ''}`;
+}
+
 function Scripture({ prefs, setPrefs, onShow, look = 'ink', font = 'serif' }) {
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [recent, setRecent] = useState(() => read(LS_RECENT_REFS, ['Zabbuli 23:1-6', 'Yokaana 3:16']));
+  const [sel, setSel] = useState(0);
+  // Voice: listening, what is being said now, the last reference heard, and the words to search.
+  const [listening, setListening] = useState(false);
+  const [micErr, setMicErr] = useState('');
+  const [line, setLine] = useState('');
+  const [heard, setHeard] = useState(null);
+  const [voiceQuery, setVoiceQuery] = useState('');
+  const listener = useRef(null);
+  const lastShown = useRef('');
   const versions = allVersions();
+  const ids = [prefs.primary, prefs.secondary].filter(Boolean);
   const ref = parseRef(text);
+  const micLang = SPEECH_LANGS[prefs.micLang] ? prefs.micLang : 'en-GB';
 
-  const go = async (t = text) => {
-    const r = parseRef(t);
-    if (!r) {
-      setErr('Type a reference like “Zabbuli 23:1-4” or “Psalm 23:1-4”.');
-      return;
-    }
+  // Indexes load once words (not a reference) are typed, or when the mic is on.
+  const wantsSearch = listening || (!ref && wordCount(text) >= 2);
+  const loaded = useIndexes(ids, wantsSearch);
+  const query = useDebounced(listening ? voiceQuery : ref ? '' : text, 160);
+  const results = useMemo(
+    () => (wordCount(query) >= 2 ? suggestVerses(query, ids, !listening) : []),
+    [query, ids.join('|'), loaded, listening],
+  );
+  useEffect(() => setSel(0), [query]);
+
+  const show = async (r, label) => {
     setBusy(true);
     setErr('');
     try {
       // Measured in the real font, so a slide holds exactly what fits at the fixed size.
-      const loaded = await Promise.race([fontsReady(), new Promise((res) => setTimeout(() => res(null), 3000))]);
-      const fit = loaded !== null && document.fonts.check('600 92px Montserrat') ? scriptureFit(look, font) : undefined;
+      const ok = await Promise.race([fontsReady(), new Promise((res) => setTimeout(() => res(null), 3000))]);
+      const fit = ok !== null && document.fonts.check('600 92px Montserrat') ? scriptureFit(look, font) : undefined;
       const item = await passageItem({ ref: r, primaryId: prefs.primary, secondaryId: prefs.secondary, flow: !prefs.perVerse, fit });
       onShow(item);
-      const label = t.trim();
       const next = [label, ...recent.filter((x) => x.toLowerCase() !== label.toLowerCase())].slice(0, 8);
       setRecent(next);
       write(LS_RECENT_REFS, next);
@@ -727,11 +833,65 @@ function Scripture({ prefs, setPrefs, onShow, look = 'ink', font = 'serif' }) {
       setBusy(false);
     }
   };
+  const go = (t = text) => {
+    const r = parseRef(t);
+    if (r) return show(r, t.trim());
+    if (results.length) return showVerse(results[Math.min(sel, results.length - 1)]);
+    setErr('Type a reference like “Zabbuli 23:1-4” or “Psalm 23:1-4”, or a few words of the verse.');
+    return null;
+  };
+  const showVerse = (v, toEnd = false) => {
+    const book = BOOKS[v.book - 1];
+    return show({ book, chapter: v.chapter, from: v.verse, to: toEnd ? null : v.verse }, `${book.lg} ${v.chapter}:${v.verse}${toEnd ? '-' : ''}`);
+  };
+  const showHeard = (r) => {
+    lastShown.current = refText(r);
+    return show(r, `${r.book.lg} ${r.chapter}${r.from ? `:${r.from}${r.to && r.to !== r.from ? `-${r.to}` : ''}` : ''}`);
+  };
+
+  // The microphone.
+  const heardText = (finalText, interim) => {
+    const t = finalText || interim;
+    setLine(t);
+    const r = spokenRef(t);
+    if (r) {
+      setHeard(r);
+      if (finalText && prefs.autoShow && refText(r) !== lastShown.current) showHeard(r);
+    } else if (wordCount(t) >= 3) setVoiceQuery(t.split(/\s+/).slice(-16).join(' '));
+  };
+  const startMic = () => {
+    setMicErr('');
+    setLine('');
+    const l = new Listener({
+      lang: micLang,
+      // Always the latest handler (it reads the current settings).
+      onText: (f, i) => onHeard.current(f, i),
+      onState: (st, msg) => {
+        setListening(st === 'on');
+        if (msg) setMicErr(msg);
+      },
+    });
+    listener.current = l;
+    l.start();
+    setListening(true);
+  };
+  const toggleMic = () => (listening && listener.current ? listener.current.stop() : startMic());
+  const onHeard = useRef(heardText);
+  onHeard.current = heardText;
+  // Switching language restarts the mic.
+  useEffect(() => () => listener.current && listener.current.stop(), []);
+  useEffect(() => {
+    if (!listening || !listener.current) return;
+    listener.current.stop();
+    setTimeout(startMic, 250);
+  }, [micLang]);
 
   const vSelect = (key, allowNone) => html`<select value=${prefs[key] || ''} onChange=${(e) => setPrefs({ ...prefs, [key]: e.target.value })}>
     ${allowNone && html`<option value="">None</option>`}
     ${versions.map((v) => html`<option value=${v.id}>${v.name}</option>`)}
   </select>`;
+
+  const heardLabel = heard && formatRef(heard.book, heard.chapter, heard.from == null ? null : heard.to && heard.to !== heard.from ? `${heard.from}-${heard.to}` : heard.from);
 
   return html`<div class="scripture">
     <form
@@ -748,18 +908,72 @@ function Scripture({ prefs, setPrefs, onShow, look = 'ink', font = 'serif' }) {
           setText(e.target.value);
           setErr('');
         }}
-        placeholder="Zabbuli 23:1-4 or Psalm 23:1-4"
+        onKeyDown=${(e) => {
+          if (!results.length) return;
+          if (e.key === 'ArrowDown') setSel((i) => Math.min(results.length - 1, i + 1));
+          else if (e.key === 'ArrowUp') setSel((i) => Math.max(0, i - 1));
+          else return;
+          e.preventDefault();
+        }}
+        placeholder="Zabbuli 23:1-4, or words of the verse"
         autocomplete="off"
         aria-label="Bible reference"
       />
-      <button class="primary" disabled=${busy || !text.trim()}>${busy ? '…' : 'Show'}</button>
+      <button
+        type="button"
+        class=${`mic ${listening ? 'on' : ''}`}
+        onClick=${toggleMic}
+        disabled=${!canListen()}
+        title=${canListen() ? (listening ? 'Stop listening' : 'Say a reference or a few words of the verse') : 'Voice needs Chrome or Edge'}
+        aria-label=${listening ? 'Stop listening' : 'Listen'}
+        aria-pressed=${listening}
+      >
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M12 15a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-2.08A7 7 0 0 0 19 12h-2Z"/></svg>
+      </button>
+      <button class="primary" disabled=${busy || (!text.trim() && !results.length)}>${busy ? '…' : 'Show'}</button>
     </form>
-    <p class="small ${ref ? 'ok' : 'muted'}">
+    ${!listening &&
+    html`<p class="small ${ref ? 'ok' : 'muted'}">
       ${ref
         ? `${ref.book.lg} ${ref.chapter}${ref.from ? `:${ref.from}${ref.to !== ref.from ? `-${ref.to}` : ''}` : ' (whole chapter)'} · ${ref.book.en}`
-        : 'Luganda or English book names, short forms work too (Zab, Yk, Ps, Jn).'}
-    </p>
+        : 'A reference (Zab 23:1, Ps 23) or a few words of the verse in Luganda or English. Or press the microphone and say it.'}
+    </p>`}
+    ${listening &&
+    html`<div class="listen-bar" role="status">
+      <i class="rec-dot"></i>
+      <span class="heard-line">${line || 'Listening… say “Psalm 23 verse 1” or a few words of the verse'}</span>
+      <select value=${micLang} onChange=${(e) => setPrefs({ ...prefs, micLang: e.target.value })} aria-label="Language spoken">
+        ${Object.entries(SPEECH_LANGS).map(([k, l]) => html`<option value=${k}>${l}</option>`)}
+      </select>
+    </div>`}
+    ${micErr && html`<p class="error small">${micErr}</p>`}
     ${err && html`<p class="error small">${err}</p>`}
+    ${heard &&
+    html`<div class="heard">
+      <span class="muted small">Heard</span>
+      <b>${heardLabel}</b>
+      <button class="primary" onClick=${() => showHeard(heard)} disabled=${busy}>Show</button>
+      <button class="ghost" onClick=${() => setHeard(null)} aria-label="Dismiss">×</button>
+    </div>`}
+    ${results.length > 0 &&
+    html`<div class="suggest">
+      <div class="row between">
+        <span class="muted small">${listening ? 'From what was said' : 'Best matches'}${loaded < 66 ? ` · searching ${loaded} of 66 books…` : ''}</span>
+        <span class="muted small">↑ ↓ and Enter</span>
+      </div>
+      <ul>
+        ${results.map(
+          (r, i) => html`<li class=${i === sel ? 'on' : ''}>
+            <button class="sg" onClick=${() => showVerse(r)} onMouseEnter=${() => setSel(i)}>
+              <span class="sg-ref">${formatRef(BOOKS[r.book - 1], r.chapter, r.verse)}</span>
+              <span class="sg-text"><${Snippet} text=${r.text} query=${r.keys} lang=${r.lang} /></span>
+            </button>
+            <button class="chip ghost" onClick=${() => showVerse(r, true)} title="From this verse to the end of the chapter">to end</button>
+          </li>`,
+        )}
+      </ul>
+    </div>`}
+    ${wantsSearch && !results.length && wordCount(query) >= 2 && loaded < 66 && html`<p class="muted small">Searching ${loaded} of 66 books…</p>`}
     <div class="row wrap">
       <label class="field grow"><span>On top (read aloud)</span>${vSelect('primary', false)}</label>
       <label class="field grow"><span>Below, smaller</span>${vSelect('secondary', true)}</label>
@@ -768,6 +982,12 @@ function Scripture({ prefs, setPrefs, onShow, look = 'ink', font = 'serif' }) {
       <input type="checkbox" checked=${!prefs.perVerse} onChange=${(e) => setPrefs({ ...prefs, perVerse: !e.target.checked })} />
       <span>Continue the text across slides at the same size until it ends (off: one verse per slide)</span>
     </label>
+    ${canListen() &&
+    html`<label class="toggle">
+      <input type="checkbox" checked=${Boolean(prefs.autoShow)} onChange=${(e) => setPrefs({ ...prefs, autoShow: e.target.checked })} />
+      <span>Put a reference on the screen as soon as it is heard (off: one click on Show)</span>
+    </label>
+    <p class="muted small">The microphone uses the browser's own speech recognition; Chrome sends the sound to Google to turn it into text, so it needs the internet.</p>`}
     ${recent.length > 0 &&
     html`<div class="recent">
       <span class="muted small">Recent</span>

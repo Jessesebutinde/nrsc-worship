@@ -210,6 +210,23 @@ too long for the look's lines splits at a natural pause, both languages at the s
 slide is measured in the real font at the real size for the look that is up, so nothing ever shrinks or wraps. Turn
 **Continue the text** off for one verse per slide.
 
+### Finding a passage by words or by voice
+
+The Scripture box takes a reference (`Zabbuli 23:1-4`, `Ps 23`, `Yk 3:16`) **or a few words of the verse** in
+Luganda or English: "the lord is my shep", "Mukama ye musumba", "faith is the substance". Suggestions appear as you
+type, best first, with the reference in both languages and the matching words underlined; **↑ ↓** and **Enter**
+pick one, **to end** shows from that verse to the end of the chapter. Old and modern English count as the same
+("leads" finds "leadeth", "you" finds "thee"). The search runs on the laptop over both Bibles; the books load in the
+background the first time (most-read first, all 66 in about two seconds on a good connection).
+
+Press the **microphone** and speak: a reference ("Psalm twenty three verse one to four", "John three sixteen",
+"first John chapter one verse nine", "Zabbuli amakumi abiri mu ssatu olunyiriri olusooka") appears as **Heard …**
+with a Show button; anything else is searched like typed words, so saying a line of the verse brings it up. Turn on
+**Put a reference on the screen as soon as it is heard** to skip the click. The mic keeps listening until you switch
+it off; the language (English or Luganda) is chosen in the bar while it listens. It uses the browser's own speech
+recognition: Chrome and Edge only, and Chrome sends the sound to Google to turn it into text, so it needs the
+internet. Luganda recognition depends on the browser offering it.
+
 ### Scripture looks
 
 Scripture has 33 looks of its own: 9 **pages** (the words on the environment) and 24 **cards** (the words on a card,
