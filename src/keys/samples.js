@@ -165,6 +165,7 @@ export class SampleLibrary {
     const end = soundEnd(l, r, buf.sampleRate);
     const L = l.slice(0, end);
     const R = r ? r.slice(0, end) : null;
+    normalise(L, R);
     const loop = info.sustain ? findLoop(R ? mix(L, R) : L, buf.sampleRate, midiToHz(note)) : null;
     return {
       t: 'bankNote',
@@ -189,6 +190,28 @@ function decode(ctx, buf) {
 }
 
 /** Where the near-silent tail starts, plus 10 ms: a decayed note need not keep a second of zeros in the worklet. */
+/**
+ * The soundfont renders are quiet and uneven (a choir at a tenth of full scale, a bass at a fifth). Each note
+ * is brought up towards a 0.4 peak, mostly: a little of the natural variation between notes is kept.
+ */
+export function normalise(L, R, target = 0.4) {
+  let peak = 0;
+  for (let i = 0; i < L.length; i++) {
+    const a = Math.abs(L[i]);
+    if (a > peak) peak = a;
+    if (R) {
+      const b = Math.abs(R[i]);
+      if (b > peak) peak = b;
+    }
+  }
+  if (peak < 1e-6) return 1;
+  const gain = Math.min(8, Math.max(1, Math.pow(target / peak, 0.85)));
+  if (gain === 1) return 1;
+  for (let i = 0; i < L.length; i++) L[i] *= gain;
+  if (R) for (let i = 0; i < R.length; i++) R[i] *= gain;
+  return gain;
+}
+
 function soundEnd(l, r, rate) {
   let end = l.length;
   while (end > 0 && Math.abs(l[end - 1]) < SILENCE && (!r || Math.abs(r[end - 1]) < SILENCE)) end--;

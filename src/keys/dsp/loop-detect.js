@@ -9,26 +9,43 @@
  */
 export function findLoop(x, sr, f0, opts = {}) {
   const hop = Math.max(1, Math.round(sr * 0.01));
-  const win = hop * 2;
+  const win = Math.round(sr * 0.04);
   const nFrames = Math.floor((x.length - win) / hop);
   if (nFrames < 10) return null;
-  const rms = new Float32Array(nFrames);
-  let peak = 0,
-    peakAt = 0;
+  const raw = new Float32Array(nFrames);
   for (let f = 0; f < nFrames; f++) {
     let s = 0;
     const o = f * hop;
     for (let i = 0; i < win; i++) s += x[o + i] * x[o + i];
-    rms[f] = Math.sqrt(s / win);
+    raw[f] = Math.sqrt(s / win);
+  }
+  // A smoothed envelope: vibrato and consonant-like bumps must not look like the end of the sound.
+  const rms = new Float32Array(nFrames);
+  for (let f = 0; f < nFrames; f++) {
+    let s = 0,
+      n = 0;
+    for (let k = -4; k <= 4; k++) {
+      const j = f + k;
+      if (j >= 0 && j < nFrames) {
+        s += raw[j];
+        n++;
+      }
+    }
+    rms[f] = s / n;
+  }
+  let peak = 0,
+    peakAt = 0;
+  for (let f = 0; f < nFrames; f++) {
     if (rms[f] > peak) {
       peak = rms[f];
       peakAt = f;
     }
   }
   if (peak < 1e-4) return null;
-  // Sustain region: after the attack has settled, before the level has fallen to -9 dB or the clip ends.
-  const minLevel = peak * (opts.minLevel || 0.355);
-  let t1 = peakAt + Math.round((opts.settle || 0.25) / 0.01);
+  // Sustain region: after the attack has settled, before the level has fallen well below the body of the
+  // sound (-12 dB), or the clip ends.
+  const minLevel = peak * (opts.minLevel || 0.25);
+  const t1 = Math.min(peakAt + Math.round((opts.settle || 0.25) / 0.01), nFrames - 1);
   let t2 = nFrames - 1;
   for (let f = t1; f < nFrames; f++) {
     if (rms[f] < minLevel) {
@@ -36,13 +53,13 @@ export function findLoop(x, sr, f0, opts = {}) {
       break;
     }
   }
-  t2 -= Math.round(0.06 / 0.01); // keep clear of the tail
+  t2 -= Math.round(0.08 / 0.01); // keep clear of the tail and the cut at the end of the clip
   const minRegion = (opts.minRegion || 0.4) / 0.01;
   if (t2 - t1 < minRegion) return null;
-  // A decaying sound (piano, pluck) is not looped: the sustain region must be fairly flat.
+  // A decaying sound (piano, pluck) is not looped: the region must be fairly flat.
   const early = avg(rms, t1, t1 + Math.floor((t2 - t1) / 3));
   const late = avg(rms, t2 - Math.floor((t2 - t1) / 3), t2);
-  if (late < early * (opts.flatness || 0.5)) return null;
+  if (late < early * (opts.flatness || 0.7)) return null;
 
   const period = sr / f0;
   const regionStart = t1 * hop;
