@@ -56,7 +56,36 @@ export function emptyState() {
     // environment unless lookBg is 'mine' (keep the TV background).
     look: '',
     lookBg: 'look',
+    // Words the operator tapped for emphasis: { "<item id>:<slide index>": { "<field>:<word>": { c: 'gold', b: true } } }.
+    marks: {},
   };
+}
+
+// Emphasis colours (c) for a tapped word; b = "bend" (slanted).
+export const MARK_COLORS = { gold: '#e3b75a', coral: '#ff6b5e', teal: '#35e0d0', white: '#ffffff' };
+
+export const markKey = (item, index) => `${item.id}:${index}`;
+
+const wordsOf = (t) => String(t || '').split(/\s+/).filter(Boolean);
+
+/**
+ * The words of a slide that can be tapped for emphasis, by field: a song slide is one field 'l'
+ * (all its words in order, however the screen breaks the lines); a scripture slide has 'p'
+ * (the language on top) and 's' (the one below). The screen numbers words the same way.
+ */
+export function slideWords(item, slide) {
+  if (!item || !slide) return [];
+  if (item.kind === 'song') return [{ field: 'l', label: '', words: wordsOf(slide.lines.join(' ')) }];
+  if (item.kind === 'scripture') {
+    const segs = slide.verses || [{ primary: slide.primary, secondary: slide.secondary }];
+    const p = segs.flatMap((g) => wordsOf(g.primary));
+    const sec = segs.flatMap((g) => wordsOf(g.secondary));
+    const out = [];
+    if (p.length) out.push({ field: 'p', label: item.versions && item.versions[0] ? item.versions[0] : '', words: p });
+    if (sec.length) out.push({ field: 's', label: item.secondaryLabel || '', words: sec });
+    return out;
+  }
+  return [];
 }
 
 export const ILLUSTRATION_SIZES = { small: 'Small', half: 'Half', large: 'Large' };
@@ -96,7 +125,28 @@ export function reduce(state, cmd, by) {
       s.item = cmd.item;
       s.index = Math.max(0, Math.min(count(s) - 1, cmd.index || 0));
       s.mode = 'show';
+      s.marks = {};
       break;
+    case 'mark': {
+      // Tapping a word with the same pen again takes the mark off.
+      const all = { ...(s.marks || {}) };
+      const m = { ...(all[cmd.slide] || {}) };
+      const cur = m[cmd.word];
+      if (cur && cur.c === cmd.mark.c && Boolean(cur.b) === Boolean(cmd.mark.b)) delete m[cmd.word];
+      else m[cmd.word] = { c: cmd.mark.c, b: Boolean(cmd.mark.b) };
+      all[cmd.slide] = m;
+      s.marks = all;
+      break;
+    }
+    case 'unmark': {
+      if (!cmd.slide) s.marks = {};
+      else {
+        const all = { ...(s.marks || {}) };
+        delete all[cmd.slide];
+        s.marks = all;
+      }
+      break;
+    }
     case 'mode':
       // Pressing the active mode again goes back to the slide.
       s.mode = s.mode === cmd.mode && cmd.mode !== 'show' ? 'show' : cmd.mode;

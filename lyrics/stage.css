@@ -109,18 +109,18 @@
 .bg-bokeh i {
   position: absolute;
   border-radius: 50%;
-  filter: blur(18px);
+  background: radial-gradient(circle, var(--c) 0%, var(--c) 30%, transparent 70%);
   will-change: transform;
   animation: ls-float 70s ease-in-out infinite alternate;
 }
-.bg-bokeh .b0 { left: 14%; top: 22%; width: 220px; height: 220px; background: rgba(255, 190, 120, 0.22); }
-.bg-bokeh .b1 { left: 64%; top: 14%; width: 150px; height: 150px; background: rgba(255, 220, 180, 0.16); animation-duration: 85s; animation-delay: -20s; }
-.bg-bokeh .b2 { left: 76%; top: 58%; width: 300px; height: 300px; background: rgba(120, 90, 200, 0.26); animation-duration: 95s; animation-delay: -40s; }
-.bg-bokeh .b3 { left: 30%; top: 62%; width: 120px; height: 120px; background: rgba(227, 183, 90, 0.18); animation-duration: 75s; animation-delay: -10s; }
-.bg-bokeh .b4 { left: 46%; top: 30%; width: 90px; height: 90px; background: rgba(255, 240, 220, 0.12); animation-duration: 65s; animation-delay: -30s; }
-.bg-bokeh .b5 { left: 6%; top: 70%; width: 260px; height: 260px; background: rgba(90, 58, 140, 0.3); animation-duration: 100s; animation-delay: -55s; }
-.bg-bokeh .b6 { left: 88%; top: 28%; width: 110px; height: 110px; background: rgba(255, 200, 150, 0.14); animation-duration: 80s; animation-delay: -5s; }
-.bg-bokeh .b7 { left: 56%; top: 76%; width: 170px; height: 170px; background: rgba(160, 120, 230, 0.16); animation-duration: 90s; animation-delay: -65s; }
+.bg-bokeh .b0 { left: 10%; top: 16%; width: 300px; height: 300px; --c: rgba(255, 190, 120, 0.22); }
+.bg-bokeh .b1 { left: 62%; top: 10%; width: 210px; height: 210px; --c: rgba(255, 220, 180, 0.16); animation-duration: 85s; animation-delay: -20s; }
+.bg-bokeh .b2 { left: 72%; top: 52%; width: 400px; height: 400px; --c: rgba(120, 90, 200, 0.26); animation-duration: 95s; animation-delay: -40s; }
+.bg-bokeh .b3 { left: 28%; top: 58%; width: 170px; height: 170px; --c: rgba(227, 183, 90, 0.18); animation-duration: 75s; animation-delay: -10s; }
+.bg-bokeh .b4 { left: 45%; top: 27%; width: 130px; height: 130px; --c: rgba(255, 240, 220, 0.12); animation-duration: 65s; animation-delay: -30s; }
+.bg-bokeh .b5 { left: 2%; top: 64%; width: 360px; height: 360px; --c: rgba(90, 58, 140, 0.3); animation-duration: 100s; animation-delay: -55s; }
+.bg-bokeh .b6 { left: 86%; top: 24%; width: 160px; height: 160px; --c: rgba(255, 200, 150, 0.14); animation-duration: 80s; animation-delay: -5s; }
+.bg-bokeh .b7 { left: 53%; top: 72%; width: 240px; height: 240px; --c: rgba(160, 120, 230, 0.16); animation-duration: 90s; animation-delay: -65s; }
 @keyframes ls-float {
   0% {
     transform: translate(0, 0) scale(1);
@@ -676,6 +676,7 @@
     radial-gradient(ellipse 30% 40% at 14% 58%, rgba(80, 110, 255, 0.45), transparent 65%),
     radial-gradient(ellipse 50% 26% at 50% 104%, rgba(230, 70, 110, 0.35), transparent 65%),
     radial-gradient(ellipse 20% 18% at 40% 30%, rgba(255, 240, 200, 0.18), transparent 70%);
+  will-change: transform;
   animation: ls-drift 36s ease-in-out infinite alternate;
 }
 .bg-crowd .haze {
@@ -709,6 +710,7 @@
   height: 1200px;
   background-image: url("data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%272200%27%20height=%271200%27%20viewBox=%270%200%202200%201200%27%3E%3Cdefs%3E%3Cfilter%20id=%27f%27%20x=%27-5%25%27%20y=%27-10%25%27%20width=%27110%25%27%20height=%27120%25%27%3E%3CfeTurbulence%20type=%27fractalNoise%27%20baseFrequency=%270.0025%200.011%27%20numOctaves=%272%27%20seed=%2711%27/%3E%3CfeDisplacementMap%20in=%27SourceGraphic%27%20scale=%27110%27%20xChannelSelector=%27R%27%20yChannelSelector=%27G%27/%3E%3C/filter%3E%3C/defs%3E%3Crect%20width=%272200%27%20height=%271200%27%20fill=%27%23f6b400%27/%3E%3Cg%20filter=%27url%28%23f%29%27%20stroke=%27%23e39600%27%20stroke-width=%2710%27%20fill=%27none%27%20stroke-linecap=%27round%27%3E%3Cpath%20d=%27M-200%20-60%20H2400%27/%3E%3Cpath%20d=%27M-200%20-24%20H2400%27/%3E%3Cpath%20d=%27M-200%2012%20H2400%27/%3E%3Cpath%20d=%27M-200%2048%20H2400%27/%3E%3Cpath%20d=%27M-200%2084%20H2400%27/%3E%3Cpath%20d=%27M-200%20120%20H2400%27/%3E%3Cpath%20d=%27M-200%20156%20H2400%27/%3E%3Cpath%20d=%27M-200%20192%20H2400%27/%3E%3Cpath%20d=%27M-200%20228%20H2400%27/%3E%3Cpath%20d=%27M-200%20264%20H2400%27/%3E%3Cpath%20d=%27M-200%20300%20H2400%27/%3E%3Cpath%20d=%27M-200%20336%20H2400%27/%3E%3Cpath%20d=%27M-200%20372%20H2400%27/%3E%3Cpath%20d=%27M-200%20408%20H2400%27/%3E%3Cpath%20d=%27M-200%20444%20H2400%27/%3E%3Cpath%20d=%27M-200%20480%20H2400%27/%3E%3Cpath%20d=%27M-200%20516%20H2400%27/%3E%3Cpath%20d=%27M-200%20552%20H2400%27/%3E%3Cpath%20d=%27M-200%20588%20H2400%27/%3E%3Cpath%20d=%27M-200%20624%20H2400%27/%3E%3Cpath%20d=%27M-200%20660%20H2400%27/%3E%3Cpath%20d=%27M-200%20696%20H2400%27/%3E%3Cpath%20d=%27M-200%20732%20H2400%27/%3E%3Cpath%20d=%27M-200%20768%20H2400%27/%3E%3Cpath%20d=%27M-200%20804%20H2400%27/%3E%3Cpath%20d=%27M-200%20840%20H2400%27/%3E%3Cpath%20d=%27M-200%20876%20H2400%27/%3E%3Cpath%20d=%27M-200%20912%20H2400%27/%3E%3Cpath%20d=%27M-200%20948%20H2400%27/%3E%3Cpath%20d=%27M-200%20984%20H2400%27/%3E%3Cpath%20d=%27M-200%201020%20H2400%27/%3E%3Cpath%20d=%27M-200%201056%20H2400%27/%3E%3Cpath%20d=%27M-200%201092%20H2400%27/%3E%3Cpath%20d=%27M-200%201128%20H2400%27/%3E%3Cpath%20d=%27M-200%201164%20H2400%27/%3E%3Cpath%20d=%27M-200%201200%20H2400%27/%3E%3Cpath%20d=%27M-200%201236%20H2400%27/%3E%3C/g%3E%3C/svg%3E");
   background-size: 2200px 1200px;
+  will-change: transform;
   animation: ls-wood 50s ease-in-out infinite alternate;
 }
 @keyframes ls-wood {
@@ -738,6 +740,7 @@
   background-position: center;
 }
 .bg-arcs .art {
+  will-change: transform;
   background-image: url("data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%271920%27%20height=%271080%27%20viewBox=%270%200%201920%201080%27%3E%3Cg%20fill=%27none%27%20stroke=%27%231fb3ae%27%20stroke-width=%275%27%20opacity=%270.55%27%3E%3Ccircle%20cx=%27-260%27%20cy=%27640%27%20r=%27520%27/%3E%3Ccircle%20cx=%27-260%27%20cy=%27640%27%20r=%27586%27/%3E%3Ccircle%20cx=%27-260%27%20cy=%27640%27%20r=%27652%27/%3E%3Ccircle%20cx=%27-260%27%20cy=%27640%27%20r=%27718%27/%3E%3Ccircle%20cx=%27-260%27%20cy=%27640%27%20r=%27784%27/%3E%3Ccircle%20cx=%27-260%27%20cy=%27640%27%20r=%27850%27/%3E%3Ccircle%20cx=%27-260%27%20cy=%27640%27%20r=%27916%27/%3E%3Ccircle%20cx=%27-260%27%20cy=%27640%27%20r=%27982%27/%3E%3Ccircle%20cx=%27-260%27%20cy=%27640%27%20r=%271048%27/%3E%3Ccircle%20cx=%27-260%27%20cy=%27640%27%20r=%271114%27/%3E%3Ccircle%20cx=%27-260%27%20cy=%27640%27%20r=%271180%27/%3E%3Ccircle%20cx=%27-260%27%20cy=%27640%27%20r=%271246%27/%3E%3Ccircle%20cx=%27-260%27%20cy=%27640%27%20r=%271312%27/%3E%3Ccircle%20cx=%27-260%27%20cy=%27640%27%20r=%271378%27/%3E%3Ccircle%20cx=%27-260%27%20cy=%27640%27%20r=%271444%27/%3E%3Ccircle%20cx=%27-260%27%20cy=%27640%27%20r=%271510%27/%3E%3Ccircle%20cx=%27-260%27%20cy=%27640%27%20r=%271576%27/%3E%3Ccircle%20cx=%27-260%27%20cy=%27640%27%20r=%271642%27/%3E%3Ccircle%20cx=%27-260%27%20cy=%27640%27%20r=%271708%27/%3E%3Ccircle%20cx=%27-260%27%20cy=%27640%27%20r=%271774%27/%3E%3Ccircle%20cx=%27-260%27%20cy=%27640%27%20r=%271840%27/%3E%3Ccircle%20cx=%27-260%27%20cy=%27640%27%20r=%271906%27/%3E%3Ccircle%20cx=%27-260%27%20cy=%27640%27%20r=%271972%27/%3E%3Ccircle%20cx=%27-260%27%20cy=%27640%27%20r=%272038%27/%3E%3Ccircle%20cx=%27-260%27%20cy=%27640%27%20r=%272104%27/%3E%3Ccircle%20cx=%27-260%27%20cy=%27640%27%20r=%272170%27/%3E%3Ccircle%20cx=%27-260%27%20cy=%27640%27%20r=%272236%27/%3E%3Ccircle%20cx=%27-260%27%20cy=%27640%27%20r=%272302%27/%3E%3Ccircle%20cx=%27-260%27%20cy=%27640%27%20r=%272368%27/%3E%3Ccircle%20cx=%27-260%27%20cy=%27640%27%20r=%272434%27/%3E%3C/g%3E%3Cg%20fill=%27none%27%20stroke=%27%231fb3ae%27%20stroke-width=%274%27%20opacity=%270.35%27%3E%3Ccircle%20cx=%272140%27%20cy=%27-320%27%20r=%27360%27/%3E%3Ccircle%20cx=%272140%27%20cy=%27-320%27%20r=%27426%27/%3E%3Ccircle%20cx=%272140%27%20cy=%27-320%27%20r=%27492%27/%3E%3Ccircle%20cx=%272140%27%20cy=%27-320%27%20r=%27558%27/%3E%3Ccircle%20cx=%272140%27%20cy=%27-320%27%20r=%27624%27/%3E%3Ccircle%20cx=%272140%27%20cy=%27-320%27%20r=%27690%27/%3E%3Ccircle%20cx=%272140%27%20cy=%27-320%27%20r=%27756%27/%3E%3Ccircle%20cx=%272140%27%20cy=%27-320%27%20r=%27822%27/%3E%3Ccircle%20cx=%272140%27%20cy=%27-320%27%20r=%27888%27/%3E%3Ccircle%20cx=%272140%27%20cy=%27-320%27%20r=%27954%27/%3E%3Ccircle%20cx=%272140%27%20cy=%27-320%27%20r=%271020%27/%3E%3Ccircle%20cx=%272140%27%20cy=%27-320%27%20r=%271086%27/%3E%3Ccircle%20cx=%272140%27%20cy=%27-320%27%20r=%271152%27/%3E%3Ccircle%20cx=%272140%27%20cy=%27-320%27%20r=%271218%27/%3E%3Ccircle%20cx=%272140%27%20cy=%27-320%27%20r=%271284%27/%3E%3Ccircle%20cx=%272140%27%20cy=%27-320%27%20r=%271350%27/%3E%3Ccircle%20cx=%272140%27%20cy=%27-320%27%20r=%271416%27/%3E%3Ccircle%20cx=%272140%27%20cy=%27-320%27%20r=%271482%27/%3E%3Ccircle%20cx=%272140%27%20cy=%27-320%27%20r=%271548%27/%3E%3Ccircle%20cx=%272140%27%20cy=%27-320%27%20r=%271614%27/%3E%3Ccircle%20cx=%272140%27%20cy=%27-320%27%20r=%271680%27/%3E%3C/g%3E%3C/svg%3E");
   animation: ls-breathe 40s ease-in-out infinite alternate;
 }
@@ -758,18 +761,20 @@
   position: absolute;
 }
 .bg-beams .beam {
-  left: -30%;
+  /* Drawn at a quarter of the size and scaled up: the blur then costs a sixteenth of the work. */
+  left: 67.5%;
   top: 0;
-  width: 130%;
-  height: 160%;
+  width: 32.5%;
+  height: 40%;
   transform-origin: 100% 0;
+  will-change: transform;
   background: conic-gradient(from 180deg at 100% 0%, transparent 4deg, rgba(40,220,255,.33) 6deg, rgba(40,220,255,.33) 9deg, transparent 11deg, transparent 16deg, rgba(40,220,255,.33) 18deg, rgba(40,220,255,.33) 21deg, transparent 23deg, transparent 28deg, rgba(40,220,255,.33) 30deg, rgba(40,220,255,.33) 33deg, transparent 35deg, transparent 40deg, rgba(40,220,255,.33) 42deg, rgba(40,220,255,.33) 45deg, transparent 47deg, transparent 52deg, rgba(40,220,255,.33) 54deg, rgba(40,220,255,.33) 57deg, transparent 59deg, transparent 64deg, rgba(40,220,255,.33) 66deg, rgba(40,220,255,.33) 69deg, transparent 71deg, transparent 76deg, rgba(40,220,255,.33) 78deg, rgba(40,220,255,.33) 81deg, transparent 83deg, transparent 360deg);
-  filter: blur(16px);
+  filter: blur(4px);
   animation: ls-sway 28s ease-in-out infinite alternate;
 }
 @keyframes ls-sway {
-  from { transform: rotate(-3deg); opacity: 0.85; }
-  to { transform: rotate(3deg); opacity: 1; }
+  from { transform: scale(4) rotate(-3deg); opacity: 0.85; }
+  to { transform: scale(4) rotate(3deg); opacity: 1; }
 }
 .bg-beams .scan {
   inset: 0;
@@ -887,4 +892,40 @@
 .lyric .sub {
   display: block;
   white-space: nowrap;
+}
+
+/* ------------------------------------------------------------ emphasis: words the operator tapped */
+
+.w.mk-gold {
+  color: #e3b75a;
+}
+.w.mk-coral {
+  color: #ff6b5e;
+}
+.w.mk-teal {
+  color: #35e0d0;
+}
+.w.mk-white {
+  color: #ffffff;
+}
+.w.bend {
+  display: inline-block;
+  transform: skewX(-12deg);
+}
+
+/* ------------------------------------------------------------ still previews (the console): no motion, no blur */
+
+.stage.still .bg-fill,
+.stage.still .bg-fill * {
+  animation: none !important;
+}
+.stage.still .bg-crowd .grain {
+  display: none;
+}
+.stage.still .bg-beams .beam {
+  filter: none;
+}
+.stage.still .bg,
+.stage.still .frame {
+  animation-duration: 0s !important;
 }

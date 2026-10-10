@@ -6,7 +6,7 @@ import { html, render, useState, useEffect, useRef, useMemo } from '../ui/h.js';
 import { Fit, Stage } from './stage.js';
 import { Link, normalizeCode } from './link.js';
 import { ROOM } from './config.js';
-import { emptyState, reduce, songItem, mediaItem, BACKGROUNDS, BACKGROUND_INFO, PRESETS, PRESET_INFO, STREAM_LAYOUTS, ILLUSTRATION_SIZES, lookOf } from './state.js';
+import { emptyState, reduce, songItem, mediaItem, BACKGROUNDS, BACKGROUND_INFO, PRESETS, PRESET_INFO, STREAM_LAYOUTS, ILLUSTRATION_SIZES, MARK_COLORS, lookOf, slideWords, markKey } from './state.js';
 import { loadSongs, saveSongs, visibleSongs, upsertSong, removeSong, searchSongs, mergeSongs, exportLibrary, importLibrary } from './library.js';
 import { parseRef } from './books.js';
 import { allVersions, importVersion, removeVersion, passageItem, BUILTIN_VERSIONS } from './bible.js';
@@ -125,8 +125,15 @@ function useOutputs(room, link) {
       setPerm(p);
       if (p === 'granted') setDisplays(await extraDisplays(setDisplays));
     });
-    // Open / closed changes as the operator closes windows.
-    const t = setInterval(() => tick((n) => n + 1), 2000);
+    // Open / closed changes as the operator closes windows; re-render only when it does.
+    let last = '';
+    const t = setInterval(() => {
+      const now = ['tv', 'stream'].map((k) => (wins.current[k] && !wins.current[k].closed ? '1' : '0')).join('');
+      if (now !== last) {
+        last = now;
+        tick((n) => n + 1);
+      }
+    }, 3000);
     return () => clearInterval(t);
   }, []);
 
@@ -358,7 +365,7 @@ function OutputsPanel({ room, link, info, state, act, onMore }) {
   return html`<div class="out-panel">
     <section>
       <div class="row between"><h2>TV</h2>${status('tv')}</div>
-      <div class="mini"><${Fit}><${Stage} state=${state} out="tv" /><//></div>
+      <div class="mini"><${Fit}><${Stage} state=${state} out="tv" still=${true} /><//></div>
       <div class="row wrap">
         <button class="primary" onClick=${o.openTv} title="Opens fullscreen on the TV's display">TV picture</button>
         ${canCast() && html`<button onClick=${o.cast} disabled=${o.busy === 'cast'}>Cast…</button>`}
@@ -368,7 +375,7 @@ function OutputsPanel({ room, link, info, state, act, onMore }) {
     </section>
     <section>
       <div class="row between"><h2>Stream · ATEM</h2>${status('stream')}</div>
-      <div class="mini"><${Fit}><${Stage} state=${state} out="stream" layout=${layout} background=${state.streamBg === 'tv' ? 'auto' : 'key'} /><//></div>
+      <div class="mini"><${Fit}><${Stage} state=${state} out="stream" layout=${layout} background=${state.streamBg === 'tv' ? 'auto' : 'key'} still=${true} /><//></div>
       <div class="row wrap">
         <button class="primary" onClick=${o.openStream} title="Opens fullscreen on the display that goes to the ATEM">Stream feed</button>
         <div class="seg">
@@ -393,6 +400,47 @@ function OutputsPanel({ room, link, info, state, act, onMore }) {
       ${tvOn && !o.isOpen('tv') && html`<p class="muted small">A TV is connected another way (Cast or the TV's own browser).</p>`}
     </section>
     <button class="ghost more" onClick=${onMore}>More ways: TV browser, QR codes, OBS, another remote ›</button>
+  </div>`;
+}
+
+// ------------------------------------------------------------------ emphasis: tap a word
+
+function Emphasis({ state, act }) {
+  const [pen, setPen] = useState({ c: 'gold', b: false });
+  const item = state.item;
+  const slide = item && item.slides[state.index];
+  const groups = slideWords(item, slide);
+  if (!groups.length) return null;
+  const key = markKey(item, state.index);
+  const marks = (state.marks && state.marks[key]) || {};
+  const any = Object.keys(state.marks || {}).some((k) => Object.keys(state.marks[k]).length);
+  return html`<div class="emph">
+    <div class="row wrap between">
+      <span class="small"><b>Emphasis</b> <span class="muted">· tap a word</span></span>
+      <div class="row wrap">
+        ${Object.entries(MARK_COLORS).map(
+          ([k, v]) => html`<button class=${`swatch ${pen.c === k ? 'on' : ''}`} style=${`--c:${v}`} onClick=${() => setPen({ ...pen, c: k })} aria-label=${`${k} pen`} title=${k}></button>`,
+        )}
+        <button class=${`chip ${pen.b ? 'on' : ''}`} onClick=${() => setPen({ ...pen, b: !pen.b })} title="Slant the word"><span class="bend">Bend</span></button>
+        <button class="chip ghost" onClick=${() => act({ type: 'unmark', slide: key })} disabled=${!Object.keys(marks).length}>Clear slide</button>
+        ${any && html`<button class="chip ghost" onClick=${() => act({ type: 'unmark' })}>Clear all</button>`}
+      </div>
+    </div>
+    ${groups.map(
+      (g) => html`<div class="emph-words">
+        ${g.label && html`<span class="muted small lab">${g.label}</span>`}
+        ${g.words.map((w, i) => {
+          const id = `${g.field}:${i}`;
+          const m = marks[id];
+          return html`<button
+            class=${`word ${m ? `mk-${m.c}` : ''} ${m && m.b ? 'bend' : ''}`}
+            onClick=${() => act({ type: 'mark', slide: key, word: id, mark: pen })}
+          >
+            ${w}
+          </button>`;
+        })}
+      </div>`,
+    )}
   </div>`;
 }
 
@@ -423,7 +471,7 @@ function Live({ state, act, info, goTab, onOutputs, wide }) {
 
   return html`<div class="live">
     <div class="preview" onPointerDown=${onDown} onPointerUp=${onUp}>
-      <${Fit}><${Stage} state=${state} /><//>
+      <${Fit}><${Stage} state=${state} still=${true} /><//>
       <span class="preview-tag">${state.mode === 'show' ? 'LIVE' : state.mode.toUpperCase()}</span>
     </div>
     <div class="nav">
@@ -444,6 +492,7 @@ function Live({ state, act, info, goTab, onOutputs, wide }) {
     html`<button class="note-btn" onClick=${onOutputs}>
       <b>No TV connected yet.</b> <span>Tap to put the picture on the TV or the stream ›</span>
     </button>`}
+    ${(!item || item.kind !== 'media') && html`<${Emphasis} state=${state} act=${act} />`}
     ${state.illustration &&
     html`<div class="illus-row">
       <span class="small"><b>Beside the words on the TV:</b> ${state.illustration.title}</span>
