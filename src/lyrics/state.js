@@ -136,6 +136,11 @@ export function emptyState() {
     progress: true,
     // With reveal: which verse of the slide is being read (0-based).
     sub: 0,
+    // Following the singer (songs): the words being sung now on this slide, [first, last] (one word,
+    // or a whole line), or null. Words before it have been sung; the ones after it may wait dimmer.
+    wc: null,
+    followDim: true,
+    followStream: true,
   };
 }
 
@@ -186,6 +191,67 @@ export function newer(b, a) {
 
 const count = (s) => (s.item && s.item.slides ? s.item.slides.length : 0);
 
+const songWords = (slide) => (slide && slide.lines ? slide.lines.join(' ').split(/\s+/).filter(Boolean) : []);
+
+/** Each line of a song slide as [first word, last word] in the slide's word numbering. */
+export function lineRanges(slide) {
+  const out = [];
+  let at = 0;
+  for (const l of (slide && slide.lines) || []) {
+    const n = String(l).split(/\s+/).filter(Boolean).length;
+    if (n) out.push([at, at + n - 1]);
+    at += n;
+  }
+  return out;
+}
+
+/**
+ * Moves the word cursor of a song: by one word (dir ±1) or to the next / previous line. Past the
+ * last word it goes on to the next slide's first word; before the first word, back to the previous
+ * slide's last. Changes s in place.
+ */
+function follow(s, dir, unit) {
+  const it = s.item;
+  if (!it || it.kind !== 'song' || !it.slides.length) return;
+  if (s.mode !== 'show') s.mode = 'show';
+  const slide = it.slides[s.index];
+  const n = songWords(slide).length;
+  const wc = Array.isArray(s.wc) ? s.wc : null;
+  if (unit === 'line') {
+    const lines = lineRanges(slide);
+    if (dir > 0) {
+      const nextLine = lines.find(([a]) => a > (wc ? wc[1] : -1));
+      if (nextLine) s.wc = nextLine;
+      else if (s.index < it.slides.length - 1) {
+        s.index += 1;
+        s.wc = lineRanges(it.slides[s.index])[0] || null;
+      }
+    } else {
+      const prevLine = [...lines].reverse().find(([a]) => wc && a < wc[0]);
+      if (prevLine) s.wc = prevLine;
+      else if (s.index > 0) {
+        s.index -= 1;
+        const ls = lineRanges(it.slides[s.index]);
+        s.wc = ls[ls.length - 1] || null;
+      } else s.wc = null;
+    }
+    return;
+  }
+  if (dir > 0) {
+    if (!wc) s.wc = n ? [0, 0] : null;
+    else if (wc[1] + 1 < n) s.wc = [wc[1] + 1, wc[1] + 1];
+    else if (s.index < it.slides.length - 1) {
+      s.index += 1;
+      s.wc = songWords(it.slides[s.index]).length ? [0, 0] : null;
+    }
+  } else if (wc && wc[0] > 0) s.wc = [wc[0] - 1, wc[0] - 1];
+  else if (s.index > 0) {
+    s.index -= 1;
+    const m = songWords(it.slides[s.index]).length;
+    s.wc = m ? [m - 1, m - 1] : null;
+  } else s.wc = null;
+}
+
 /** How many steps the slide takes: its verses one by one when reveal is on (scripture), else one. */
 export function stepsOf(state, index = state.index) {
   const it = state.item;
@@ -218,7 +284,17 @@ export function reduce(state, cmd, by) {
     case 'goto':
       s.index = Math.max(0, Math.min(count(s) - 1, cmd.index));
       s.sub = 0;
+      s.wc = null;
       s.mode = 'show';
+      break;
+    case 'word':
+      // Following the singer: { dir: 1 | -1, unit: 'word' | 'line' }, or { at: n } to jump, { off: true } to stop.
+      if (cmd.off) s.wc = null;
+      else if (cmd.at != null) {
+        const n = songWords(s.item && s.item.slides[s.index]).length;
+        s.wc = s.item && s.item.kind === 'song' && cmd.at >= 0 && cmd.at < n ? [cmd.at, cmd.at] : s.wc;
+        if (s.wc && s.mode !== 'show') s.mode = 'show';
+      } else follow(s, cmd.dir < 0 ? -1 : 1, cmd.unit === 'line' ? 'line' : 'word');
       break;
     case 'item':
       s.item = cmd.item;
@@ -255,11 +331,14 @@ export function reduce(state, cmd, by) {
     case 'set':
       Object.assign(s, cmd.patch);
       if (s.sub >= stepsOf(s)) s.sub = 0;
+      if (('item' in cmd.patch || 'index' in cmd.patch) && !('wc' in cmd.patch)) s.wc = null;
       break;
     default:
       return state;
   }
   if (s.index < 0) s.index = 0;
+  if (cmd.type !== 'word' && s.index !== state.index) s.wc = null;
+  if (cmd.type === 'item') s.wc = null;
   s.rev = (state.rev || 0) + 1;
   s.by = by;
   return s;
