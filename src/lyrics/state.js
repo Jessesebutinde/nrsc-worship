@@ -1,11 +1,11 @@
 // What the screen shows. Controllers (the remote, the screen's keyboard) send the whole state;
 // the newest one wins everywhere: higher rev, or the same rev from the larger client id.
 
-export const BACKGROUNDS = ['glow', 'bokeh', 'leaks', 'crowd', 'wood', 'arcs', 'beams', 'video', 'key'];
+export const BACKGROUNDS = ['glow', 'bokeh', 'leaks', 'crowd', 'wood', 'arcs', 'beams', 'bluestage', 'forest', 'darkglow', 'mono', 'film', 'video', 'key'];
 
 // Looks for lyrics. The first three are the Namasuba standard; the others bring their own
 // environment (`env`, one of the backgrounds) and their own type.
-export const PRESETS = ['worship', 'praise', 'classic', 'poster', 'sunshine', 'lines', 'beams'];
+export const PRESETS = ['worship', 'praise', 'classic', 'poster', 'sunshine', 'lines', 'beams', 'banner', 'midnight', 'pixel', 'neon', 'grateful', 'film'];
 
 export const PRESET_INFO = {
   worship: { name: 'Worship', hint: 'Hillsong-style: mixed case, lower third' },
@@ -15,6 +15,12 @@ export const PRESET_INFO = {
   sunshine: { name: 'Sunshine', hint: 'White block caps with a long shadow on sunny woodgrain', env: 'wood', subtitle: true },
   lines: { name: 'Lines', hint: 'Light teal caps and line-art on navy', env: 'arcs', subtitle: true },
   beams: { name: 'Beams', hint: 'Glowing cyan caps in light beams', env: 'beams', subtitle: true },
+  banner: { name: 'Banner', hint: 'Blue bold caps on a peach band, over a blue-lit stage', env: 'bluestage', subtitle: false },
+  midnight: { name: 'Midnight', hint: 'White bold caps straight on the blue-lit stage', env: 'bluestage', subtitle: false },
+  pixel: { name: 'Pixel', hint: 'Retro pixel caps in a dark forest with glitches', env: 'forest', subtitle: false },
+  neon: { name: 'Neon', hint: 'Huge white caps with a soft glow on black', env: 'darkglow', subtitle: true },
+  grateful: { name: 'Grateful', hint: 'Chunky slanted caps, coral and white, over a grainy mono crowd', env: 'mono', subtitle: false },
+  film: { name: 'Film', hint: 'Tall white caps with a coral rule, on black-and-white film', env: 'film', subtitle: false },
 };
 
 export const BACKGROUND_INFO = {
@@ -25,6 +31,11 @@ export const BACKGROUND_INFO = {
   wood: 'Sunny woodgrain',
   arcs: 'Teal line-art',
   beams: 'Light beams',
+  bluestage: 'Blue stage',
+  forest: 'Dark forest',
+  darkglow: 'Black with glow',
+  mono: 'Mono crowd',
+  film: 'Film grain',
   video: 'Video loop',
   key: 'Key (ATEM)',
 };

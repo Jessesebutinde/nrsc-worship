@@ -929,3 +929,298 @@
 .stage.still .frame {
   animation-duration: 0s !important;
 }
+
+/* ------------------------------------------------------------ fonts for the Pixel and Grateful looks */
+
+@font-face {
+  font-family: 'VT323';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url(fonts/vt323-latin-ext.woff2) format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF,
+    U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'VT323';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url(fonts/vt323-latin.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Archivo Black';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url(fonts/archivo-black-latin-ext.woff2) format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF,
+    U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Archivo Black';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url(fonts/archivo-black-latin.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* ------------------------------------------------------------ more environments */
+
+.bg-bluestage,
+.bg-forest,
+.bg-darkglow,
+.bg-mono,
+.bg-film {
+  overflow: hidden;
+}
+.bg-bluestage i,
+.bg-forest i,
+.bg-darkglow i,
+.bg-mono i,
+.bg-film i {
+  position: absolute;
+  inset: 0;
+}
+.bg-bluestage .grain,
+.bg-forest .grain,
+.bg-mono .grain,
+.bg-film .grain {
+  inset: -4%;
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%27320%27%20height=%27320%27%3E%3Cfilter%20id=%27n%27%3E%3CfeTurbulence%20type=%27fractalNoise%27%20baseFrequency=%270.9%27%20numOctaves=%272%27%20stitchTiles=%27stitch%27/%3E%3CfeColorMatrix%20values=%270%200%200%200%201%20%200%200%200%200%201%20%200%200%200%200%201%20%200%200%200%200.6%200%27/%3E%3C/filter%3E%3Crect%20width=%27320%27%20height=%27320%27%20filter=%27url%28%23n%29%27/%3E%3C/svg%3E");
+  background-size: 320px 320px;
+  mix-blend-mode: overlay;
+  animation: ls-grain 0.7s steps(3) infinite;
+}
+
+/* Blue stage: cold blue wash, a bright truss of lights, haze. */
+.bg-bluestage {
+  background: radial-gradient(ellipse 70% 60% at 50% 40%, #1b55b8 0%, #0b2d6e 45%, #051636 100%);
+}
+.bg-bluestage .glows {
+  inset: -10%;
+  background:
+    radial-gradient(ellipse 30% 25% at 30% 18%, rgba(140, 200, 255, 0.55), transparent 70%),
+    radial-gradient(ellipse 30% 25% at 72% 20%, rgba(140, 200, 255, 0.45), transparent 70%),
+    radial-gradient(ellipse 60% 30% at 50% 100%, rgba(10, 60, 160, 0.9), transparent 70%);
+  will-change: transform;
+  animation: ls-drift 30s ease-in-out infinite alternate;
+}
+.bg-bluestage .truss {
+  top: 14%;
+  height: 60px;
+  background-image: radial-gradient(circle, #fff 0 7px, rgba(255, 255, 255, 0.5) 9px, transparent 16px);
+  background-size: 56px 60px;
+  background-position: center;
+  filter: drop-shadow(0 0 18px rgba(200, 230, 255, 0.9));
+  mask-image: linear-gradient(to right, transparent, #000 15%, #000 85%, transparent);
+  animation: ls-twinkle 3s ease-in-out infinite alternate;
+}
+@keyframes ls-twinkle {
+  from { opacity: 0.75; }
+  to { opacity: 1; }
+}
+.bg-bluestage .haze {
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.08), transparent 40%, rgba(0, 10, 40, 0.4));
+}
+.bg-bluestage .grain {
+  opacity: 0.22;
+}
+
+/* Dark forest: tree silhouettes against a teal dusk, glitch blocks blinking. */
+.bg-forest {
+  background: linear-gradient(to bottom, #12332f 0%, #0a1f1f 55%, #050e0f 100%);
+}
+.bg-forest .trees {
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%271920%27%20height=%271080%27%20viewBox=%270%200%201920%201080%27%3E%3Cg%20fill=%27%2304100f%27%3E%3Cpath%20d=%27M-60%20906%20L11%20682%20L82%20906%20Z%27/%3E%3Cpath%20d=%27M-60%20773%20L-2%20550%20L56%20773%20Z%27/%3E%3Cpath%20d=%27M-60%20640%20L-15%20417%20L31%20640%20Z%27/%3E%3Cpath%20d=%27M-60%20508%20L-27%20284%20L5%20508%20Z%27/%3E%3Crect%20x=%271%27%20y=%27871%27%20width=%2720%27%20height=%27209%27/%3E%3Cpath%20d=%27M65%20897%20L162%20662%20L258%20897%20Z%27/%3E%3Cpath%20d=%27M65%20757%20L144%20523%20L223%20757%20Z%27/%3E%3Cpath%20d=%27M65%20618%20L127%20384%20L189%20618%20Z%27/%3E%3Cpath%20d=%27M65%20479%20L109%20244%20L154%20479%20Z%27/%3E%3Crect%20x=%27152%27%20y=%27860%27%20width=%2720%27%20height=%27220%27/%3E%3Cpath%20d=%27M212%20982%20L296%20855%20L381%20982%20Z%27/%3E%3Cpath%20d=%27M212%20907%20L281%20781%20L351%20907%20Z%27/%3E%3Cpath%20d=%27M212%20832%20L266%20706%20L320%20832%20Z%27/%3E%3Cpath%20d=%27M212%20757%20L251%20631%20L290%20757%20Z%27/%3E%3Crect%20x=%27286%27%20y=%27962%27%20width=%2720%27%20height=%27118%27/%3E%3Cpath%20d=%27M323%20902%20L381%20674%20L439%20902%20Z%27/%3E%3Cpath%20d=%27M323%20767%20L371%20539%20L418%20767%20Z%27/%3E%3Cpath%20d=%27M323%20631%20L360%20404%20L397%20631%20Z%27/%3E%3Cpath%20d=%27M323%20496%20L350%20268%20L376%20496%20Z%27/%3E%3Crect%20x=%27371%27%20y=%27866%27%20width=%2720%27%20height=%27214%27/%3E%3Cpath%20d=%27M423%20971%20L502%20831%20L580%20971%20Z%27/%3E%3Cpath%20d=%27M423%20888%20L487%20748%20L552%20888%20Z%27/%3E%3Cpath%20d=%27M423%20805%20L473%20665%20L523%20805%20Z%27/%3E%3Cpath%20d=%27M423%20722%20L459%20582%20L495%20722%20Z%27/%3E%3Crect%20x=%27492%27%20y=%27949%27%20width=%2720%27%20height=%27131%27/%3E%3Cpath%20d=%27M563%20954%20L642%20792%20L721%20954%20Z%27/%3E%3Cpath%20d=%27M563%20857%20L628%20695%20L693%20857%20Z%27/%3E%3Cpath%20d=%27M563%20761%20L614%20599%20L664%20761%20Z%27/%3E%3Cpath%20d=%27M563%20665%20L599%20503%20L636%20665%20Z%27/%3E%3Crect%20x=%27632%27%20y=%27928%27%20width=%2720%27%20height=%27152%27/%3E%3Cpath%20d=%27M712%20972%20L804%20834%20L895%20972%20Z%27/%3E%3Cpath%20d=%27M712%20890%20L787%20752%20L862%20890%20Z%27/%3E%3Cpath%20d=%27M712%20808%20L771%20670%20L829%20808%20Z%27/%3E%3Cpath%20d=%27M712%20726%20L754%20588%20L796%20726%20Z%27/%3E%3Crect%20x=%27794%27%20y=%27950%27%20width=%2720%27%20height=%27130%27/%3E%3Cpath%20d=%27M823%20984%20L892%20860%20L960%20984%20Z%27/%3E%3Cpath%20d=%27M823%20910%20L879%20787%20L935%20910%20Z%27/%3E%3Cpath%20d=%27M823%20837%20L867%20713%20L911%20837%20Z%27/%3E%3Cpath%20d=%27M823%20763%20L855%20640%20L886%20763%20Z%27/%3E%3Crect%20x=%27882%27%20y=%27964%27%20width=%2720%27%20height=%27116%27/%3E%3Cpath%20d=%27M955%20949%20L1022%20782%20L1088%20949%20Z%27/%3E%3Cpath%20d=%27M955%20850%20L1010%20683%20L1064%20850%20Z%27/%3E%3Cpath%20d=%27M955%20751%20L998%20583%20L1040%20751%20Z%27/%3E%3Cpath%20d=%27M955%20651%20L986%20484%20L1016%20651%20Z%27/%3E%3Crect%20x=%271012%27%20y=%27923%27%20width=%2720%27%20height=%27157%27/%3E%3Cpath%20d=%27M1084%20965%20L1144%20817%20L1203%20965%20Z%27/%3E%3Cpath%20d=%27M1084%20877%20L1133%20730%20L1182%20877%20Z%27/%3E%3Cpath%20d=%27M1084%20790%20L1122%20642%20L1160%20790%20Z%27/%3E%3Cpath%20d=%27M1084%20702%20L1111%20554%20L1139%20702%20Z%27/%3E%3Crect%20x=%271134%27%20y=%27942%27%20width=%2720%27%20height=%27138%27/%3E%3Cpath%20d=%27M1181%20906%20L1276%20683%20L1370%20906%20Z%27/%3E%3Cpath%20d=%27M1181%20774%20L1258%20551%20L1336%20774%20Z%27/%3E%3Cpath%20d=%27M1181%20642%20L1241%20419%20L1302%20642%20Z%27/%3E%3Cpath%20d=%27M1181%20509%20L1224%20287%20L1268%20509%20Z%27/%3E%3Crect%20x=%271266%27%20y=%27871%27%20width=%2720%27%20height=%27209%27/%3E%3Cpath%20d=%27M1317%20969%20L1380%20827%20L1443%20969%20Z%27/%3E%3Cpath%20d=%27M1317%20885%20L1369%20743%20L1420%20885%20Z%27/%3E%3Cpath%20d=%27M1317%20800%20L1357%20658%20L1398%20800%20Z%27/%3E%3Cpath%20d=%27M1317%20716%20L1346%20574%20L1375%20716%20Z%27/%3E%3Crect%20x=%271370%27%20y=%27947%27%20width=%2720%27%20height=%27133%27/%3E%3Cpath%20d=%27M1397%20984%20L1465%20862%20L1533%20984%20Z%27/%3E%3Cpath%20d=%27M1397%20912%20L1453%20790%20L1509%20912%20Z%27/%3E%3Cpath%20d=%27M1397%20839%20L1441%20717%20L1484%20839%20Z%27/%3E%3Cpath%20d=%27M1397%20767%20L1428%20645%20L1460%20767%20Z%27/%3E%3Crect%20x=%271455%27%20y=%27965%27%20width=%2720%27%20height=%27115%27/%3E%3Cpath%20d=%27M1504%20964%20L1570%20816%20L1635%20964%20Z%27/%3E%3Cpath%20d=%27M1504%20876%20L1558%20727%20L1611%20876%20Z%27/%3E%3Cpath%20d=%27M1504%20788%20L1546%20639%20L1588%20788%20Z%27/%3E%3Cpath%20d=%27M1504%20700%20L1534%20551%20L1564%20700%20Z%27/%3E%3Crect%20x=%271560%27%20y=%27941%27%20width=%2720%27%20height=%27139%27/%3E%3Cpath%20d=%27M1621%20945%20L1688%20772%20L1756%20945%20Z%27/%3E%3Cpath%20d=%27M1621%20842%20L1676%20670%20L1732%20842%20Z%27/%3E%3Cpath%20d=%27M1621%20740%20L1664%20567%20L1707%20740%20Z%27/%3E%3Cpath%20d=%27M1621%20637%20L1652%20464%20L1683%20637%20Z%27/%3E%3Crect%20x=%271678%27%20y=%27918%27%20width=%2720%27%20height=%27162%27/%3E%3Cpath%20d=%27M1770%20898%20L1865%20666%20L1960%20898%20Z%27/%3E%3Cpath%20d=%27M1770%20760%20L1848%20527%20L1926%20760%20Z%27/%3E%3Cpath%20d=%27M1770%20622%20L1831%20389%20L1892%20622%20Z%27/%3E%3Cpath%20d=%27M1770%20484%20L1814%20251%20L1857%20484%20Z%27/%3E%3Crect%20x=%271855%27%20y=%27862%27%20width=%2720%27%20height=%27218%27/%3E%3Cpath%20d=%27M1876%20962%20L1975%20810%20L2074%20962%20Z%27/%3E%3Cpath%20d=%27M1876%20872%20L1957%20721%20L2038%20872%20Z%27/%3E%3Cpath%20d=%27M1876%20782%20L1939%20631%20L2003%20782%20Z%27/%3E%3Cpath%20d=%27M1876%20692%20L1922%20541%20L1967%20692%20Z%27/%3E%3Crect%20x=%271965%27%20y=%27938%27%20width=%2720%27%20height=%27142%27/%3E%3Cpath%20d=%27M1981%20936%20L2055%20752%20L2129%20936%20Z%27/%3E%3Cpath%20d=%27M1981%20827%20L2042%20642%20L2102%20827%20Z%27/%3E%3Cpath%20d=%27M1981%20717%20L2028%20533%20L2076%20717%20Z%27/%3E%3Cpath%20d=%27M1981%20608%20L2015%20423%20L2049%20608%20Z%27/%3E%3Crect%20x=%272045%27%20y=%27907%27%20width=%2720%27%20height=%27173%27/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 1920px 1080px;
+  background-position: center bottom;
+}
+.bg-forest .g1,
+.bg-forest .g2,
+.bg-forest .g3 {
+  inset: auto;
+  background: rgba(220, 240, 235, 0.55);
+  mix-blend-mode: screen;
+  animation: ls-glitch 7s steps(1) infinite;
+}
+.bg-forest .g1 { left: 44%; top: 8%; width: 20%; height: 7%; }
+.bg-forest .g2 { left: 52%; top: 18%; width: 9%; height: 4%; animation-delay: -2.3s; }
+.bg-forest .g3 { left: 38%; top: 24%; width: 14%; height: 3%; animation-delay: -4.1s; }
+@keyframes ls-glitch {
+  0% { opacity: 0; }
+  6% { opacity: 0.8; transform: translateX(0); }
+  8% { opacity: 0.4; transform: translateX(3%); }
+  11% { opacity: 0; }
+  60% { opacity: 0; }
+  62% { opacity: 0.6; transform: translateX(-2%); }
+  64% { opacity: 0; }
+  100% { opacity: 0; }
+}
+.bg-forest .grain {
+  opacity: 0.3;
+}
+
+/* Black with a soft glow low on the screen. */
+.bg-darkglow {
+  background: #000;
+}
+.bg-darkglow .glow {
+  inset: -10%;
+  background: radial-gradient(ellipse 45% 28% at 50% 92%, rgba(120, 220, 220, 0.38), transparent 70%);
+  will-change: transform;
+  animation: ls-breathe 18s ease-in-out infinite alternate;
+}
+
+/* Mono crowd: a grainy black-and-white crowd under a bright stage, tinted coral at the edges. */
+.bg-mono {
+  background: #050505;
+}
+.bg-mono .light {
+  background: linear-gradient(to bottom, #d9d9d9 0%, #9a9a9a 30%, #2a2a2a 62%, #050505 80%);
+}
+.bg-mono .crowd {
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%271920%27%20height=%271080%27%20viewBox=%270%200%201920%201080%27%3E%3Cg%20fill=%27%230a0a0a%27%3E%3Ccircle%20cx=%27908%27%20cy=%27751%27%20r=%2734%27/%3E%3Crect%20x=%27874%27%20y=%27779%27%20width=%2768%27%20height=%27400%27/%3E%3Crect%20x=%27860%27%20y=%27597%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%27909%27%20cy=%27601%27%20r=%2736%27/%3E%3Crect%20x=%27873%27%20y=%27631%27%20width=%2772%27%20height=%27400%27/%3E%3Ccircle%20cx=%271222%27%20cy=%27580%27%20r=%2738%27/%3E%3Crect%20x=%271184%27%20y=%27612%27%20width=%2776%27%20height=%27400%27/%3E%3Crect%20x=%271274%27%20y=%27436%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%27281%27%20cy=%27646%27%20r=%2733%27/%3E%3Crect%20x=%27248%27%20y=%27673%27%20width=%2766%27%20height=%27400%27/%3E%3Crect%20x=%27227%27%20y=%27548%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%271545%27%20cy=%27756%27%20r=%2729%27/%3E%3Crect%20x=%271516%27%20y=%27779%27%20width=%2758%27%20height=%27400%27/%3E%3Ccircle%20cx=%27379%27%20cy=%27674%27%20r=%2739%27/%3E%3Crect%20x=%27340%27%20y=%27707%27%20width=%2778%27%20height=%27400%27/%3E%3Ccircle%20cx=%271542%27%20cy=%27696%27%20r=%2732%27/%3E%3Crect%20x=%271510%27%20y=%27722%27%20width=%2764%27%20height=%27400%27/%3E%3Crect%20x=%271589%27%20y=%27601%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%27368%27%20cy=%27562%27%20r=%2739%27/%3E%3Crect%20x=%27329%27%20y=%27595%27%20width=%2778%27%20height=%27400%27/%3E%3Crect%20x=%27417%27%20y=%27410%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%27244%27%20cy=%27572%27%20r=%2733%27/%3E%3Crect%20x=%27211%27%20y=%27599%27%20width=%2766%27%20height=%27400%27/%3E%3Crect%20x=%27176%27%20y=%27482%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%27208%27%20cy=%27661%27%20r=%2732%27/%3E%3Crect%20x=%27176%27%20y=%27687%27%20width=%2764%27%20height=%27400%27/%3E%3Crect%20x=%27166%27%20y=%27502%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%271839%27%20cy=%27568%27%20r=%2742%27/%3E%3Crect%20x=%271797%27%20y=%27604%27%20width=%2784%27%20height=%27400%27/%3E%3Crect%20x=%271878%27%20y=%27453%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%27820%27%20cy=%27595%27%20r=%2738%27/%3E%3Crect%20x=%27782%27%20y=%27627%27%20width=%2776%27%20height=%27400%27/%3E%3Crect%20x=%27760%27%20y=%27487%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%27313%27%20cy=%27581%27%20r=%2727%27/%3E%3Crect%20x=%27286%27%20y=%27602%27%20width=%2754%27%20height=%27400%27/%3E%3Crect%20x=%27252%27%20y=%27457%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%271469%27%20cy=%27577%27%20r=%2729%27/%3E%3Crect%20x=%271440%27%20y=%27600%27%20width=%2758%27%20height=%27400%27/%3E%3Ccircle%20cx=%27784%27%20cy=%27681%27%20r=%2731%27/%3E%3Crect%20x=%27753%27%20y=%27706%27%20width=%2762%27%20height=%27400%27/%3E%3Ccircle%20cx=%2748%27%20cy=%27747%27%20r=%2742%27/%3E%3Crect%20x=%276%27%20y=%27783%27%20width=%2784%27%20height=%27400%27/%3E%3Ccircle%20cx=%271546%27%20cy=%27604%27%20r=%2737%27/%3E%3Crect%20x=%271509%27%20y=%27635%27%20width=%2774%27%20height=%27400%27/%3E%3Crect%20x=%271582%27%20y=%27488%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%27783%27%20cy=%27661%27%20r=%2744%27/%3E%3Crect%20x=%27739%27%20y=%27699%27%20width=%2788%27%20height=%27400%27/%3E%3Ccircle%20cx=%27736%27%20cy=%27728%27%20r=%2726%27/%3E%3Crect%20x=%27710%27%20y=%27748%27%20width=%2752%27%20height=%27400%27/%3E%3Crect%20x=%27691%27%20y=%27582%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%27512%27%20cy=%27726%27%20r=%2728%27/%3E%3Crect%20x=%27484%27%20y=%27748%27%20width=%2756%27%20height=%27400%27/%3E%3Crect%20x=%27537%27%20y=%27570%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%271565%27%20cy=%27588%27%20r=%2726%27/%3E%3Crect%20x=%271539%27%20y=%27608%27%20width=%2752%27%20height=%27400%27/%3E%3Crect%20x=%271602%27%20y=%27454%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%271412%27%20cy=%27687%27%20r=%2744%27/%3E%3Crect%20x=%271368%27%20y=%27725%27%20width=%2788%27%20height=%27400%27/%3E%3Ccircle%20cx=%27830%27%20cy=%27678%27%20r=%2729%27/%3E%3Crect%20x=%27801%27%20y=%27701%27%20width=%2758%27%20height=%27400%27/%3E%3Ccircle%20cx=%27781%27%20cy=%27750%27%20r=%2743%27/%3E%3Crect%20x=%27738%27%20y=%27787%27%20width=%2786%27%20height=%27400%27/%3E%3Crect%20x=%27808%27%20y=%27627%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%2720%27%20cy=%27585%27%20r=%2731%27/%3E%3Crect%20x=%27-11%27%20y=%27610%27%20width=%2762%27%20height=%27400%27/%3E%3Crect%20x=%27-21%27%20y=%27477%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%27-16%27%20cy=%27584%27%20r=%2727%27/%3E%3Crect%20x=%27-43%27%20y=%27605%27%20width=%2754%27%20height=%27400%27/%3E%3Crect%20x=%2715%27%20y=%27493%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%271939%27%20cy=%27741%27%20r=%2735%27/%3E%3Crect%20x=%271904%27%20y=%27770%27%20width=%2770%27%20height=%27400%27/%3E%3Crect%20x=%271965%27%20y=%27640%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%271490%27%20cy=%27711%27%20r=%2729%27/%3E%3Crect%20x=%271461%27%20y=%27734%27%20width=%2758%27%20height=%27400%27/%3E%3Crect%20x=%271516%27%20y=%27572%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%271164%27%20cy=%27646%27%20r=%2734%27/%3E%3Crect%20x=%271130%27%20y=%27674%27%20width=%2768%27%20height=%27400%27/%3E%3Ccircle%20cx=%271762%27%20cy=%27813%27%20r=%2737%27/%3E%3Crect%20x=%271725%27%20y=%27844%27%20width=%2774%27%20height=%27400%27/%3E%3Crect%20x=%271716%27%20y=%27656%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%27222%27%20cy=%27648%27%20r=%2728%27/%3E%3Crect%20x=%27194%27%20y=%27670%27%20width=%2756%27%20height=%27400%27/%3E%3Crect%20x=%27157%27%20y=%27557%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%27375%27%20cy=%27650%27%20r=%2741%27/%3E%3Crect%20x=%27334%27%20y=%27685%27%20width=%2782%27%20height=%27400%27/%3E%3Crect%20x=%27399%27%20y=%27538%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%271083%27%20cy=%27806%27%20r=%2744%27/%3E%3Crect%20x=%271039%27%20y=%27844%27%20width=%2788%27%20height=%27400%27/%3E%3Ccircle%20cx=%271056%27%20cy=%27594%27%20r=%2726%27/%3E%3Crect%20x=%271030%27%20y=%27614%27%20width=%2752%27%20height=%27400%27/%3E%3Ccircle%20cx=%271158%27%20cy=%27783%27%20r=%2743%27/%3E%3Crect%20x=%271115%27%20y=%27820%27%20width=%2786%27%20height=%27400%27/%3E%3Crect%20x=%271092%27%20y=%27624%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%271916%27%20cy=%27713%27%20r=%2728%27/%3E%3Crect%20x=%271888%27%20y=%27735%27%20width=%2756%27%20height=%27400%27/%3E%3Ccircle%20cx=%271435%27%20cy=%27630%27%20r=%2729%27/%3E%3Crect%20x=%271406%27%20y=%27653%27%20width=%2758%27%20height=%27400%27/%3E%3Crect%20x=%271471%27%20y=%27533%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%27963%27%20cy=%27587%27%20r=%2726%27/%3E%3Crect%20x=%27937%27%20y=%27607%27%20width=%2752%27%20height=%27400%27/%3E%3Crect%20x=%27992%27%20y=%27450%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%271645%27%20cy=%27813%27%20r=%2733%27/%3E%3Crect%20x=%271612%27%20y=%27840%27%20width=%2766%27%20height=%27400%27/%3E%3Crect%20x=%271588%27%20y=%27717%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%271348%27%20cy=%27769%27%20r=%2739%27/%3E%3Crect%20x=%271309%27%20y=%27802%27%20width=%2778%27%20height=%27400%27/%3E%3Ccircle%20cx=%27125%27%20cy=%27656%27%20r=%2727%27/%3E%3Crect%20x=%2798%27%20y=%27677%27%20width=%2754%27%20height=%27400%27/%3E%3Ccircle%20cx=%27331%27%20cy=%27603%27%20r=%2728%27/%3E%3Crect%20x=%27303%27%20y=%27625%27%20width=%2756%27%20height=%27400%27/%3E%3Crect%20x=%27370%27%20y=%27445%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%27932%27%20cy=%27573%27%20r=%2728%27/%3E%3Crect%20x=%27904%27%20y=%27595%27%20width=%2756%27%20height=%27400%27/%3E%3Crect%20x=%27954%27%20y=%27424%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%271913%27%20cy=%27789%27%20r=%2744%27/%3E%3Crect%20x=%271869%27%20y=%27827%27%20width=%2788%27%20height=%27400%27/%3E%3Crect%20x=%271950%27%20y=%27682%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%27177%27%20cy=%27738%27%20r=%2733%27/%3E%3Crect%20x=%27144%27%20y=%27765%27%20width=%2766%27%20height=%27400%27/%3E%3Crect%20x=%27133%27%20y=%27620%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%27182%27%20cy=%27616%27%20r=%2727%27/%3E%3Crect%20x=%27155%27%20y=%27637%27%20width=%2754%27%20height=%27400%27/%3E%3Crect%20x=%27133%27%20y=%27513%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%271477%27%20cy=%27572%27%20r=%2740%27/%3E%3Crect%20x=%271437%27%20y=%27606%27%20width=%2780%27%20height=%27400%27/%3E%3Ccircle%20cx=%27370%27%20cy=%27749%27%20r=%2728%27/%3E%3Crect%20x=%27342%27%20y=%27771%27%20width=%2756%27%20height=%27400%27/%3E%3Crect%20x=%27416%27%20y=%27593%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%271358%27%20cy=%27661%27%20r=%2726%27/%3E%3Crect%20x=%271332%27%20y=%27681%27%20width=%2752%27%20height=%27400%27/%3E%3Crect%20x=%271290%27%20y=%27558%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%271023%27%20cy=%27773%27%20r=%2727%27/%3E%3Crect%20x=%27996%27%20y=%27794%27%20width=%2754%27%20height=%27400%27/%3E%3Ccircle%20cx=%27933%27%20cy=%27721%27%20r=%2733%27/%3E%3Crect%20x=%27900%27%20y=%27748%27%20width=%2766%27%20height=%27400%27/%3E%3Ccircle%20cx=%271355%27%20cy=%27700%27%20r=%2730%27/%3E%3Crect%20x=%271325%27%20y=%27724%27%20width=%2760%27%20height=%27400%27/%3E%3Crect%20x=%271306%27%20y=%27559%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%271866%27%20cy=%27563%27%20r=%2735%27/%3E%3Crect%20x=%271831%27%20y=%27592%27%20width=%2770%27%20height=%27400%27/%3E%3Ccircle%20cx=%27153%27%20cy=%27575%27%20r=%2736%27/%3E%3Crect%20x=%27117%27%20y=%27605%27%20width=%2772%27%20height=%27400%27/%3E%3Crect%20x=%27194%27%20y=%27444%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%27967%27%20cy=%27737%27%20r=%2738%27/%3E%3Crect%20x=%27929%27%20y=%27769%27%20width=%2776%27%20height=%27400%27/%3E%3Crect%20x=%27921%27%20y=%27609%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%27905%27%20cy=%27798%27%20r=%2744%27/%3E%3Crect%20x=%27861%27%20y=%27836%27%20width=%2788%27%20height=%27400%27/%3E%3Crect%20x=%27932%27%20y=%27666%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%27783%27%20cy=%27590%27%20r=%2736%27/%3E%3Crect%20x=%27747%27%20y=%27620%27%20width=%2772%27%20height=%27400%27/%3E%3Crect%20x=%27822%27%20y=%27497%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%27346%27%20cy=%27668%27%20r=%2737%27/%3E%3Crect%20x=%27309%27%20y=%27699%27%20width=%2774%27%20height=%27400%27/%3E%3Ccircle%20cx=%27241%27%20cy=%27603%27%20r=%2736%27/%3E%3Crect%20x=%27205%27%20y=%27633%27%20width=%2772%27%20height=%27400%27/%3E%3Ccircle%20cx=%271930%27%20cy=%27757%27%20r=%2732%27/%3E%3Crect%20x=%271898%27%20y=%27783%27%20width=%2764%27%20height=%27400%27/%3E%3Ccircle%20cx=%271539%27%20cy=%27731%27%20r=%2728%27/%3E%3Crect%20x=%271511%27%20y=%27753%27%20width=%2756%27%20height=%27400%27/%3E%3Crect%20x=%271576%27%20y=%27612%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%271735%27%20cy=%27725%27%20r=%2742%27/%3E%3Crect%20x=%271693%27%20y=%27761%27%20width=%2784%27%20height=%27400%27/%3E%3Ccircle%20cx=%27908%27%20cy=%27561%27%20r=%2735%27/%3E%3Crect%20x=%27873%27%20y=%27590%27%20width=%2770%27%20height=%27400%27/%3E%3Ccircle%20cx=%27380%27%20cy=%27596%27%20r=%2733%27/%3E%3Crect%20x=%27347%27%20y=%27623%27%20width=%2766%27%20height=%27400%27/%3E%3Crect%20x=%27403%27%20y=%27495%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%27265%27%20cy=%27728%27%20r=%2731%27/%3E%3Crect%20x=%27234%27%20y=%27753%27%20width=%2762%27%20height=%27400%27/%3E%3Ccircle%20cx=%271003%27%20cy=%27766%27%20r=%2738%27/%3E%3Crect%20x=%27965%27%20y=%27798%27%20width=%2776%27%20height=%27400%27/%3E%3Crect%20x=%27949%27%20y=%27631%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%27695%27%20cy=%27698%27%20r=%2732%27/%3E%3Crect%20x=%27663%27%20y=%27724%27%20width=%2764%27%20height=%27400%27/%3E%3Crect%20x=%27735%27%20y=%27585%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%271597%27%20cy=%27651%27%20r=%2744%27/%3E%3Crect%20x=%271553%27%20y=%27689%27%20width=%2788%27%20height=%27400%27/%3E%3Crect%20x=%271640%27%20y=%27559%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3Ccircle%20cx=%27530%27%20cy=%27805%27%20r=%2742%27/%3E%3Crect%20x=%27488%27%20y=%27841%27%20width=%2784%27%20height=%27400%27/%3E%3Ccircle%20cx=%271346%27%20cy=%27778%27%20r=%2728%27/%3E%3Crect%20x=%271318%27%20y=%27800%27%20width=%2756%27%20height=%27400%27/%3E%3Crect%20x=%271292%27%20y=%27631%27%20width=%2716%27%20height=%27200%27%20rx=%278%27/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 1920px 1080px;
+  background-position: center;
+  filter: blur(1.5px);
+}
+.bg-mono .grain {
+  opacity: 0.55;
+}
+.bg-mono .tint {
+  box-shadow: inset 0 0 260px rgba(242, 107, 91, 0.55);
+}
+
+/* Film grain: dark grey with a drifting light leak, heavy grain, vignette. */
+.bg-film {
+  background: #1c1c1c;
+}
+.bg-film .leak {
+  inset: -20%;
+  background: radial-gradient(ellipse 40% 55% at 20% 30%, rgba(255, 255, 255, 0.28), transparent 65%);
+  will-change: transform;
+  animation: ls-drift 26s ease-in-out infinite alternate;
+}
+.bg-film .grain {
+  opacity: 0.5;
+}
+
+/* ------------------------------------------------------------ the looks' type */
+
+/* Banner: blue bold capitals on a peach band. */
+.p-banner .lyric {
+  top: 50%;
+  transform: translateY(-50%);
+  left: 0;
+  right: 0;
+  padding: 44px 90px 52px;
+  background: #f3a58a;
+  color: #2b58b5;
+  font-weight: 700;
+  font-size: calc(150px * var(--fs, 1));
+  line-height: 1;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  text-shadow: none;
+}
+
+/* Midnight: white bold capitals on the blue stage. */
+.p-midnight .lyric {
+  top: 50%;
+  transform: translateY(-50%);
+  font-weight: 800;
+  font-size: calc(150px * var(--fs, 1));
+  line-height: 1;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  color: #fff;
+  text-shadow: 0 8px 40px rgba(0, 20, 80, 0.8);
+}
+
+/* Pixel: terminal capitals. */
+.p-pixel .lyric {
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: 'VT323', monospace;
+  font-weight: 400;
+  font-size: calc(200px * var(--fs, 1));
+  line-height: 0.95;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #f2f7f2;
+  text-shadow: 0 0 14px rgba(255, 255, 255, 0.6), 0 0 2px #fff;
+}
+
+/* Neon: huge white capitals with a soft glow. */
+.p-neon .lyric {
+  top: 50%;
+  transform: translateY(-50%);
+  font-weight: 900;
+  font-size: calc(160px * var(--fs, 1));
+  line-height: 0.98;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  color: #fff;
+  text-shadow: 0 0 18px #fff, 0 0 60px rgba(140, 235, 235, 0.75), 0 0 140px rgba(60, 200, 220, 0.5);
+}
+.p-neon .sub {
+  font-size: calc(30px * var(--fs, 1));
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  margin-top: 0.9em;
+  text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+}
+
+/* Grateful: chunky slanted capitals, coral then white, line by line. */
+.p-grateful .lyric {
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: 'Archivo Black', 'Montserrat', sans-serif;
+  font-weight: 400;
+  font-size: calc(150px * var(--fs, 1));
+  line-height: 1.02;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #f1f1f1;
+  text-shadow: 0 6px 30px rgba(0, 0, 0, 0.7);
+}
+/* Slanted with a skew on the words, not the lines, so a line measures its true width. */
+.p-grateful .lyric .ln .w {
+  display: inline-block;
+  transform: skewX(-8deg);
+}
+.p-grateful .lyric .ln:nth-child(odd) {
+  color: #f26b5b;
+}
+.p-grateful .lyric {
+  /* The skew leans each word about 4% past its box: measure with that much to spare. */
+  padding: 0 70px;
+}
+
+/* Film: tall white capitals with a coral rule. */
+.p-film .lyric {
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: 'Anton', 'Montserrat', sans-serif;
+  font-weight: 400;
+  font-size: calc(200px * var(--fs, 1));
+  line-height: 0.98;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  color: #f4f4f4;
+  text-shadow: 0 6px 30px rgba(0, 0, 0, 0.7);
+  padding-bottom: 0.14em;
+}
+.p-film .lyric::after {
+  content: '';
+  display: block;
+  width: 3em;
+  height: 0.07em;
+  margin: 0.08em auto 0;
+  background: #f26b5b;
+}

@@ -1,0 +1,4 @@
+Archivo Black
+Copyright (c) 2013-2016 Omnibus-Type (www.omnibus-type.com | omnibus.type@gmail.com)
+https://github.com/Omnibus-Type/ArchivoBlack
+Licensed under the SIL Open Font License, Version 1.1: https://openfontlicense.org

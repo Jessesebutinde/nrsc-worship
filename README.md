@@ -121,8 +121,8 @@ switches in Settings → Words. The stream feed keeps its fixed lower-third size
 
 ## Looks
 
-A song shows with one of seven looks. The first three are the Namasuba standard on the TV background; the other
-four bring their own moving environment and type, after the lyric videos the team likes:
+A song shows with one of thirteen looks. The first three are the Namasuba standard on the TV background; the
+others bring their own moving environment and type, after the lyric videos the team likes:
 
 | Look | Type | Environment |
 | --- | --- | --- |
@@ -133,6 +133,12 @@ four bring their own moving environment and type, after the lyric videos the tea
 | Sunshine | white block capitals with a long shadow, a green diamond behind, the title in spaced caps | sunny woodgrain drifting, a teal corner |
 | Lines | light teal capitals, wide spacing | teal line-art curves breathing on navy |
 | Beams | glowing cyan capitals | cyan light beams sweeping, scanlines, a lit floor |
+| Banner | blue bold capitals on a peach band | a blue-lit stage with a twinkling truss of lights, haze, grain |
+| Midnight | white bold capitals | the same blue-lit stage |
+| Pixel | retro terminal capitals (VT323) with a soft glow | a dark forest of tree silhouettes, glitch blocks blinking |
+| Neon | huge white capitals with a cyan glow, the title in small caps | black with a soft glow low on the screen |
+| Grateful | chunky slanted capitals (Archivo Black), coral and white line by line | a grainy black-and-white crowd under a bright stage, coral at the edges |
+| Film | tall white capitals (Anton) with a coral rule | dark grey film with a drifting light leak, heavy grain |
 
 Pick a look per song in the editor, or force one for every song with the chips under the live slide (**Song's
 own** goes back). The four environments are also in Settings → TV background, so scripture can use them too.
@@ -246,7 +252,7 @@ sandbox, so the first real test is yours.
 # Running and deploying
 
 There's no build step: it's static HTML plus ES modules, with Preact and htm vendored in `vendor/`. Lyric Slides
-bundles Montserrat and Anton (both SIL Open Font License) in `lyrics/fonts/`, so the screen works offline.
+bundles Montserrat, Anton, VT323 and Archivo Black (all SIL Open Font License) in `lyrics/fonts/`, so the screen works offline.
 
 ```sh
 npm start        # serves on http://localhost:8080

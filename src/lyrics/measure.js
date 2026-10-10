@@ -9,6 +9,12 @@ const SIZES = {
   sunshine: { weight: 900, size: 150, spacing: 0.06, upper: true },
   lines: { weight: 300, size: 120, spacing: 0.14, upper: true },
   beams: { weight: 500, size: 140, spacing: 0.08, upper: true },
+  banner: { weight: 700, size: 150, spacing: -0.02, upper: true },
+  midnight: { weight: 800, size: 150, spacing: -0.02, upper: true },
+  pixel: { weight: 400, size: 200, spacing: 0.04, upper: true, family: 'VT323' },
+  neon: { weight: 900, size: 160, spacing: -0.01, upper: true },
+  grateful: { weight: 400, size: 150, spacing: 0.02, upper: true, family: 'Archivo Black' },
+  film: { weight: 400, size: 200, spacing: 0.01, upper: true, family: 'Anton' },
 };
 export const LINE_WIDTH = 1920 - 2 * 96; // inside the 5% safe area
 
@@ -19,7 +25,7 @@ let ready = null;
 export function fontsReady() {
   if (!ready) {
     ready = Promise.all(
-      [...[300, 500, 600, 800, 900].map((w) => document.fonts.load(`${w} 100px Montserrat`, 'AaŋŊ')), document.fonts.load('400 100px Anton', 'Aa')],
+      [...[300, 500, 600, 800, 900].map((w) => document.fonts.load(`${w} 100px Montserrat`, 'AaŋŊ')), document.fonts.load('400 100px Anton', 'Aa'), document.fonts.load('400 100px VT323', 'Aa'), document.fonts.load("400 100px 'Archivo Black'", 'Aa')],
     ).catch(() => null);
   }
   return ready;
