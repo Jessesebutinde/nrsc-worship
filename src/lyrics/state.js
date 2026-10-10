@@ -45,22 +45,50 @@ export const lookOf = (state, item) => (state && state.look && PRESET_INFO[state
 
 export const STREAM_LAYOUTS = { lowerthird: 'Lower thirds', full: 'Full screen' };
 
-// Looks for scripture: each brings its own environment and layout; the type is a serif.
-export const SCRIPTURE_LOOKS = ['ink', 'parchment', 'manuscript', 'linen', 'dawn', 'water', 'chalk', 'kitenge', 'candle', 'blueprint', 'scroll'];
-
+// Looks for scripture: each brings its own environment (`env`) and layout; the type is a serif.
+// `group`: 'page' (the text on the environment) or 'card' (the text on a card or object);
+// `sw`: two swatch colours for the picker.
 export const SCRIPTURE_INFO = {
-  ink: { name: 'Ink & stone', hint: 'Stacked on dark stone, gold bar at the left (the default)', env: 'stone', light: false },
-  parchment: { name: 'Parchment', hint: 'Two columns on aged paper, Luganda left and English right', env: 'parchment', light: true },
-  manuscript: { name: 'Manuscript', hint: 'An illuminated drop cap, book and chapter above', env: 'vellum', light: false },
-  linen: { name: 'Linen card', hint: 'The top language on a cream card, the other on a band below', env: 'linen', light: false },
-  dawn: { name: 'Dawn', hint: 'Stacked over a sunrise sky', env: 'dawn', light: false },
-  water: { name: 'Watercolour', hint: 'Dark ink on a light wash: mornings, children, weddings', env: 'watercolour', light: true },
-  chalk: { name: 'Chalk & slate', hint: 'Centred chalk on a green board, for teaching', env: 'slate', light: false },
-  kitenge: { name: 'Kitenge', hint: 'Woven bands in Ugandan colours top and bottom', env: 'kitenge', light: false },
-  candle: { name: 'Candlelight', hint: 'One warm pool of light: evening, prayer, communion', env: 'candle', light: false },
-  blueprint: { name: 'Blueprint', hint: 'Fine ruling and engraved circles on navy, for youth and conferences', env: 'blueprint', light: false },
-  scroll: { name: 'Scroll', hint: 'One verse big on a parchment ribbon, for the memory verse', env: 'night', light: true },
+  ink: { name: 'Ink & stone', hint: 'Stacked on dark stone, gold bar at the left (the default)', env: 'stone', group: 'page', sw: ['#24242e', '#e3b75a'] },
+  parchment: { name: 'Parchment', hint: 'Two columns on aged paper, Luganda left and English right', env: 'parchment', group: 'page', sw: ['#e9dcbd', '#8a6a1e'] },
+  manuscript: { name: 'Manuscript', hint: 'An illuminated drop cap, book and chapter above', env: 'vellum', group: 'page', sw: ['#0d0b10', '#e3b75a'] },
+  dawn: { name: 'Dawn', hint: 'Stacked over a sunrise sky', env: 'dawn', group: 'page', sw: ['#a9633a', '#f0c070'] },
+  water: { name: 'Watercolour', hint: 'Dark ink on a light wash: mornings, children, weddings', env: 'watercolour', group: 'page', sw: ['#f4efe6', '#8a3b2a'] },
+  chalk: { name: 'Chalk & slate', hint: 'Centred chalk on a green board, for teaching', env: 'slate', group: 'page', sw: ['#2c3a33', '#f0e6b0'] },
+  kitenge: { name: 'Kitenge', hint: 'Woven bands in Ugandan colours top and bottom', env: 'kitenge', group: 'page', sw: ['#c8102e', '#d4a017'] },
+  candle: { name: 'Candlelight', hint: 'One warm pool of light: evening, prayer, communion', env: 'candle', group: 'page', sw: ['#2a1606', '#f0b860'] },
+  blueprint: { name: 'Blueprint', hint: 'Fine ruling and engraved circles on navy, for youth and conferences', env: 'blueprint', group: 'page', sw: ['#0f2238', '#9cd0f2'] },
+  // Cards: the text sits on a card, a page or an object.
+  linen: { name: 'Linen card', hint: 'The top language on a cream card, the other on a band below', env: 'linen', group: 'card', sw: ['#1d2440', '#f3ecdc'] },
+  scroll: { name: 'Scroll', hint: 'One verse big on a parchment ribbon, for the memory verse', env: 'night', group: 'card', sw: ['#141324', '#efe4c8'] },
+  twin: { name: 'Twin cards', hint: 'Two cards side by side: Luganda on a cream card, English on a dark one', env: 'plum', group: 'card', sw: ['#f3ecdc', '#2a1d33'] },
+  stack: { name: 'Card stack', hint: 'Luganda on a large card, English on a second card tucked below it', env: 'deepteal', group: 'card', sw: ['#ffffff', '#c9a14a'] },
+  bible: { name: 'Open Bible', hint: 'An open book: Luganda on the left page, English on the right', env: 'desk', group: 'card', sw: ['#f1e6cc', '#5a3a22'] },
+  glass: { name: 'Frosted glass', hint: 'A glass card over soft aurora colours', env: 'auroraglow', group: 'card', sw: ['#4b3a8f', '#7fd6ff'] },
+  royal: { name: 'Royal', hint: 'Black card in a double gold frame on deep velvet', env: 'velvet', group: 'card', sw: ['#4a0e1c', '#d8b25a'] },
+  marble: { name: 'Marble', hint: 'White marble with a gold edge under a spotlight', env: 'charcoal', group: 'card', sw: ['#ece9e4', '#c9a14a'] },
+  cathedral: { name: 'Cathedral', hint: 'An arched window card with stained-glass light behind', env: 'nave', group: 'card', sw: ['#122046', '#ffb84d'] },
+  starlight: { name: 'Starlight', hint: 'A night sky of stars, a midnight card with a gold hairline', env: 'stars', group: 'card', sw: ['#0a1030', '#e9c46a'] },
+  glory: { name: 'Glory', hint: 'Rays of light behind a white card', env: 'glory', group: 'card', sw: ['#f5c66b', '#ffffff'] },
+  limestone: { name: 'Jerusalem stone', hint: 'A chiselled limestone block on warm sand', env: 'sand', group: 'card', sw: ['#e3d3b0', '#7a5a2e'] },
+  waters: { name: 'Still waters', hint: 'Deep teal with moving light, a calm card above it', env: 'waters', group: 'card', sw: ['#0b3b45', '#7fe0d8'] },
+  mountain: { name: 'Mountain', hint: 'Misty mountains at first light, a pale card', env: 'mountains', group: 'card', sw: ['#c9d6e3', '#2f4a68'] },
+  fire: { name: "Refiner's fire", hint: 'A charcoal card glowing at the edges, embers below', env: 'embers', group: 'card', sw: ['#1a1412', '#ff7a2f'] },
+  bold: { name: 'Bold', hint: 'A modern white card with a hard black shadow on sunny yellow', env: 'pop', group: 'card', sw: ['#f6c945', '#111111'] },
+  split: { name: 'Split', hint: 'An emerald panel with the chapter number, the text beside it', env: 'forestdark', group: 'card', sw: ['#0f5c4a', '#f3ecdc'] },
+  bookmark: { name: 'Bookmark', hint: 'A page with a crimson ribbon holding the verse number', env: 'leather', group: 'card', sw: ['#3a2418', '#a3162b'] },
+  tablet: { name: 'Tablet', hint: 'Words carved in a stone tablet at dusk', env: 'dusk', group: 'card', sw: ['#8d8a86', '#3b2d4f'] },
+  epistle: { name: 'Epistle', hint: 'A letter sealed in red wax, for the letters of the apostles', env: 'desk', group: 'card', sw: ['#f2e7cf', '#9b1c1c'] },
+  gallery: { name: 'Gallery', hint: 'A small museum card under a spotlight, the reference as its caption', env: 'wall', group: 'card', sw: ['#3a3631', '#ffffff'] },
+  aurora: { name: 'Aurora edge', hint: 'A black card with a glowing colour edge', env: 'void', group: 'card', sw: ['#050507', '#b26bff'] },
+  papercut: { name: 'Papercut', hint: 'A paper card over layered paper hills', env: 'paperhills', group: 'card', sw: ['#e7f1ec', '#1f5f5b'] },
+  lubugo: { name: 'Lubugo', hint: 'Ugandan barkcloth: cream words on a woven bark panel', env: 'barkcloth', group: 'card', sw: ['#7a3e1d', '#f2d7a6'] },
 };
+export const SCRIPTURE_LOOKS = Object.keys(SCRIPTURE_INFO);
+export const SCRIPTURE_GROUPS = { page: 'Pages', card: 'Cards' };
+
+// How scripture comes on and goes off (crossfades only in calm mode and the previews).
+export const SCRIPTURE_MOTIONS = { gentle: 'Gentle', page: 'Page turn', type: 'Typing', reveal: 'Reveal', slide: 'Slide' };
 
 /** The look scripture shows with. */
 export const scriptureLookOf = (state) => (state && SCRIPTURE_INFO[state.sLook] ? state.sLook : 'ink');
@@ -101,6 +129,9 @@ export function emptyState() {
     // the slide; verses already read dim) and the thin progress bar through the passage.
     sLook: 'ink',
     sFont: 'serif',
+    // How scripture comes on and goes off; quotation marks around each slide's text.
+    sMotion: 'reveal',
+    quotes: true,
     reveal: true,
     progress: true,
     // With reveal: which verse of the slide is being read (0-based).

@@ -3,7 +3,7 @@
 
 import { html, useState, useEffect, useRef, useLayoutEffect } from '../ui/h.js';
 import { CHURCH_NAME } from './config.js';
-import { shownOn, lookOf, PRESET_INFO, SCRIPTURE_INFO, scriptureLookOf, stepsOf } from './state.js';
+import { shownOn, lookOf, PRESET_INFO, SCRIPTURE_INFO, SCRIPTURE_MOTIONS, scriptureLookOf, stepsOf } from './state.js';
 import { idbGet } from './idb.js';
 import { splitAtPauses } from './split.js';
 import { lineWidth, fontsReady as loadFonts } from './measure.js';
@@ -152,6 +152,9 @@ function Background({ bg, video }) {
 // Every environment except the plain ones gets film grain and a slow light sweep on top.
 const Texture = () => html`<i class="grain"></i><i class="sweep"></i>`;
 const Grain = () => html`<i class="grain"></i>`;
+const CARD_ENVS = new Set(
+  ['plum', 'deepteal', 'desk', 'auroraglow', 'velvet', 'charcoal', 'nave', 'stars', 'glory', 'sand', 'waters', 'mountains', 'embers', 'pop', 'forestdark', 'leather', 'dusk', 'wall', 'void', 'paperhills', 'barkcloth'],
+);
 
 function BgLayer({ kind, video }) {
   if (kind === 'none') return null;
@@ -194,6 +197,9 @@ function BgLayer({ kind, video }) {
   if (kind === 'candle') return html`<div class="bg-fill bg-candle"><i class="light"></i><${Grain} /><div class="vig"></div></div>`;
   if (kind === 'blueprint') return html`<div class="bg-fill bg-blueprint"><i class="rules"></i><i class="circle"></i><${Grain} /></div>`;
   if (kind === 'night') return html`<div class="bg-fill bg-night"><${Grain} /><div class="vig"></div></div>`;
+  // The card looks' environments: up to three shapes, grain and a vignette, all drawn in CSS.
+  if (CARD_ENVS.has(kind))
+    return html`<div class=${`bg-fill bg-s bg-${kind}`}><i class="i1"></i><i class="i2"></i><i class="i3"></i><${Grain} /><div class="vig"></div></div>`;
   return html`<div class="bg-fill bg-glow"><div class="glow"></div><${Texture} /><div class="vig"></div></div>`;
 }
 
@@ -214,8 +220,9 @@ const hash = (a, b = 0) => {
  * `seed` (the slide number) and `hero` (the word to swell) are for songs; each word also gets a font
  * class and a fly-in direction that the Mix and Wild settings may use.
  */
-function Words({ text, field, start = 0, marks, seed = 0, hero = -1 }) {
+function Words({ text, field, start = 0, marks, seed = 0, hero = -1, head = null, tail = null }) {
   const words = String(text || '').split(/\s+/).filter(Boolean);
+  const last = words.length - 1;
   return words.map((w, i) => {
     const n = start + i;
     const m = marks && marks[`${field}:${n}`];
@@ -226,7 +233,10 @@ function Words({ text, field, start = 0, marks, seed = 0, hero = -1 }) {
     const fy = Math.round(Math.sin(angle) * r * 0.7);
     const fr = Math.round((hash(seed + 29, n) - 0.5) * 80);
     const cls = `w f${font}${n === hero ? ' hero' : ''}${m ? ` mk-${m.c}${m.b ? ' bend' : ''}` : ''}`;
-    return html`${i > 0 ? ' ' : ''}<span class=${cls} style=${`--wi:${n};--fx:${fx}px;--fy:${fy}px;--fr:${fr}deg`}>${w}</span>`;
+    // head / tail (an opening quote, a closing one, the dots of a verse that goes on) stay with their word.
+    return html`${i > 0 ? ' ' : ''}<span class=${cls} style=${`--wi:${n};--li:${i};--fx:${fx}px;--fy:${fy}px;--fr:${fr}deg`}
+      >${i === 0 ? head : null}${w}${i === last ? tail : null}</span
+    >`;
   });
 }
 
@@ -321,28 +331,36 @@ function SongFrame({ item, index, lt, fill, caps, preset, textW, fontsReady, mar
 }
 
 /**
- * The verses on one slide, with a small number where a new verse starts (only when there are
- * several). With `reveal`, verse `cur` is the one being read: the ones before it dim, the ones
- * after it wait unseen (keeping their room, so nothing moves when they come). `dropCap` hands the
- * first letter to the look's illuminated capital.
+ * The verses on one slide. Each verse starts with its number; a verse continued from the slide
+ * before starts with "…", one that goes on to the next slide ends with "…" (`contOut`); with
+ * `quotes` the slide's text is “quoted”. With `reveal`, verse `cur` is the one being read: the
+ * ones before it dim, the ones after it wait unseen (keeping their room, so nothing moves when they
+ * come). `dropCap` hands the first letter to the look's illuminated capital (its number rides on it).
  */
-function Verses({ slide, field, marks, cur = 0, reveal = false, dropCap = false }) {
+function Verses({ slide, field, marks, cur = 0, reveal = false, dropCap = false, quotes = false, contOut = false }) {
   const segs = (slide.verses || [{ verse: slide.verse, part: slide.part, primary: slide.primary, secondary: slide.secondary }]).filter(
     (g) => g[field],
   );
-  const many = new Set(segs.map((g) => g.verse)).size > 1;
   const key = field === 'primary' ? 'p' : 's';
+  const lastI = segs.length - 1;
   let start = 0;
   return segs.map((g, i) => {
     const state = !reveal ? '' : i < cur ? ' read' : i === cur ? ' cur' : ' next';
     const text = String(g[field]);
-    const cap = dropCap && i === 0 ? text.charAt(0) : '';
+    const whole = !g.part || g.part === 'a';
+    const cap = dropCap && i === 0 && whole ? text.charAt(0) : '';
+    const q = quotes && !cap;
+    const vn = whole && html`<sup class="vn">${g.verse}</sup>`;
+    const head = i === 0 && (q || !whole) ? html`${q && html`<span class="q">“</span>`}${!whole && html`<span class="el">…</span>`}` : null;
+    const tail = i === lastI && (q || contOut) ? html`${contOut && html`<span class="el">…</span>`}${q && html`<span class="q">”</span>`}` : null;
     const el = html`${i > 0 ? ' ' : ''}<span class=${`vs${state}`}
-        >${many && (!g.part || g.part === 'a') && html`<sup class="vn">${g.verse}</sup>`}${cap && html`<span class="cap">${cap}</span>`}<${Words}
+        >${cap ? html`<span class="cap">${vn}${cap}</span>` : vn}<${Words}
           text=${cap ? text.slice(1) : text}
           field=${key}
           start=${start}
           marks=${marks}
+          head=${head}
+          tail=${tail}
       /></span>`;
     start += text.split(/\s+/).filter(Boolean).length;
     return el;
@@ -350,18 +368,25 @@ function Verses({ slide, field, marks, cur = 0, reveal = false, dropCap = false 
 }
 
 // Room for the text in each scripture look (the environment's frame or heading takes the rest),
-// and how far fill mode may grow it (narrow columns grow less, so their lines stay readable).
+// and how far fill mode may grow it (narrow columns and cards grow less, so they stay elegant).
 const SCRIP_H = { kitenge: 760, manuscript: 640, scroll: 700, parchment: 760 };
 const SCRIP_MAX = { parchment: 1.4, blueprint: 1.3, scroll: 1.4 };
+const CARD_MAX = 1.3;
+// Card looks with one card per language, and the cards with their own way of showing the reference.
+const TWO_CARDS = new Set(['twin', 'stack', 'bible']);
 
-function ScriptureFrame({ item, index, lt, fill, textW, fontsReady, marks, look = 'ink', sub = 0, reveal = false }) {
+/** The three dots that say the passage goes on. */
+const Dots = ({ cls = 'smore' }) => html`<div class=${cls} aria-label="continues"><i></i><i></i><i></i></div>`;
+
+function ScriptureFrame({ item, index, lt, fill, textW, fontsReady, marks, look = 'ink', sub = 0, reveal = false, quotes = true }) {
   const s = item.slides[index];
   const box = useRef(null);
   const steps = s && s.verses ? s.verses.length : 1;
   const cur = Math.min(sub, steps - 1);
+  const card = SCRIPTURE_INFO[look] && SCRIPTURE_INFO[look].group === 'card' && look !== 'linen' && look !== 'scroll';
   // Beside an illustration the Scroll's ribbon leaves room for its reference underneath.
   const availH = (SCRIP_H[look] || SAFE_H * 0.92) * (look === 'scroll' && textW < SAFE_W ? 0.8 : 1);
-  useFill(box, { on: fill && !lt, max: SCRIP_MAX[look] || 1.8, min: 0.8, availH }, [
+  useFill(box, { on: fill && !lt, max: card ? CARD_MAX : SCRIP_MAX[look] || 1.8, min: 0.8, availH }, [
     s && s.ref,
     s && s.primary,
     s && s.secondary,
@@ -369,26 +394,76 @@ function ScriptureFrame({ item, index, lt, fill, textW, fontsReady, marks, look 
     textW,
     fontsReady,
     look,
+    quotes,
   ]);
   if (!s) return null;
   const more = index < item.slides.length - 1;
-  const v = (field, extra = {}) => html`<${Verses} slide=${s} field=${field} marks=${marks} cur=${cur} reveal=${reveal} ...${extra} />`;
+  // Does this slide stop in the middle of a verse (in this language)?
+  const nf = more && item.slides[index + 1].verses && item.slides[index + 1].verses[0];
+  const contOut = (field) => Boolean(nf && nf.part && nf.part !== 'a' && nf[field]);
+  const v = (field, extra = {}) =>
+    html`<${Verses} slide=${s} field=${field} marks=${marks} cur=${cur} reveal=${reveal} quotes=${quotes} contOut=${contOut(field)} ...${extra} />`;
   if (lt)
     return html`<div class="lt-band lt-scrip">
-      <div class="ln ref" style="--i:0"><span class="tab">${s.ref}</span>${more && html`<span class="more">continues ›</span>`}</div>
+      <div class="ln ref" style="--i:0"><span class="tab">${s.ref}</span>${more && html`<${Dots} cls="more" />`}</div>
       ${s.primary && html`<div class="ln pri" style="--i:1">${v('primary')}</div>`}
       ${s.secondary && html`<div class="ln sec" style="--i:2">${v('secondary')}</div>`}
     </div>`;
-  const cont = more && html`<div class="smore">continues ›</div>`;
+  const cont = more && html`<${Dots} />`;
   const sec = (label = true) =>
     s.secondary &&
     html`<div class="ln sec" style="--i:2">
       ${label && item.secondaryLabel && s.primary && html`<span class="ver">${item.secondaryLabel}</span>`}${v('secondary')}
     </div>`;
+  const pri = s.primary && html`<div class="ln pri" style="--i:1">${v('primary')}</div>`;
+  const ref = html`<div class="ln ref" style="--i:0">${s.ref}</div>`;
+  const vs = s.verses || [];
+  const range = vs.length ? (vs[0].verse === vs[vs.length - 1].verse ? `${vs[0].verse}` : `${vs[0].verse}–${vs[vs.length - 1].verse}`) : '';
+
+  if (card && TWO_CARDS.has(look)) {
+    // One card (or page) per language.
+    const bible = look === 'bible';
+    // Twin cards each carry their own half of the reference ("Yokaana 11 : 33" | "John 11 : 33 · KJV").
+    const [refA, refB] = String(s.ref).split(' · ');
+    const twin = look === 'twin' && refB;
+    const label2 = twin ? [refB, item.secondaryLabel].filter(Boolean).join(' · ') : item.secondaryLabel;
+    const head1 = bible && item.book
+      ? html`<div class="ln rh" style="--i:0">${item.book.lg} ${item.chapter}</div>`
+      : twin
+        ? html`<div class="ln ref" style="--i:0">${refA}</div>`
+        : ref;
+    const head2 = bible && item.book
+      ? html`<div class="ln rh" style="--i:0">${item.book.en === 'Psalms' ? 'Psalm' : item.book.en} ${item.chapter}</div>`
+      : label2 && html`<div class="ln ver2" style="--i:0">${label2}</div>`;
+    return html`<div class=${`scrip lc2 l-${look}`} ref=${box}>
+        <div class="card c1"><i class="d1"></i>${head1}${pri}</div>
+        ${s.secondary && html`<div class="card c2"><i class="d1"></i>${head2}<div class="ln sec" style="--i:2">${v('secondary')}</div></div>`}
+      </div>
+      ${cont}`;
+  }
+  if (card) {
+    const body = look === 'split'
+      ? html`<div class="side ln" style="--i:0">
+            <div class="bk">${item.book ? item.book.lg : ''}</div>
+            <div class="chn">${item.chapter || ''}</div>
+            <div class="vv">${item.book ? (item.book.en === 'Psalms' ? 'Psalm' : item.book.en) : ''} · ${range}</div>
+          </div>
+          <div class="body">${pri}${sec(false)}</div>`
+      : html`${look !== 'gallery' && ref}${pri}${look === 'tablet' && s.primary && s.secondary && html`<i class="rule"></i>`}${sec(false)}`;
+    return html`<div class=${`scrip lc l-${look}`} ref=${box}>
+        <div class="card">
+          <i class="d1"></i><i class="d2"></i><i class="d3"></i><i class="d4"></i>
+          ${look === 'bookmark' && html`<i class="ribbon"><b>${range}</b></i>`}
+          ${body}
+        </div>
+        ${look === 'gallery' && html`<div class="ln caption" style="--i:3">${s.ref}</div>`}
+      </div>
+      ${cont}`;
+  }
   if (look === 'parchment')
     return html`<div class="ln sref" style="--i:0">${s.ref}</div>
       <div class=${`scrip l-${look}`} ref=${box}>
-        ${s.primary && html`<div class="ln pri" style="--i:1">${v('primary')}</div>`}
+        ${pri}
         <i class="rule"></i>
         ${sec(false)}
       </div>
@@ -409,8 +484,8 @@ function ScriptureFrame({ item, index, lt, fill, textW, fontsReady, marks, look 
   if (look === 'linen')
     return html`<div class=${`scrip l-${look}`} ref=${box}>
         <div class="card">
-          <div class="ln ref" style="--i:0">${s.ref}</div>
-          ${s.primary && html`<div class="ln pri" style="--i:1">${v('primary')}</div>`}
+          ${ref}
+          ${pri}
           ${!s.primary && sec(false)}
         </div>
         ${s.primary &&
@@ -421,7 +496,7 @@ function ScriptureFrame({ item, index, lt, fill, textW, fontsReady, marks, look 
   if (look === 'scroll')
     return html`<div class=${`scrip l-${look}`} ref=${box}>
         <div class="ribbon">
-          ${s.primary && html`<div class="ln pri" style="--i:1">${v('primary')}</div>`}
+          ${pri}
           ${sec(false)}
         </div>
       </div>
@@ -430,8 +505,8 @@ function ScriptureFrame({ item, index, lt, fill, textW, fontsReady, marks, look 
   // Stacked: Ink & stone, Dawn, Watercolour, Chalk & slate, Kitenge, Candlelight, Blueprint.
   return html`<div class=${`scrip l-${look}`} ref=${box}>
       <div class="bar"></div>
-      <div class="ln ref" style="--i:0">${s.ref}</div>
-      ${s.primary && html`<div class="ln pri" style="--i:1">${v('primary')}</div>`}
+      ${ref}
+      ${pri}
       ${look === 'chalk' && s.primary && s.secondary && html`<i class="ul"></i>`}
       ${sec()}
     </div>
@@ -515,6 +590,9 @@ const LogoFrame = () => html`<div class="logo">
   <div class="ln logo-sub" style="--i:2">Society Church · Kampala</div>
 </div>`;
 
+// How long a scripture frame takes to leave, by motion (the page turn and the slide travel further).
+const SMO_OUT = { gentle: 250, page: 760, type: 300, reveal: 420, slide: 520 };
+
 const marksFor = (st, item, index) => (st.marks && item ? st.marks[`${item.id}:${index}`] : null) || null;
 
 /** Which frame the state shows on an output: { key, kind, preset } (preset = the song's look). */
@@ -561,7 +639,8 @@ export function Stage({ state, out = 'preview', layout = 'full', background = 'a
   const f = frameOf(st, { titleFor: lowerThird ? null : titleFor, out });
   const showLogo = out !== 'stream' && background !== 'none';
   const key = f.kind === 'logo' && !showLogo ? 'none' : f.key;
-  const outMs = OUT_MS[f.kind === 'song' ? f.preset : f.kind] || 300;
+  const motion = SCRIPTURE_MOTIONS[st.sMotion] ? st.sMotion : 'reveal';
+  const outMs = f.kind === 'scripture' ? SMO_OUT[motion] : OUT_MS[f.kind === 'song' ? f.preset : f.kind] || 300;
   const frames = useSwap(key, { f, item: st.item, index: st.index || 0 }, outMs, key === 'none');
 
   // The illustration sits beside the words on the TV (never on the stream feed).
@@ -596,6 +675,8 @@ export function Stage({ state, out = 'preview', layout = 'full', background = 'a
     safe ? 'show-safe' : '',
     `sl-${sLook}`,
     `sfont-${st.sFont === 'sans' ? 'sans' : 'serif'}`,
+    lowerThird ? '' : `smo-${motion}`,
+    st.reveal !== false ? 'reveal-on' : '',
     keyed ? 'keyed' : '',
   ].join(' ');
   return html`<div class=${cls} style=${`--illus-w:${illusW}px`}>
@@ -603,11 +684,11 @@ export function Stage({ state, out = 'preview', layout = 'full', background = 'a
     ${frames.map(({ key: k, data, leaving, outMs: o }) => {
       const kind = data.f.kind;
       const preset = kind === 'song' ? data.f.preset : kind;
-      return html`<div key=${k} class=${`frame k-${kind} p-${preset} ${leaving ? 'out' : 'in'}`} style=${`--out:${o}ms`}>
+      return html`<div key=${k} class=${`frame k-${kind} p-${preset} ik-${data.item ? data.item.kind : 'none'} ${leaving ? 'out' : 'in'}`} style=${`--out:${o}ms`}>
         ${kind === 'song' &&
         html`<${SongFrame} item=${data.item} index=${data.index} lt=${lowerThird} fill=${fill} caps=${st.caps !== false} preset=${data.f.preset} textW=${textW} fontsReady=${fontsReady} marks=${marksFor(st, data.item, data.index)} hero=${Boolean(st.hero)} place=${st.place || 'center'} mix=${Boolean(st.mixFonts)} />`}
         ${kind === 'scripture' &&
-        html`<${ScriptureFrame} item=${data.item} index=${data.index} lt=${lowerThird} fill=${fill} textW=${textW} fontsReady=${fontsReady} marks=${marksFor(st, data.item, data.index)} look=${sLook} sub=${data.index === (st.index || 0) ? st.sub || 0 : steps} reveal=${st.reveal !== false} />`}
+        html`<${ScriptureFrame} item=${data.item} index=${data.index} lt=${lowerThird} fill=${fill} textW=${textW} fontsReady=${fontsReady} marks=${marksFor(st, data.item, data.index)} look=${sLook} sub=${data.index === (st.index || 0) ? st.sub || 0 : steps} reveal=${st.reveal !== false} quotes=${st.quotes !== false} />`}
         ${kind === 'media' && html`<${MediaFrame} item=${data.item} index=${data.index} live=${out !== 'preview' && !leaving} />`}
         ${kind === 'title' && html`<${TitleFrame} item=${data.item} />`}
         ${kind === 'logo' && html`<${LogoFrame} />`}

@@ -204,49 +204,108 @@ background instead of black. OBS gets a transparent browser-source link.
 
 Type `Zabbuli 23:1-4`, `Psalm 23`, `Yk 3:16` or `1 Yokaana 1:9`; Luganda and English book names and short forms all
 work. The TV shows the two languages in a serif (Source Serif 4, or Montserrat with the **Sans** switch): the
-reference in small caps, the language read aloud large, the other smaller below. By default the text **continues
+reference in small caps, the language read aloud large, the other a little smaller below. By default the text **continues
 across slides at the same size until it ends**: short verses share a slide (with small verse numbers), and a verse
 too long for the look's lines splits at a natural pause, both languages at the same point (23 : 4a, 23 : 4b). Every
 slide is measured in the real font at the real size for the look that is up, so nothing ever shrinks or wraps. Turn
 **Continue the text** off for one verse per slide.
 
+### Finding a passage by words or by voice
+
+The Scripture box takes a reference (`Zabbuli 23:1-4`, `Ps 23`, `Yk 3:16`) **or a few words of the verse** in
+Luganda or English: "the lord is my shep", "Mukama ye musumba", "faith is the substance". Suggestions appear as you
+type, best first, with the reference in both languages and the matching words underlined; **↑ ↓** and **Enter**
+pick one, **to end** shows from that verse to the end of the chapter. Old and modern English count as the same
+("leads" finds "leadeth", "you" finds "thee"), and the **World English Bible** (modern English, public domain, also
+a third built-in version) is always searched too, so "love is patient, love is kind" finds 1 Corinthians 13:4. The
+search runs on the laptop; the books load in the
+background the first time (most-read first, all 66 in about two seconds on a good connection).
+
+Press the **microphone** and speak: a reference ("Psalm twenty three verse one to four", "John three sixteen",
+"first John chapter one verse nine", "Zabbuli amakumi abiri mu ssatu olunyiriri olusooka") appears as **Heard …**
+with a Show button; anything else is searched like typed words, so saying a line of the verse brings it up. Turn on
+**Put a reference on the screen as soon as it is heard** to skip the click. The mic keeps listening until you switch
+it off; the language (English or Luganda) is chosen in the bar while it listens. It uses the browser's own speech
+recognition: Chrome and Edge only, and Chrome sends the sound to Google to turn it into text, so it needs the
+internet. Luganda recognition depends on the browser offering it.
+
 ### Scripture looks
 
-Scripture has eleven looks of its own, each with its own page and layout (chips under the live slide, and in
-Settings → Scripture). Changing the look lays the passage out again for it and stays on the verse being read.
+Scripture has 33 looks of its own: 9 **pages** (the words on the environment) and 24 **cards** (the words on a card,
+a book or a stone). Under the live slide, **‹ ›** steps through them and **All looks** opens a gallery of live
+thumbnails; Settings → Scripture has the same controls. Changing the look lays the passage out again for it and stays
+on the verse being read. A look always brings its page; on the keyed stream output the light pages turn their ink
+white (cards keep their own colours).
 
-| Look | Page | Layout |
-| --- | --- | --- |
-| **Ink & stone** (default) | dark stone, film grain | stacked, gold bar at the left |
-| **Parchment** | aged paper | two columns: Luganda left, English right |
-| **Manuscript** | black with a warm glow | book and chapter above, an illuminated drop cap, an ornament below |
-| **Linen card** | navy linen weave | the language read aloud on a cream card, the other on a band below |
-| **Dawn** | sunrise sky | stacked, gold bar |
-| **Watercolour** | light wash with paper grain | dark ink, rust reference; mornings, children, weddings |
-| **Chalk & slate** | green board with a chalk frame | centred chalk, a short underline between the languages |
-| **Kitenge** | woven bands in Ugandan colours top and bottom | stacked, gold bar |
-| **Candlelight** | one warm pool of light | centred, italic English; evening, prayer, communion |
-| **Blueprint** | navy with fine ruling and engraved circles | light serif, sans English; youth, conferences |
-| **Scroll** | night, a parchment ribbon across the middle | one verse big, the reference below; the memory verse |
+| Pages | |
+| --- | --- |
+| **Ink & stone** (default) | dark stone, film grain; stacked, gold bar at the left |
+| **Parchment** | aged paper; two columns, Luganda left and English right |
+| **Manuscript** | book and chapter above, an illuminated drop cap carrying the verse number |
+| **Dawn** | sunrise sky; stacked, gold bar |
+| **Watercolour** | light wash; dark ink, rust reference (mornings, children, weddings) |
+| **Chalk & slate** | green board; centred chalk, an underline between the languages |
+| **Kitenge** | woven bands in Ugandan colours top and bottom |
+| **Candlelight** | one warm pool of light; centred, italic English (evening, prayer, communion) |
+| **Blueprint** | navy ruling and engraved circles; light serif, sans English (youth, conferences) |
 
-A look always brings its page (a light page is the look); on the keyed stream output the light looks turn their ink
-white. The TV shows a 2 s **title card** before a passage (book in both languages, chapter and verses) in the look's
-type. A small **continues ›** marks a slide that goes on. The lower third on the stream keeps its band and takes the
-serif.
+| Cards | |
+| --- | --- |
+| **Linen card** | the language read aloud on a cream card, the other on a band below |
+| **Scroll** | one verse big on a parchment ribbon (the memory verse) |
+| **Twin cards** | one card per language side by side: Luganda on cream, English on a dark card, each with its own reference |
+| **Card stack** | one card per language: Luganda on a large white card, English on a second card tucked below it |
+| **Open Bible** | an open book on a desk: Luganda on the left page, English on the right, running heads, red verse numbers |
+| **Frosted glass** | a glass card over soft aurora colours |
+| **Royal** | a black card in a double gold frame with diamond corners, on velvet |
+| **Marble** | white marble with a gold edge under a spotlight |
+| **Cathedral** | an arched window card with a gold cross, stained-glass light and rays behind |
+| **Starlight** | a midnight card with a gold hairline under a sky of stars |
+| **Glory** | a white card with rays of light turning slowly behind it |
+| **Jerusalem stone** | a chiselled limestone block on warm sand |
+| **Still waters** | a calm teal card over deep water with moving light |
+| **Mountain** | a pale card over misty mountains at first light |
+| **Refiner's fire** | a charcoal card glowing at its edges, embers rising |
+| **Bold** | a white card with a hard black shadow on sunny yellow |
+| **Split** | an emerald panel with the book and chapter number, the words beside it |
+| **Bookmark** | a page with a crimson ribbon holding the verse number |
+| **Tablet** | words carved in a stone tablet at dusk |
+| **Epistle** | a letter with a red margin and a wax seal (the letters of the apostles) |
+| **Gallery** | a small museum card under a spotlight, the reference as its caption |
+| **Aurora edge** | a black card with a glowing colour edge |
+| **Papercut** | a paper card over layered paper hills |
+| **Lubugo** | cream words on a panel of Ugandan barkcloth |
+
+A card keeps its size from slide to slide and the words sit in its middle, so only the words change.
+
+**The words.** Every verse starts with its number. Each slide's text is in “quotation marks” in the look's accent
+colour (the **“Quotes”** switch). A verse that is split across slides ends with … and carries on with … on the next
+one; three dots glowing slowly in the corner say the passage goes on. The English is set larger than before (about
+four-fifths of the Luganda) and brighter. The TV shows a 2 s **title card** before a passage (book in both languages,
+chapter and verses) in the look's type. The lower third on the stream keeps its band, the quotes and the dots, and
+takes the serif.
+
+**Motion** (under the live slide): **Gentle** lines rise in turn; **Page turn** turns the old page over from its edge
+toward you and lays the new one beneath (the open Bible turns only its right-hand leaf over the spine, and a passage's
+title card opens like a book cover); **Typing** writes each word in, one after another (with verse by verse, each new
+verse writes itself in); **Reveal** (the default) sweeps a soft edge of light across and leaves the words behind it;
+**Slide** comes in from the right and leaves to the left. Calm mode, the console's previews and reduced-motion
+settings always crossfade.
 
 **Verse by verse** (on by default): with several verses on a slide, **Next** reveals them one at a time; the verse
 being read is full, the ones already read dim, the ones still to come wait unseen in their place, so nothing moves
 when they arrive. **Back** retraces, and goes back to the previous slide with all its verses up. The **progress
-bar** is a thin line along the bottom of the TV that fills through the passage (off in Settings → Scripture). The
-status under the live slide reads "3/8 · verse 2 of 3" while a slide is being revealed.
+bar** is a thin line along the bottom of the TV that fills through the passage. The status under the live slide
+reads "3/8 · verse 2 of 3" while a slide is being revealed.
 
-Two versions are built in: **Luganda 1968** and the **KJV**. They are stored as one small JSON file per book in
+Three versions are built in: **Luganda 1968**, the **KJV** and the **World English Bible**. They are stored as one small JSON file per book in
 `lyrics/bibles/`, so the remote downloads only the book it needs. Other versions can be imported in Settings (VPL
 lines like `PSA 23:1 text`, tab separated, USFM, JSON or Bible XML); an import stays on that device. To rebuild:
 
 ```sh
 node scripts/build-bible.mjs LugandaBible.xml lyrics/bibles/lug68 --lug68
 node scripts/build-bible.mjs eng-kjv_vpl.txt lyrics/bibles/kjv --kjv     # from ebible.org/Scriptures/eng-kjv_vpl.zip
+node scripts/build-bible.mjs eng-web_vpl.txt lyrics/bibles/web --kjv     # from ebible.org/Scriptures/eng-web_vpl.zip
 ```
 
 `--lug68` repairs stray markup in the source file (seven verses in Amos had lost the name "Amosi"; Exodus 5:14 had

@@ -19,6 +19,8 @@ export const BUILTIN_VERSIONS = [
       'Foreign Bible Society 1954, 1967, 1972, 1994; The Bible Society of Uganda 2013.',
   },
   { id: 'kjv', name: 'King James Version', lang: 'en', label: 'KJV', notice: 'Public domain.' },
+  // Modern English; also always searched, so a verse quoted in today's words is found.
+  { id: 'web', name: 'World English Bible', lang: 'en', label: 'WEB', notice: 'Public domain.' },
 ];
 
 // ------------------------------------------------------------------ parsing files
