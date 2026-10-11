@@ -2,7 +2,7 @@
 
 import { html, render, useState, useEffect, useRef } from '../ui/h.js';
 import { createStore, loadState, saveState, partFromPreset, newSong, clone, MAX_PARTS } from './state.js';
-import { Engine, AUDITION, AUDITION_DRUMS, AUDITION_BED } from './engine.js';
+import { Engine, AUDITION, AUDITION_DRUMS, AUDITION_BED, wantLight } from './engine.js';
 import { DemoPlayer } from './demo.js';
 import { soundDemo, rigDemo, BED_PROGRAMS, SOUND_GUIDE, KIT_FOR_STYLE } from './guide.js';
 import { songPerformance, demoBars } from './songbook.js';
@@ -160,13 +160,31 @@ function ccAction(action, value, on) {
   }
 }
 
+// ------------------------------------------------------------------ light mode
+
+let struggleWarned = false;
+function struggling() {
+  const s = store.get().settings;
+  if (s.engineMode === 'full') return; // the player asked for full sound: their call
+  if (engine.light < 2) {
+    const level = engine.light + 1;
+    engine.setLight(level);
+    store.dispatch({ type: 'settings/patch', patch: { autoLight: level } });
+    toast(level === 1 ? 'This device was falling behind, so Stage Keys switched to Light sound (Settings, Audio).' : 'Still falling behind: Stage Keys made the sound a little lighter again so every note keeps time.');
+  } else if (!struggleWarned) {
+    struggleWarned = true;
+    toast('Sound is still struggling here: fewer layers, or closing other apps, will help.');
+  }
+  bump();
+}
+
 // ------------------------------------------------------------------ actions the UI calls
 
 const actions = {
   async startAudio() {
     const s = store.get().settings;
     try {
-      await engine.start({ latency: s.latency, sinkId: s.audioOutput, quality: s.quality });
+      await engine.start({ latency: s.latency, sinkId: s.audioOutput, quality: s.quality, light: wantLight(s) });
     } catch (e) {
       toast('The sound engine could not start: ' + (e && e.message ? e.message : e));
       throw e;
@@ -180,6 +198,7 @@ const actions = {
     window.addEventListener('keydown', wake, true);
     document.addEventListener('visibilitychange', () => !document.hidden && wake());
     engine.ctx.onstatechange = () => bump();
+    engine.onStruggle = struggling;
     // An empty rig plays nothing: a first visit starts on the Sebene Rig, which needs no download.
     if (!store.get().performance.parts.length) actions.loadCombo(comboById('sebene-rig'));
     engine.chime();

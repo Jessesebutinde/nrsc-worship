@@ -3,7 +3,7 @@
 import { html, useEffect, useState } from '../../ui/h.js';
 import { Slider, Toggle, Seg, toast } from './controls.js';
 import { CC_ACTIONS } from '../router.js';
-import { LATENCY_MODES, Engine } from '../engine.js';
+import { LATENCY_MODES, Engine, LIGHT_RATE, isPhone } from '../engine.js';
 import { presetBanks } from '../presets.js';
 
 export function Settings({ ctx, state }) {
@@ -76,7 +76,20 @@ export function Settings({ ctx, state }) {
           ${Object.entries(LATENCY_MODES).map(([k, v]) => html`<option key=${k} value=${k}>${v.label}</option>`)}
         </select>
       </div>
-      <div class="kv"><span>Measured</span><span class="muted">${lat ? `${lat.sampleRate} Hz · ${Math.round(lat.base * 1000)} ms buffer + ${Math.round(lat.output * 1000)} ms output · ${ctx.engine.voices} voices` : 'engine not running'}</span></div>
+      <div class="kv">
+        <span>Sound engine</span>
+        <${Seg}
+          value=${s.engineMode}
+          options=${[{ v: 'auto', label: 'Auto' }, { v: 'full', label: 'Full' }, { v: 'light', label: 'Light' }]}
+          onChange=${(v) => dispatch({ type: 'settings/patch', patch: { engineMode: v, autoLight: 0 } })}
+        />
+      </div>
+      <p class="muted" style="margin:0 0 8px">
+        Light plays fewer overlapping voices, thinner synth stacks and two reverb rooms, at ${LIGHT_RATE / 1000} kHz: for phones and older laptops, so every note arrives on time.
+        Auto picks Light on phones${isPhone() ? ' (this is one)' : ''}, and anywhere sound was seen falling behind${s.autoLight ? ' (it was, here)' : ''}.
+        ${ctx.engine.ready && !!ctx.engine.light !== (lat && lat.sampleRate === LIGHT_RATE) ? ' The sample rate changes when you reload the app.' : ''}
+      </p>
+      <div class="kv"><span>Measured</span><span class="muted">${lat ? `${['Full', 'Light', 'Extra light'][ctx.engine.light] || 'Full'} · ${lat.sampleRate} Hz · ${Math.round(lat.base * 1000)} ms buffer + ${Math.round(lat.output * 1000)} ms output · ${ctx.engine.voices} voices · load ${Math.round(ctx.engine.load * 100)}%` : 'engine not running'}</span></div>
       <div class="kv">
         <span>Sample quality (memory vs. notes between samples)</span>
         <${Seg} value=${s.quality} options=${[{ v: 'low', label: 'Light' }, { v: 'medium', label: 'Normal' }, { v: 'high', label: 'Full' }]} onChange=${(v) => dispatch({ type: 'settings/patch', patch: { quality: v } })} />

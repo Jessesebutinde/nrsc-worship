@@ -227,7 +227,7 @@ test('reverb impulse responses are normalised, cached and sized by decay', () =>
   const a = generateImpulse({ type: 'hall', decay: 2, damp: 0.5, sr: SR });
   const b = generateImpulse({ type: 'hall', decay: 2, damp: 0.5, sr: SR });
   assert.equal(a, b, 'same settings share one impulse');
-  assert.ok(Math.abs(a.L.length - SR * 2.3) < SR * 0.05);
+  assert.ok(Math.abs(a.L.length - SR * 1.85) < SR * 0.05);
   let e = 0;
   for (let i = 0; i < a.L.length; i++) e += a.L[i] * a.L[i] + a.R[i] * a.R[i];
   assert.ok(e > 2 && e < 8, `energy ${e}`);

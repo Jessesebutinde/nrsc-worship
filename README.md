@@ -450,13 +450,20 @@ Everything runs inside one **AudioWorklet** (`src/keys/dsp/`, plain modules that
 - **Drums** (`voice-drums.js`): a synthesised kit (kick, snare, rim, hats, clap, congas, cowbell, shaker…) for the
   grooves and loops.
 - **Voices**: a 160-voice pool, per-part polyphony with graceful stealing, sustain and half-damper, pitch bend,
-  mod wheel, expression, and sample-accurate timed events so loops land exactly on the grid.
+  mod wheel, expression, and sample-accurate timed events so loops land exactly on the grid. Each part has a voice
+  budget that counts release tails too: past it, the oldest tails fade out in about 0.2 s, so a pad or choir played
+  chord after chord never piles up a hundred voices nobody can hear.
 
 Each part then has a native Web Audio **effect chain** (`src/keys/fx.js`): compressor, drive/amp, 3-band EQ with low
 cut, chorus/ensemble/flanger/phaser (with the Roland-JC "wet on one side" the soukous players use), tremolo/auto-pan,
-a rotary speaker with horn/drum acceleration, a tempo-synced stereo/ping-pong delay, and convolution reverb from
-generated impulses (room, plate, hall, cathedral, spring, and a **shimmer** that feeds the tail back an octave up
+a rotary speaker with horn/drum acceleration, a tempo-synced stereo/ping-pong delay, and a send to convolution reverb
+from generated impulses (room, plate, hall, cathedral, spring, and a **shimmer** that feeds the tail back an octave up
 through a granular pitch shifter). A limiter on the master keeps a big layered chord clean.
+
+An effect that is off is unwired from the graph once its level has faded, and a part with no sound is unwired
+altogether, so they cost nothing. Reverbs are shared like a workstation's system reverb: parts asking for the same
+(rounded) room send into one convolver, at most three rooms run at once (past that a part joins the closest room),
+and a part's send follows its fader.
 
 ### The sebene sounds
 
@@ -493,6 +500,22 @@ hand and each loop part play, so the **demo plays exactly the rig you get**, thr
 - **Rig and song demos** load the rig and play it through the keys: watch which keys light in which colour.
 - **The song book** (`src/keys/songbook.js`) holds chords, keys and tempos only, never lyrics or melodies. Facts that
   come from one source or an automatic chord estimate are marked *check by ear* in the app.
+
+### Phones and Light sound
+
+A phone renders audio on a much slower core than a laptop. Settings → Audio → **Sound engine** has three choices:
+
+| Mode | What it does |
+| --- | --- |
+| Auto (default) | Light on phones and tablets; Full elsewhere, stepping down by itself if the sound falls behind. |
+| Full | Everything, at the device's sample rate. Never steps down. |
+| Light | 32 kHz, smaller voice budgets, synth unison stacks thinned to three voices, two reverb rooms. |
+
+The worklet measures its own load and pace (audio time against the clock) about once a second. When it falls behind
+for a few seconds, Auto and Light step down a level (Light, then Extra light: two-voice stacks, ten voices a part,
+one reverb room, linear sample interpolation) and say so; the step is remembered for the next visit. Levels are
+matched across modes and sample rates (the plucked strings normalise their pick noise to the rate), so a sound is
+as loud in Light as in Full. Settings shows the mode, rate, voices and load as they are now.
 
 ### Level matching
 
@@ -550,8 +573,9 @@ Bluetooth.
 
 `npm test` runs the Node tests for the engine (`tests/keys-dsp.test.mjs`: envelopes, filters, band-limited
 oscillators, loop detection, timed events, sustain, legato, stealing, layers), the state and presets
-(`tests/keys-state.test.mjs`), the looper (`tests/keys-looper.test.mjs`) and the sample loader
-(`tests/keys-samples.test.mjs`). `npm run smoke` renders every preset through the real worklet in headless Chromium,
+(`tests/keys-state.test.mjs`), the looper (`tests/keys-looper.test.mjs`), the sample loader
+(`tests/keys-samples.test.mjs`), and what keeps it light enough for a phone (`tests/keys-perf.test.mjs`: shared
+reverb rooms, effects unwired when off, voice budgets, light levels at equal loudness, string level at any rate). `npm run smoke` renders every preset through the real worklet in headless Chromium,
 then opens the app, loads the Sebene Rig, plays both splits and the groove loop, and takes screenshots (`--shots`).
 
 ## Layout

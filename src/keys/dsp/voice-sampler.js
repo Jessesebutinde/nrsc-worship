@@ -6,6 +6,13 @@ import { velocityCurve, clamp } from './util.js';
 
 const CTRL = 8;
 
+/** Straight-line interpolation: half the work of Hermite, for the lightest engine mode. */
+function linear(d, pos, len) {
+  const i = pos | 0;
+  const x1 = d[i];
+  return x1 + ((i + 1 < len ? d[i + 1] : x1) - x1) * (pos - i);
+}
+
 function hermite(d, pos, len) {
   const i = pos | 0;
   const f = pos - i;
@@ -96,6 +103,8 @@ export const samplerRenderer = {
     const gl = v.gainL,
       gr = v.gainR;
     const loop = s.loop;
+    const stereo = s.stereo;
+    const interp = core.budget.linear ? linear : hermite;
     let i = from;
     while (i < to) {
       if (s.ctrl <= 0) {
@@ -118,10 +127,10 @@ export const samplerRenderer = {
           const oct = f.env * v.fenv.level + f.key * ((v.note - 60) / 12) + lfo * prog.lfo.filter + mod * prog.modWheel.filter + f.vel * v.vel * 2;
           const cutoff = f.cutoff * Math.pow(2, oct);
           s.svfL.set(cutoff, f.res);
-          s.svfR.set(cutoff, f.res);
+          if (stereo) s.svfR.set(cutoff, f.res);
           if (f24) {
             s.svfL2.set(cutoff, f.res * 0.6);
-            s.svfR2.set(cutoff, f.res * 0.6);
+            if (stereo) s.svfR2.set(cutoff, f.res * 0.6);
           }
         }
         for (let k = 0; k < CTRL; k++) v.fenv.next();
@@ -135,21 +144,22 @@ export const samplerRenderer = {
           s.pos = pos;
         }
         if (pos >= len - 2) return false;
-        let l = hermite(dL, pos, len);
-        let r = s.stereo ? hermite(dR, pos, len) : l;
+        let l = interp(dL, pos, len);
+        let r = s.stereo ? interp(dR, pos, len) : l;
         if (loop && pos >= s.fadeStart) {
           const w = (pos - s.fadeStart) / s.fade;
           const p2 = pos - s.loopLen;
-          l += (hermite(dL, p2, len) - l) * w;
-          r = s.stereo ? r + (hermite(dR, p2, len) - r) * w : l;
+          l += (interp(dL, p2, len) - l) * w;
+          r = s.stereo ? r + (interp(dR, p2, len) - r) * w : l;
         }
         if (fmode >= 0) {
+          // a mono sample needs its filter once
           l = s.svfL.process(l, fmode);
-          r = s.svfR.process(r, fmode);
-          if (f24) {
-            l = s.svfL2.process(l, fmode);
-            r = s.svfR2.process(r, fmode);
-          }
+          if (f24) l = s.svfL2.process(l, fmode);
+          if (stereo) {
+            r = s.svfR.process(r, fmode);
+            if (f24) r = s.svfR2.process(r, fmode);
+          } else r = l;
         }
         const a = v.env.next() * s.amp * s.trem * part.exprV;
         L[i + k] += l * a * gl;
