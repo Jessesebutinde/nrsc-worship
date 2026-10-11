@@ -314,7 +314,7 @@ h3 {
 .perform {
   display: grid;
   gap: 12px;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
 }
 .parts {
   display: grid;
@@ -368,7 +368,7 @@ h3 {
 }
 .part .body {
   display: grid;
-  grid-template-columns: 56px 1fr;
+  grid-template-columns: 56px minmax(0, 1fr);
   gap: 8px;
   align-items: stretch;
 }
@@ -380,8 +380,11 @@ h3 {
 }
 .part .side button {
   min-height: 36px;
+  min-width: 0;
   padding: 0 6px;
   font-size: 0.8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .part .fxchips {
   display: flex;
@@ -490,7 +493,7 @@ h3 {
 /* macros */
 .macros {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
 }
 .macro {
@@ -504,6 +507,13 @@ h3 {
   color: var(--muted);
   display: flex;
   justify-content: space-between;
+  gap: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.macro .mname span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .sidebar {
   display: grid;
@@ -1079,10 +1089,69 @@ input[type='range']::-moz-range-thumb {
   z-index: 3;
   opacity: 0.9;
 }
-.kbdhint {
-  font-size: 0.75rem;
-  color: var(--muted);
-  margin-top: 4px;
+.kbd.big {
+  height: 150px;
+}
+.kbdnav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+/* On a phone the keys stay on screen while the parts scroll above them, and messages show at the top. */
+@media (max-width: 899px) {
+  .kbdbox {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    background: var(--bg);
+    padding: 6px 0 2px;
+  }
+  .toast {
+    top: calc(var(--head-h) + 12px);
+    bottom: auto;
+  }
+}
+@media (max-width: 599px) {
+  .parts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .macros {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .part {
+    min-height: 0;
+  }
+  .part .body {
+    grid-template-columns: 56px minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .part .side {
+    display: contents;
+  }
+  .part .side button,
+  .part .side .row {
+    min-height: 40px;
+  }
+  .fader {
+    grid-row: span 3;
+  }
+}
+.soundoff {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  top: calc(var(--head-h) + 8px);
+  z-index: 35;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--warn);
+  color: #1a1206;
+  font-weight: 700;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
 }
 
 /* ------------------------------------------------------------------ settings */

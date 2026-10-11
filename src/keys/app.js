@@ -6,9 +6,9 @@ import { Engine } from './engine.js';
 import { MidiInput, TypingKeyboard } from './midi.js';
 import { Router } from './router.js';
 import { Transport, Looper } from './looper.js';
-import { buildPerformance } from './combos.js';
+import { buildPerformance, comboById } from './combos.js';
 import { createSync } from './sync.js';
-import { Toast, toast } from './ui/controls.js';
+import { Toast, toast, noteName } from './ui/controls.js';
 import { Perform, Header } from './ui/perform.js';
 import { Editor } from './ui/editor.js';
 import { Sounds } from './ui/sounds.js';
@@ -27,6 +27,7 @@ const looper = new Looper({
 });
 const lit = new Map(); // note -> colour, for the on-screen keyboard
 const loading = new Map(); // bank id -> 0..1 | 'error'
+let lastMiss = 0;
 
 const router = new Router({
   engine,
@@ -41,6 +42,12 @@ const router = new Router({
   },
   onLoopInput: (part, ev) => looper.input(part, ev),
   onLearn: (cc) => learned(cc),
+  onMiss: (note) => {
+    const now = Date.now();
+    if (now - lastMiss < 4000) return;
+    lastMiss = now;
+    toast(store.get().performance.parts.length ? `No sound on ${noteName(note)}: change a part's key range or add a sound` : 'No sound loaded yet: open Sounds and load one');
+  },
   onProgram: (n) => {
     const s = store.get();
     if (s.settings.programChange && s.songs[n]) actions.selectSong(n);
@@ -145,6 +152,17 @@ const actions = {
       throw e;
     }
     await engine.resume();
+    // Phones pause sound when the page is hidden or a call comes in: any tap brings it back.
+    const wake = () => {
+      if (engine.ctx && engine.ctx.state !== 'running') engine.ctx.resume().then(bump, () => {});
+    };
+    window.addEventListener('pointerdown', wake, true);
+    window.addEventListener('keydown', wake, true);
+    document.addEventListener('visibilitychange', () => !document.hidden && wake());
+    engine.ctx.onstatechange = () => bump();
+    // An empty rig plays nothing: a first visit starts on the Sebene Rig, which needs no download.
+    if (!store.get().performance.parts.length) actions.loadCombo(comboById('sebene-rig'));
+    engine.chime();
     typing.enabled = s.typing;
     typing.attach(window);
     sync(store.get());
@@ -267,8 +285,8 @@ const actions = {
       engine.noteOff(i, n, t + 1.2);
     });
   },
-  playScreenNote(note, on) {
-    router.handle({ type: on ? 'noteon' : 'noteoff', ch: 1, note, vel: 100, time: performance.now() });
+  playScreenNote(note, on, vel = 100) {
+    router.handle({ type: on ? 'noteon' : 'noteoff', ch: 1, note, vel: on ? vel : 0, time: performance.now() });
   },
   setTyping(on) {
     typing.enabled = on;
@@ -389,6 +407,11 @@ function App() {
       ${TABS.map(([id, ico, label]) => html`<button key=${id} class=${view === id ? 'on' : ''} onClick=${() => dispatch({ type: 'ui/patch', patch: { view: id, editor: null } })}><span class="ico">${ico}</span>${label}</button>`)}
     </nav>
     ${state.ui.editor != null && state.performance.parts[state.ui.selectedPart] ? html`<${Editor} ctx=${ctx} state=${state} />` : null}
+    ${started && engine.ctx.state !== 'running'
+      ? html`<div class="soundoff" role="alert" onClick=${() => engine.ctx.resume().then(bump, () => {})}>
+          <span class="grow">The sound is paused. Tap here to turn it back on.</span>
+        </div>`
+      : null}
     ${!started ? html`<${Start} />` : null}
     <${Toast} />
   </div>`;
@@ -411,7 +434,7 @@ function Start() {
       <h1>Stage Keys</h1>
       <p>Sebene guitars and bass, worship pads, organs, choirs and loops, played from your keyboard over USB.</p>
       <button class="primary" disabled=${busy} onClick=${go}>${busy ? 'Starting…' : 'Start the rig'}</button>
-      <p class="dim" style="margin-top:14px">Chrome or Edge. Plug the keyboard in first; the browser will ask to use MIDI.</p>
+      <p class="dim" style="margin-top:14px">You will hear a short chime. On a laptop, use Chrome or Edge and plug the keyboard in first. On a phone, turn the volume up (on an iPhone, also flip the silent switch off) and play the keys on screen.</p>
       ${err ? html`<p class="warnbox">${err}</p>` : null}
     </div>
   </div>`;
