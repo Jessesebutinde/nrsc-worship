@@ -246,6 +246,12 @@ readable across the hall. Changing the choice while a passage is up regroups it 
 read. With **Verse by verse** on, Next lights each verse in turn while the others stay on screen a little dimmer, and
 the stream's lower third shows just the verse being read.
 
+**Scroll** (also under Verses on screen) puts the whole passage in one long column at the standard size, each verse
+with its translation right under it. **Next** glides the column up so the verse being read sits near the top of the
+screen; the verses already read dim and the ones to come wait a little dimmer below. **Back** glides down again. It
+always moves verse by verse (even with Verse by verse off), and the stream's lower third shows the verse being read.
+Looks made for a card or ribbon (the cards, Scroll, Linen) keep a full-height card behind the column.
+
 ### Finding a passage by words or by voice
 
 The Scripture box takes a reference (`Zabbuli 23:1-4`, `Ps 23`, `Yk 3:16`) **or a few words of the verse** in

@@ -255,7 +255,8 @@ function follow(s, dir, unit) {
 /** How many steps the slide takes: its verses one by one when reveal is on (scripture), else one. */
 export function stepsOf(state, index = state.index) {
   const it = state.item;
-  if (!it || it.kind !== 'scripture' || state.reveal === false) return 1;
+  // A scrolling passage always steps verse by verse (that is what moves it).
+  if (!it || it.kind !== 'scripture' || (state.reveal === false && !it.scroll)) return 1;
   const slide = it.slides && it.slides[index];
   return Math.max(1, slide && slide.verses ? slide.verses.length : 1);
 }
