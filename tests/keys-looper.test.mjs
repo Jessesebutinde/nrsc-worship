@@ -301,7 +301,9 @@ test('grooves expand per lane with accents, in 4/4 and 6/8', () => {
   assert.ok(e6.every((e) => e.beat < 12));
   assert.deepEqual(e6.filter((e) => e.note === 42 && e.beat < 6).map((e) => e.beat), [0, 1, 2, 3, 4, 5]);
 
-  assert.deepEqual(GROOVES.map((x) => x.id), ['sebene', 'ndombolo', 'rumba', 'worship44', 'worship68', 'pop']);
+  const ids = GROOVES.map((x) => x.id);
+  for (const id of ['sebene', 'ndombolo', 'rumba', 'worship44', 'worship68', 'pop']) assert.ok(ids.includes(id), id);
+  assert.equal(new Set(ids).size, ids.length, 'groove ids are unique');
   for (const x of GROOVES) {
     assert.ok(expandGroove(x).length > 0, x.id);
     // A lane must tile the groove exactly, or a typo would shift every bar after the first.

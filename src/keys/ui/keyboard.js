@@ -21,7 +21,7 @@ const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
  * @param {(index:number, patch:object) => void} p.onZone
  * @param {(note:number, on:boolean, vel:number) => void} p.onPlay
  */
-export function Keyboard({ parts, selected, lit, onZone, onPlay }) {
+export function Keyboard({ parts, selected, lit, onZone, onPlay, watch = false }) {
   const el = useRef(null);
   const [width, setWidth] = useState(1000);
   const [start, setStart] = useState(() => ALL_WHITES.indexOf(53)); // F3: the middle of the keyboard on a phone
@@ -36,7 +36,8 @@ export function Keyboard({ parts, selected, lit, onZone, onPlay }) {
 
   // The whole keyboard when its keys can be at least 17 px wide (a laptop, with a mouse); otherwise a
   // window of keys at least 30 px wide, for fingers on a phone.
-  const full = width / ALL_WHITES.length >= 17;
+  // While a demo plays ("watch"), show every key so both hands are visible, even on a phone.
+  const full = watch || width / ALL_WHITES.length >= 17;
   const count = full ? ALL_WHITES.length : Math.max(8, Math.floor(width / 30));
   const first = full ? 0 : clamp(start, 0, ALL_WHITES.length - count);
   const whites = ALL_WHITES.slice(first, first + count);

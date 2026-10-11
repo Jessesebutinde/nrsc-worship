@@ -69,7 +69,9 @@ export class Router {
   handle(ev) {
     switch (ev.type) {
       case 'noteon': {
-        const key = ev.ch + ':' + ev.note;
+        // A demo plays "virtual" keys at exact future times (`at`); they never collide with the player's
+        // own keys, are not recorded into loops and light the keyboard through the demo player instead.
+        const key = keyOf(ev);
         if (this.active.has(key)) this.noteOff(ev); // same key twice: finish the first
         const parts = this.getParts();
         const hit = [];
@@ -78,13 +80,14 @@ export class Router {
           const note = ev.note + (p.transpose || 0) + 12 * (p.octave || 0);
           if (note < 0 || note > 127) continue;
           const vel = scaleVelocity(ev.vel, p.velScale);
-          this.engine.noteOn(i, note, vel, 0);
+          this.engine.noteOn(i, note, vel, ev.at || 0);
           hit.push({ part: i, note });
+          if (ev.virtual) continue;
           this.onNote(i, note, true, vel);
           this.onLoopInput(i, { type: 'on', note, vel, time: this.engine.time });
         }
         if (hit.length) this.active.set(key, hit);
-        else this.onMiss(ev.note);
+        else if (!ev.virtual) this.onMiss(ev.note);
         break;
       }
       case 'noteoff':
@@ -108,14 +111,24 @@ export class Router {
   }
 
   noteOff(ev) {
-    const key = ev.ch + ':' + ev.note;
+    const key = keyOf(ev);
     const hit = this.active.get(key);
     if (!hit) return;
     this.active.delete(key);
     for (const h of hit) {
-      this.engine.noteOff(h.part, h.note, 0);
+      this.engine.noteOff(h.part, h.note, ev.at || 0);
+      if (ev.virtual) continue;
       this.onNote(h.part, h.note, false, 0);
       this.onLoopInput(h.part, { type: 'off', note: h.note, vel: 0, time: this.engine.time });
+    }
+  }
+
+  /** Lets go of every key a demo is holding (when it is stopped part-way). */
+  releaseVirtual() {
+    for (const [key, hit] of this.active) {
+      if (!key.startsWith('v:')) continue;
+      this.active.delete(key);
+      for (const h of hit) this.engine.noteOff(h.part, h.note, 0);
     }
   }
 
@@ -162,6 +175,8 @@ export class Router {
     }
   }
 }
+
+const keyOf = (ev) => (ev.virtual ? 'v' : ev.ch) + ':' + ev.note;
 
 function scaleVelocity(v, scale) {
   if (!scale || scale === 1) return v;

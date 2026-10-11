@@ -35,7 +35,11 @@ export const samplerRenderer = {
     s.trem = 1;
     if (s.sample) {
       const smp = s.sample;
-      s.base = (smp.rate / sr) * Math.pow(2, (v.note - smp.root + prog.transpose) / 12 + prog.fine / 1200);
+      // A hand never plays the same note twice exactly alike: a few cents and a little level, per note,
+      // so fast repeated notes (a sebene line, a gospel run) do not sound like a machine.
+      const h = prog.humanize || 0;
+      s.base = (smp.rate / sr) * Math.pow(2, (v.note - smp.root + prog.transpose) / 12 + (prog.fine + v.rng.bipolar() * 3 * h) / 1200);
+      s.vary = 1 + v.rng.bipolar() * 0.08 * h;
       s.len = smp.L.length;
       s.stereo = !!smp.R;
       const loopOk = smp.loopEnd > smp.loopStart && smp.loopStart > 0;
@@ -60,7 +64,7 @@ export const samplerRenderer = {
     s.svfL2.reset();
     s.svfR.reset();
     s.svfR2.reset();
-    s.amp = (1 - prog.velAmp + prog.velAmp * velocityCurve(v.vel * 127, prog.velCurve)) * prog.level;
+    s.amp = (1 - prog.velAmp + prog.velAmp * velocityCurve(v.vel * 127, prog.velCurve)) * prog.level * (s.vary || 1);
   },
   retune(v, prog, part, core, legato) {
     const s = v.s;

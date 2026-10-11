@@ -58,6 +58,7 @@ export function Perform({ ctx, state }) {
             lit=${ctx.lit}
             onZone=${(i, patch) => dispatch({ type: 'part/patch', index: i, patch })}
             onPlay=${(n, on, vel) => ctx.actions.playScreenNote(n, on, vel)}
+            watch=${ctx.demo && ctx.demo.playing}
           />`
         : null}
     </div>

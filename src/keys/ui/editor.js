@@ -391,7 +391,7 @@ function MixEditor({ ctx, state, part: p, index: i }) {
   const patch = (o) => dispatch({ type: 'part/patch', index: i, patch: o });
   const [split, setSplit] = useState(60);
   const save = () => {
-    const preset = { id: uid('user'), name: p.name, family: p.family, kind: p.kind, desc: 'Saved from the rig', prog: p.prog, fx: p.fx, octave: p.octave, user: true, tags: [] };
+    const preset = { id: uid('user'), name: p.name, family: p.family, kind: p.kind, desc: 'Saved from the rig', prog: p.prog, fx: p.fx, octave: p.octave, user: true, tags: [], basePreset: p.presetId || p.basePreset || null };
     dispatch({ type: 'userPreset/save', preset });
     toast(`${p.name} saved to your sounds`);
   };

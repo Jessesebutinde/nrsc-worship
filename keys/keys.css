@@ -1245,3 +1245,111 @@ input[type='range']::-moz-range-thumb {
     display: none;
   }
 }
+
+/* ------------------------------------------------------------------ demos and tips */
+
+.tip {
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: var(--text);
+  opacity: 0.85;
+  border-left: 3px solid var(--c, var(--accent));
+  padding: 2px 0 2px 8px;
+}
+.tip b {
+  color: var(--muted);
+  font-weight: 700;
+}
+.demobar {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(var(--tabs-h) + 12px + env(safe-area-inset-bottom));
+  z-index: 36;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: min(560px, calc(100vw - 24px));
+  padding: 8px 10px 8px 14px;
+  border-radius: 14px;
+  background: var(--panel-2);
+  border: 1px solid var(--accent);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+  font-size: 0.88rem;
+}
+.demobar .pulse {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: pulse 1s ease-in-out infinite;
+}
+@keyframes pulse {
+  50% {
+    opacity: 0.25;
+  }
+}
+@media (min-width: 1200px) {
+  .demobar {
+    bottom: 20px;
+  }
+}
+@media (max-width: 899px) {
+  .demobar {
+    top: calc(var(--head-h) + 8px);
+    bottom: auto;
+  }
+}
+.grouphead {
+  margin: 16px 0 8px;
+}
+.group:first-of-type .grouphead {
+  margin-top: 4px;
+}
+.chords {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.8rem;
+}
+.chords b {
+  color: var(--muted);
+  font-weight: 700;
+  margin-right: 4px;
+}
+.chord {
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.warnline {
+  color: var(--warn);
+}
+.songidea .pill {
+  min-height: 28px;
+  font-size: 0.75rem;
+}
+.families.chiprow {
+  flex-direction: row;
+  flex-wrap: wrap;
+  overflow: visible;
+}
+.families.chiprow button {
+  justify-content: center;
+}
+.demobar.withkeys {
+  flex-direction: column;
+  align-items: stretch;
+  width: min(760px, calc(100vw - 24px));
+}
+.demobar.withkeys .kbd {
+  height: 70px;
+}
+.demobar .kbdbox {
+  position: static;
+  padding: 0;
+}
