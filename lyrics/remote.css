@@ -617,6 +617,10 @@ main {
 .scripture select {
   width: 100%;
 }
+.size-ctl button {
+  min-width: 42px;
+  font-weight: 700;
+}
 .per-screen .seg button {
   min-height: 38px;
   padding: 4px 10px;

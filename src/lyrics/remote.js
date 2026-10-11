@@ -6,7 +6,7 @@ import { html, render, useState, useEffect, useRef, useMemo } from '../ui/h.js';
 import { Fit, Stage } from './stage.js';
 import { Link, normalizeCode } from './link.js';
 import { ROOM } from './config.js';
-import { emptyState, reduce, songItem, mediaItem, BACKGROUNDS, BACKGROUND_INFO, PRESETS, PRESET_INFO, STREAM_LAYOUTS, ILLUSTRATION_SIZES, MARK_COLORS, PLAY_LEVELS, PLACES, SCRIPTURE_LOOKS, SCRIPTURE_INFO, SCRIPTURE_GROUPS, SCRIPTURE_MOTIONS, scriptureLookOf, stepsOf, lookOf, slideWords, markKey } from './state.js';
+import { emptyState, reduce, songItem, mediaItem, BACKGROUNDS, BACKGROUND_INFO, PRESETS, PRESET_INFO, STREAM_LAYOUTS, ILLUSTRATION_SIZES, MARK_COLORS, PLAY_LEVELS, PLACES, SCRIPTURE_LOOKS, SCRIPTURE_INFO, SCRIPTURE_GROUPS, SCRIPTURE_MOTIONS, TEXT_SIZES, TEXT_SIZE_NAMES, stepSize, scriptureLookOf, stepsOf, lookOf, slideWords, markKey } from './state.js';
 import { loadSongs, saveSongs, visibleSongs, upsertSong, removeSong, searchSongs, mergeSongs, exportLibrary, importLibrary } from './library.js';
 import { parseRef, bookByCode, BOOKS, formatRef } from './books.js';
 import { VerseIndex, fillIndex, highlight } from './search.js';
@@ -623,6 +623,16 @@ function Lazy({ children, class: cls }) {
   return html`<div class=${cls} ref=${ref}>${seen ? children : null}</div>`;
 }
 
+/** Text size: smaller / the size name / larger. */
+function SizeControl({ value, onChange, label = 'Text size' }) {
+  const v = TEXT_SIZES.includes(Number(value)) ? Number(value) : 1;
+  return html`<span class="seg size-ctl" role="group" aria-label=${label}>
+    <button onClick=${() => onChange(stepSize(v, -1))} disabled=${v === TEXT_SIZES[0]} title="Smaller (−)" aria-label="Smaller">A−</button>
+    <button class=${v !== 1 ? 'on' : ''} onClick=${() => onChange(1)} title="Back to the standard size">${TEXT_SIZE_NAMES[v]}</button>
+    <button onClick=${() => onChange(stepSize(v, 1))} disabled=${v === TEXT_SIZES[TEXT_SIZES.length - 1]} title="Larger (+)" aria-label="Larger">A+</button>
+  </span>`;
+}
+
 /** Every scripture look as a small live picture, in two groups: pages and cards. */
 function LookGallery({ state, setLook, onClose }) {
   const look = scriptureLookOf(state);
@@ -685,6 +695,7 @@ function ScriptureControls({ state, act, setLook, hints = false }) {
           <button class=${state.sFont !== 'sans' ? 'on' : ''} onClick=${() => setLook({ sFont: 'serif' })} title="Source Serif, like a printed Bible">Serif</button>
           <button class=${state.sFont === 'sans' ? 'on' : ''} onClick=${() => setLook({ sFont: 'sans' })} title="Montserrat, like the lyrics">Sans</button>
         </span>
+        <${SizeControl} value=${state.sSize} onChange=${(v) => setLook({ sSize: v })} label="Scripture text size" />
         <span class="seg" role="group" aria-label="Reading">
           <button class=${state.reveal !== false ? 'on' : ''} onClick=${() => act({ type: 'set', patch: { reveal: state.reveal === false } })} title="Next brings the next verse; verses already read dim">Verse by verse</button>
           <button class=${state.progress !== false ? 'on' : ''} onClick=${() => act({ type: 'set', patch: { progress: state.progress === false } })} title="A thin bar along the bottom shows how far through the passage you are">Progress bar</button>
@@ -744,6 +755,7 @@ function Live({ state, act, info, goTab, onOutputs, wide, setLook }) {
       )}
     </div>
     <div class="wordplay row wrap">
+      <${SizeControl} value=${state.lSize} onChange=${(v) => act({ type: 'set', patch: { lSize: v } })} label="Lyrics text size" />
       <span class="seg play" role="group" aria-label="How much the words play">
         ${Object.entries(PLAY_LEVELS).map(
           ([k, l]) => html`<button class=${(state.play || 'mid') === k ? 'on' : ''} onClick=${() => act({ type: 'set', patch: { play: k } })}>${l}</button>`,
@@ -950,7 +962,7 @@ const perScreenOf = (prefs) => {
   return prefs.perVerse ? 'verse' : 'auto';
 };
 
-function Scripture({ prefs, setPrefs, onShow, look = 'ink', font = 'serif', relayout = null, liveScripture = false }) {
+function Scripture({ prefs, setPrefs, onShow, look = 'ink', font = 'serif', size = 1, relayout = null, liveScripture = false }) {
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
@@ -988,7 +1000,7 @@ function Scripture({ prefs, setPrefs, onShow, look = 'ink', font = 'serif', rela
     try {
       // Measured in the real font, so a slide holds exactly what fits at the fixed size.
       const ok = await Promise.race([fontsReady(), new Promise((res) => setTimeout(() => res(null), 3000))]);
-      const fit = ok !== null && document.fonts.check('600 92px Montserrat') ? scriptureFit(look, font) : undefined;
+      const fit = ok !== null && document.fonts.check('600 92px Montserrat') ? scriptureFit(look, font, size) : undefined;
       const item = await passageItem({ ref: r, primaryId: prefs.primary, secondaryId: prefs.secondary, perScreen: perScreenOf(prefs), fit });
       onShow(item);
       const next = [label, ...recent.filter((x) => x.toLowerCase() !== label.toLowerCase())].slice(0, 8);
@@ -1690,7 +1702,13 @@ function App() {
       else if (k === 'c' || k === 'C') act({ type: 'mode', mode: 'clear' });
       else if (k === 'l' || k === 'L') act({ type: 'mode', mode: 'logo' });
       else if (followCommand(k)) act(followCommand(k));
-      else return;
+      else if (k === '+' || k === '=' || k === '-' || k === '_') {
+        // Text size of what is up: lyrics or scripture.
+        const cur = stateRef.current;
+        const dir = k === '-' || k === '_' ? -1 : 1;
+        if (cur.item && cur.item.kind === 'scripture') setLookRef.current({ sSize: stepSize(cur.sSize, dir) });
+        else act({ type: 'set', patch: { lSize: stepSize(cur.lSize, dir) } });
+      } else return;
       e.preventDefault();
     };
     addEventListener('keydown', onKey);
@@ -1715,6 +1733,7 @@ function App() {
 
   // A scripture look (or type) change: the passage up on the screen is laid out again for it,
   // staying on the verse being read.
+  const setLookRef = useRef(null);
   const setLook = async (patch, perScreen = null) => {
     const cur = stateRef.current;
     const next = { ...cur, ...patch };
@@ -1733,7 +1752,7 @@ function App() {
         secondaryId: it.secondaryId,
         flow: it.flow,
         perScreen: perScreen || it.perScreen || (it.flow === false ? 'verse' : 'auto'),
-        fit: scriptureFit(scriptureLookOf(next), next.sFont),
+        fit: scriptureFit(scriptureLookOf(next), next.sFont, next.sSize),
       });
       let index = 0;
       let sub = 0;
@@ -1751,6 +1770,8 @@ function App() {
       showToast(e.message);
     }
   };
+
+  setLookRef.current = setLook;
 
   const saveSong = (song) => {
     setSongs(upsertSong(songs, song));
@@ -1784,6 +1805,7 @@ function App() {
     onShow=${showItem}
     look=${scriptureLookOf(state)}
     font=${state.sFont}
+    size=${state.sSize}
     liveScripture=${Boolean(state.item && state.item.kind === 'scripture' && state.item.book)}
     relayout=${(k) => setLook({}, k)}
   />`;
@@ -1822,7 +1844,7 @@ function App() {
   const livePane = html`<${Live} state=${state} act=${act} info=${info} wide=${wide} goTab=${wide ? openLib : setTab} onOutputs=${() => setOutputs(true)} setLook=${setLook} />`;
   const header = html`<header class="top">
     <div class="brand"><span class="cross">✝</span> Lyric Slides</div>
-    ${wide && html`<span class="muted small keys">Space / → next · ← back · B black · C clear · L logo · <${FollowKeyHint} /> word by word</span>`}
+    ${wide && html`<span class="muted small keys">Space / → next · ← back · B black · C clear · L logo · <${FollowKeyHint} /> word by word · + / − size</span>`}
     <div class="row top-end">
       <${LightSwitch} ui=${ui} setUi=${setUi} />
       <button class=${`pill ${connected ? 'ok' : 'warn'}`} onClick=${() => setOutputs(true)}>

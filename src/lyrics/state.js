@@ -139,6 +139,9 @@ export function emptyState() {
     // Following the singer (songs): the words being sung now on this slide, [first, last] (one word,
     // or a whole line), or null. Words before it have been sung; the ones after it may wait dimmer.
     wc: null,
+    // Text size, as a multiple of the standard: lyrics and scripture separately.
+    lSize: 1,
+    sSize: 1,
     followDim: true,
     followStream: true,
   };
@@ -169,6 +172,16 @@ export function slideWords(item, slide) {
     return out;
   }
   return [];
+}
+
+// Text size steps (the operator's "Larger" / "Smaller").
+export const TEXT_SIZES = [0.85, 1, 1.2, 1.4, 1.7];
+export const TEXT_SIZE_NAMES = { 0.85: 'Smaller', 1: 'Standard', 1.2: 'Large', 1.4: 'Larger', 1.7: 'Huge' };
+/** The next size step up (dir 1) or down (dir -1) from `v`. */
+export function stepSize(v, dir) {
+  const cur = TEXT_SIZES.reduce((best, x) => (Math.abs(x - (Number(v) || 1)) < Math.abs(best - (Number(v) || 1)) ? x : best), 1);
+  const i = TEXT_SIZES.indexOf(cur);
+  return TEXT_SIZES[Math.max(0, Math.min(TEXT_SIZES.length - 1, i + (dir > 0 ? 1 : -1)))];
 }
 
 export const PLAY_LEVELS = { low: 'Gentle', mid: 'Lively', high: 'Playful', wild: 'Wild' };
