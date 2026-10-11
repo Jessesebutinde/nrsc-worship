@@ -13,7 +13,7 @@ import { VerseIndex, fillIndex, highlight } from './search.js';
 import { spokenRef, refText } from './spoken.js';
 import { Listener, canListen, SPEECH_LANGS } from './voice.js';
 import { readFollowKeys, saveFollowKeys, followCommand, validKey, FOLLOW_KEYS, FOLLOW_KEY_NAMES } from './keys.js';
-import { allVersions, importVersion, removeVersion, passageItem, BUILTIN_VERSIONS, loadBook, versionById } from './bible.js';
+import { allVersions, importVersion, removeVersion, passageItem, BUILTIN_VERSIONS, loadBook, versionById, isMany } from './bible.js';
 import { relayConfig, cloudConfigured, loadSession, captureSession, sendMagicLink, signOut, pullSongs, pushSongs } from './cloud.js';
 import { canCast, castTo, displayPermission, extraDisplays, openOn, displayOf, platform } from './cast.js';
 import { fontsReady, scriptureFit } from './measure.js';
@@ -932,7 +932,24 @@ function Snippet({ text, query, lang, n = 120 }) {
   return html`${start > 0 ? '…' : ''}${out}${start + n < text.length ? '…' : ''}`;
 }
 
-function Scripture({ prefs, setPrefs, onShow, look = 'ink', font = 'serif' }) {
+// How much scripture goes on one screen.
+const PER_SCREEN_LABELS = [
+  ['auto', 'Same size', 'Verses continue across screens at the standard size'],
+  ['verse', '1 verse', 'One verse per screen at the standard size'],
+  [2, '2'],
+  [3, '3'],
+  [4, '4'],
+  [6, '6'],
+  [8, '8'],
+  ['all', 'Whole passage', 'As much as can be read at once; a long passage is shared evenly over a few screens'],
+];
+const perScreenOf = (prefs) => {
+  const p = prefs.perScreen;
+  if (PER_SCREEN_LABELS.some(([k]) => k === p)) return p;
+  return prefs.perVerse ? 'verse' : 'auto';
+};
+
+function Scripture({ prefs, setPrefs, onShow, look = 'ink', font = 'serif', relayout = null, liveScripture = false }) {
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
@@ -971,7 +988,7 @@ function Scripture({ prefs, setPrefs, onShow, look = 'ink', font = 'serif' }) {
       // Measured in the real font, so a slide holds exactly what fits at the fixed size.
       const ok = await Promise.race([fontsReady(), new Promise((res) => setTimeout(() => res(null), 3000))]);
       const fit = ok !== null && document.fonts.check('600 92px Montserrat') ? scriptureFit(look, font) : undefined;
-      const item = await passageItem({ ref: r, primaryId: prefs.primary, secondaryId: prefs.secondary, flow: !prefs.perVerse, fit });
+      const item = await passageItem({ ref: r, primaryId: prefs.primary, secondaryId: prefs.secondary, perScreen: perScreenOf(prefs), fit });
       onShow(item);
       const next = [label, ...recent.filter((x) => x.toLowerCase() !== label.toLowerCase())].slice(0, 8);
       setRecent(next);
@@ -1127,10 +1144,27 @@ function Scripture({ prefs, setPrefs, onShow, look = 'ink', font = 'serif' }) {
       <label class="field grow"><span>On top (read aloud)</span>${vSelect('primary', false)}</label>
       <label class="field grow"><span>Below, smaller</span>${vSelect('secondary', true)}</label>
     </div>
-    <label class="toggle">
-      <input type="checkbox" checked=${!prefs.perVerse} onChange=${(e) => setPrefs({ ...prefs, perVerse: !e.target.checked })} />
-      <span>Continue the text across slides at the same size until it ends (off: one verse per slide)</span>
-    </label>
+    <div class="field per-screen"><span>Verses on screen</span>
+      <div class="seg" role="group" aria-label="Verses on screen">
+        ${PER_SCREEN_LABELS.map(
+          ([k, label, hint]) => html`<button
+            class=${perScreenOf(prefs) === k ? 'on' : ''}
+            title=${hint || `${k} verses together, as large as the screen allows`}
+            onClick=${() => {
+              setPrefs({ ...prefs, perScreen: k, perVerse: k === 'verse' });
+              if (liveScripture && relayout) relayout(k);
+            }}
+          >
+            ${label}
+          </button>`,
+        )}
+      </div>
+      <small class="muted">${isMany(perScreenOf(prefs))
+        ? 'Whole verses together, the words as large as the screen allows for that much text. Verse by verse lights each one in turn; the stream shows the verse being read.'
+        : perScreenOf(prefs) === 'verse'
+          ? 'One verse per screen at the standard size (a long verse is split).'
+          : 'The text continues across screens at the standard size until the passage ends.'}</small>
+    </div>
     ${canListen() &&
     html`<label class="toggle">
       <input type="checkbox" checked=${Boolean(prefs.autoShow)} onChange=${(e) => setPrefs({ ...prefs, autoShow: e.target.checked })} />
@@ -1678,7 +1712,7 @@ function App() {
 
   // A scripture look (or type) change: the passage up on the screen is laid out again for it,
   // staying on the verse being read.
-  const setLook = async (patch) => {
+  const setLook = async (patch, perScreen = null) => {
     const cur = stateRef.current;
     const next = { ...cur, ...patch };
     const it = cur.item;
@@ -1695,6 +1729,7 @@ function App() {
         primaryId: it.primaryId,
         secondaryId: it.secondaryId,
         flow: it.flow,
+        perScreen: perScreen || it.perScreen || (it.flow === false ? 'verse' : 'auto'),
         fit: scriptureFit(scriptureLookOf(next), next.sFont),
       });
       let index = 0;
@@ -1740,7 +1775,15 @@ function App() {
     onEdit=${(s) => setEditing(s)}
     onNew=${() => setEditing('new')}
   />`;
-  const scripturePane = html`<${Scripture} prefs=${prefs} setPrefs=${setPrefs} onShow=${showItem} look=${scriptureLookOf(state)} font=${state.sFont} />`;
+  const scripturePane = html`<${Scripture}
+    prefs=${prefs}
+    setPrefs=${setPrefs}
+    onShow=${showItem}
+    look=${scriptureLookOf(state)}
+    font=${state.sFont}
+    liveScripture=${Boolean(state.item && state.item.kind === 'scripture' && state.item.book)}
+    relayout=${(k) => setLook({}, k)}
+  />`;
   const mediaPane = html`<${Media}
     onShow=${showItem}
     illustration=${state.illustration}

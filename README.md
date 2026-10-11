@@ -234,6 +234,18 @@ too long for the look's lines splits at a natural pause, both languages at the s
 slide is measured in the real font at the real size for the look that is up, so nothing ever shrinks or wraps. Turn
 **Continue the text** off for one verse per slide.
 
+### Many verses at once
+
+**Verses on screen** in the Scripture tab chooses how much goes up together: **Same size** (the standard: the text
+continues across screens at a fixed size), **1 verse**, or **2, 3, 4, 6, 8** verses or the **Whole passage** at once.
+With a number or Whole passage, whole verses are kept together and the words take the **largest size that fits the
+whole screen** for that much text: Psalm 23 in Luganda fills one screen; "Jesus wept" alone grows to fill it; four
+verses in two languages come down to fit. Nothing is ever cut off or runs past the edge. Whole passage shares a long
+reading evenly over a few screens (John 3:1-21 in two languages: 5 + 4 + 4 + 4 + 4 verses) so the words stay
+readable across the hall. Changing the choice while a passage is up regroups it on the TV at once, on the verse being
+read. With **Verse by verse** on, Next lights each verse in turn while the others stay on screen a little dimmer, and
+the stream's lower third shows just the verse being read.
+
 ### Finding a passage by words or by voice
 
 The Scripture box takes a reference (`Zabbuli 23:1-4`, `Ps 23`, `Yk 3:16`) **or a few words of the verse** in
