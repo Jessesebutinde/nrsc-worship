@@ -1,6 +1,9 @@
 // The effect chain of one part, built from Web Audio nodes: compressor, drive/amp, EQ, chorus family,
-// tremolo/auto-pan, rotary speaker, tempo-synced delay, convolution reverb (with a shimmer loop).
-// Each stage is always connected; "off" just ramps its wet gain down, so switching never clicks.
+// tremolo/auto-pan, rotary speaker, tempo-synced delay, and a send to a shared convolution reverb.
+// Switching a stage ramps its wet gain, so it never clicks. A stage that is off is also unwired once
+// its wet gain has faded, so it costs no processing: a phone cannot afford 11 parts of idle effects.
+// Reverbs are shared, like a workstation's system reverb: parts that ask for the same room send into
+// one convolver (see ReverbPool), and only a few convolvers ever run at once.
 
 import { NOTE_BEATS, clamp } from './dsp/util.js';
 
@@ -27,12 +30,16 @@ export function mergeFx(partial) {
 }
 
 const RAMP = 0.03;
+const UNWIRE_MS = 300; // ten wet-gain time constants: silent by then
 const ramp = (param, value, ctx, tc = RAMP) => {
   param.cancelScheduledValues(ctx.currentTime);
   param.setTargetAtTime(value, ctx.currentTime, tc);
 };
 
-/** A stage with a dry path and a wet path mixed at the output. */
+/**
+ * A stage with a dry path and a wet path mixed at the output. The effect itself sits between `send`
+ * (its input) and `ret` (its output), and is wired in only while the stage is on or fading out.
+ */
 class Stage {
   constructor(ctx) {
     this.ctx = ctx;
@@ -41,15 +48,36 @@ class Stage {
     this.dry = ctx.createGain();
     this.wet = ctx.createGain();
     this.wet.gain.value = 0;
+    this.send = ctx.createGain();
+    this.ret = ctx.createGain();
     this.input.connect(this.dry).connect(this.output);
     this.wet.connect(this.output);
     this.on = false;
+    this.wired = false;
+    this.timer = 0;
+  }
+  wire() {
+    if (this.timer) clearTimeout(this.timer);
+    this.timer = 0;
+    if (this.wired) return;
+    this.input.connect(this.send);
+    this.ret.connect(this.wet);
+    this.wired = true;
+  }
+  unwire() {
+    this.timer = 0;
+    if (!this.wired) return;
+    this.input.disconnect(this.send);
+    this.ret.disconnect(this.wet);
+    this.wired = false;
   }
   /** mix 1 = fully wet (insert effects), smaller = parallel blend. */
   setOn(on, mix = 1) {
     this.on = !!on;
+    if (this.on) this.wire();
     ramp(this.wet.gain, on ? mix : 0, this.ctx);
     ramp(this.dry.gain, on ? 1 - mix : 1, this.ctx);
+    if (!this.on && this.wired && !this.timer) this.timer = setTimeout(() => this.unwire(), UNWIRE_MS);
   }
 }
 
@@ -61,7 +89,7 @@ class Comp extends Stage {
     this.c = ctx.createDynamicsCompressor();
     this.c.knee.value = 6;
     this.make = ctx.createGain();
-    this.input.connect(this.c).connect(this.make).connect(this.wet);
+    this.send.connect(this.c).connect(this.make).connect(this.ret);
   }
   set(p) {
     const c = this.c,
@@ -122,7 +150,7 @@ class Drive extends Stage {
     this.presence.frequency.value = 2600;
     this.presence.Q.value = 0.9;
     this.level = ctx.createGain();
-    this.input.connect(this.hp).connect(this.shaper).connect(this.tone).connect(this.presence).connect(this.level).connect(this.wet);
+    this.send.connect(this.hp).connect(this.shaper).connect(this.tone).connect(this.presence).connect(this.level).connect(this.ret);
   }
   set(p) {
     const ctx = this.ctx;
@@ -151,7 +179,7 @@ class Eq extends Stage {
     this.high = ctx.createBiquadFilter();
     this.high.type = 'highshelf';
     this.high.frequency.value = 5000;
-    this.input.connect(this.hpf).connect(this.low).connect(this.mid).connect(this.high).connect(this.wet);
+    this.send.connect(this.hpf).connect(this.low).connect(this.mid).connect(this.high).connect(this.ret);
   }
   set(p) {
     const ctx = this.ctx;
@@ -187,12 +215,12 @@ class Mod extends Stage {
     this.lfoB.connect(this.depthB);
     this.split = ctx.createChannelSplitter(2);
     this.merge = ctx.createChannelMerger(2);
-    this.input.connect(this.split);
+    this.send.connect(this.split);
     this.wetL = ctx.createGain();
     this.wetR = ctx.createGain();
     this.wetL.connect(this.merge, 0, 0);
     this.wetR.connect(this.merge, 0, 1);
-    this.merge.connect(this.wet);
+    this.merge.connect(this.ret);
     this.build('chorus');
   }
   build(type) {
@@ -304,14 +332,14 @@ class Trem extends Stage {
     this.merge = ctx.createChannelMerger(2);
     this.gL = ctx.createGain();
     this.gR = ctx.createGain();
-    this.input.connect(this.split);
+    this.send.connect(this.split);
     this.split.connect(this.gL, 0);
     this.split.connect(this.gR, 1);
     this.depthL.connect(this.gL.gain);
     this.depthR.connect(this.gR.gain);
     this.gL.connect(this.merge, 0, 0);
     this.gR.connect(this.merge, 0, 1);
-    this.merge.connect(this.wet);
+    this.merge.connect(this.ret);
   }
   set(p, bpm) {
     const ctx = this.ctx;
@@ -342,15 +370,15 @@ class Rotary extends Stage {
     this.hi = ctx.createBiquadFilter();
     this.hi.type = 'highpass';
     this.hi.frequency.value = 800;
-    this.input.connect(this.preGain).connect(this.pre);
+    this.send.connect(this.preGain).connect(this.pre);
     this.pre.connect(this.lo);
     this.pre.connect(this.hi);
     this.horn = this.rotor(this.hi, 0.0009, 0.45, 0.9);
     this.drum = this.rotor(this.lo, 0.0003, 0.3, 0.45);
     this.hornOut = ctx.createGain();
     this.drumOut = ctx.createGain();
-    this.horn.out.connect(this.hornOut).connect(this.wet);
-    this.drum.out.connect(this.drumOut).connect(this.wet);
+    this.horn.out.connect(this.hornOut).connect(this.ret);
+    this.drum.out.connect(this.drumOut).connect(this.ret);
   }
   rotor(src, doppler, am, pan) {
     const ctx = this.ctx;
@@ -410,7 +438,7 @@ class Delay extends Stage {
     this.hp.frequency.value = 120;
     this.split = ctx.createChannelSplitter(2);
     this.merge = ctx.createChannelMerger(2);
-    this.input.connect(this.hp).connect(this.split);
+    this.send.connect(this.hp).connect(this.split);
     this.inL = ctx.createGain();
     this.inR = ctx.createGain();
     this.split.connect(this.inL, 0);
@@ -430,7 +458,7 @@ class Delay extends Stage {
     this.fbR.connect(this.crossR).connect(this.dL);
     this.dL.connect(this.merge, 0, 0);
     this.dR.connect(this.merge, 0, 1);
-    this.merge.connect(this.wet);
+    this.merge.connect(this.ret);
   }
   set(p, bpm) {
     const ctx = this.ctx;
@@ -466,7 +494,8 @@ export function generateImpulse({ type = 'hall', decay = 3, damp = 0.5, sr = 480
   const key = `${type}:${decay.toFixed(2)}:${damp.toFixed(2)}:${sr}`;
   if (IRS.has(key)) return IRS.get(key);
   const t60 = clamp(decay, 0.1, 15);
-  const len = Math.max(Math.round(sr * Math.min(t60 * 1.1 + 0.1, 16)), sr * 0.2);
+  // cut at about -48 dB: the rest is buried under the music, and a long impulse is costly to run
+  const len = Math.max(Math.round(sr * Math.min(t60 * 0.8 + 0.25, 12)), sr * 0.2);
   const L = new Float32Array(len);
   const R = new Float32Array(len);
   let seed = 12345;
@@ -522,53 +551,171 @@ export function generateImpulse({ type = 'hall', decay = 3, damp = 0.5, sr = 480
   return ir;
 }
 
+// ------------------------------------------------------------------ reverb rooms
+
+// Rounded room settings, so parts asking for nearly the same reverb share one convolver.
+function roundDecay(d) {
+  const t = clamp(d, 0.1, 15);
+  return t < 2 ? Math.round(t * 5) / 5 : t < 4 ? Math.round(t * 2) / 2 : Math.round(t);
+}
+
+/** The room a reverb setting asks for, rounded: `{key, type, decay, damp, shimmer}`. */
+export function reverbRoom(p) {
+  const shimmerType = p.type === 'shimmer';
+  const type = shimmerType ? 'hall' : p.type || 'hall';
+  const decay = roundDecay(p.decay == null ? 3 : p.decay);
+  const damp = Math.round(clamp(p.damp == null ? 0.5 : p.damp, 0, 1) * 10) / 10;
+  const shimmer = shimmerType ? Math.max(0.1, Math.round(clamp(p.shimmer == null ? 0.5 : p.shimmer, 0, 0.7) * 10) / 10) : 0;
+  return { key: `${type}:${decay}:${damp}:${shimmer}`, type, decay, damp, shimmer };
+}
+
+function roomDistance(a, b) {
+  return (a.type === b.type ? 0 : 1.5) + Math.abs(Math.log(a.decay / b.decay)) + Math.abs(a.damp - b.damp) + ((a.shimmer > 0) === (b.shimmer > 0) ? Math.abs(a.shimmer - b.shimmer) : 3);
+}
+
+/**
+ * The shared reverbs. Parts send into a room; parts asking for the same (rounded) room share one
+ * convolver, and at most `max` rooms run at once: past that a part joins the closest running room.
+ * A room nobody uses is torn down once its tail has died away.
+ */
+export class ReverbPool {
+  constructor(ctx, out, { shimmer = false, max = 3 } = {}) {
+    this.ctx = ctx;
+    this.out = out;
+    this.shimmerReady = shimmer;
+    this.max = max;
+    this.rooms = new Map();
+  }
+  get running() {
+    let n = 0;
+    for (const r of this.rooms.values()) if (r.refs > 0) n++;
+    return n;
+  }
+  acquire(spec) {
+    const want = reverbRoom(spec);
+    let room = this.rooms.get(want.key);
+    if (!room && this.running >= this.max) {
+      let best = Infinity;
+      for (const r of this.rooms.values()) {
+        if (r.refs <= 0) continue;
+        const d = roomDistance(want, r);
+        if (d < best) {
+          best = d;
+          room = r;
+        }
+      }
+    }
+    if (!room) room = this.build(want);
+    room.refs++;
+    if (room.timer) clearTimeout(room.timer);
+    room.timer = 0;
+    return room;
+  }
+  release(room) {
+    if (!room) return;
+    room.refs = Math.max(0, room.refs - 1);
+    if (room.refs === 0 && !room.timer) room.timer = setTimeout(() => this.dispose(room), (room.decay + 1) * 1000);
+  }
+  build(r) {
+    const ctx = this.ctx;
+    const ir = generateImpulse({ type: r.type, decay: r.decay, damp: r.damp, sr: ctx.sampleRate });
+    const buf = ctx.createBuffer(2, ir.L.length, ctx.sampleRate);
+    buf.copyToChannel(ir.L, 0);
+    buf.copyToChannel(ir.R, 1);
+    const room = { ...r, refs: 0, timer: 0, nodes: [] };
+    room.input = ctx.createGain();
+    room.conv = ctx.createConvolver();
+    room.conv.buffer = buf;
+    room.input.connect(room.conv).connect(this.out);
+    room.nodes.push(room.input, room.conv);
+    if (r.shimmer > 0 && this.shimmerReady) {
+      // shimmer: the tail, an octave up, back into the reverb
+      try {
+        const shifter = new AudioWorkletNode(ctx, 'pitch-shift', { outputChannelCount: [2] });
+        const lp = ctx.createBiquadFilter();
+        lp.type = 'lowpass';
+        lp.frequency.value = 6000;
+        const g = ctx.createGain();
+        g.gain.value = r.shimmer;
+        const d = ctx.createDelay(0.1);
+        d.delayTime.value = 0.03;
+        room.conv.connect(shifter).connect(lp).connect(g).connect(d).connect(room.conv);
+        room.nodes.push(shifter, lp, g, d);
+      } catch {
+        /* no shifter: a plain hall */
+      }
+    }
+    this.rooms.set(r.key, room);
+    return room;
+  }
+  dispose(room) {
+    room.timer = 0;
+    if (room.refs > 0) return;
+    for (const n of room.nodes) n.disconnect();
+    this.rooms.delete(room.key);
+  }
+}
+
+/**
+ * The part's reverb: the dry level drops by the mix, and a send (after this part's own low cut and
+ * pre-delay, scaled by the part's fader through `post`) feeds a shared room in the pool.
+ */
 class Reverb extends Stage {
-  constructor(ctx, shimmerReady) {
+  constructor(ctx, pool) {
     super(ctx);
-    this.key = null;
-    this.pre = ctx.createDelay(0.25);
+    this.pool = pool;
+    this.room = null;
     this.lowcut = ctx.createBiquadFilter();
     this.lowcut.type = 'highpass';
     this.lowcut.frequency.value = 150;
-    this.conv = ctx.createConvolver();
-    this.input.connect(this.lowcut).connect(this.pre).connect(this.conv).connect(this.wet);
-    // shimmer: the tail, an octave up, back into the reverb
-    this.shimGain = ctx.createGain();
-    this.shimGain.gain.value = 0;
-    this.shimLp = ctx.createBiquadFilter();
-    this.shimLp.type = 'lowpass';
-    this.shimLp.frequency.value = 6000;
-    this.shimDelay = ctx.createDelay(0.1);
-    this.shimDelay.delayTime.value = 0.03;
-    if (shimmerReady) {
-      this.shifter = new AudioWorkletNode(ctx, 'pitch-shift', { outputChannelCount: [2] });
-      this.conv.connect(this.shifter).connect(this.shimLp).connect(this.shimGain).connect(this.shimDelay).connect(this.conv);
+    this.pre = ctx.createDelay(0.25);
+    this.level = ctx.createGain();
+    this.level.gain.value = 0;
+    this.post = ctx.createGain();
+    this.send.connect(this.lowcut).connect(this.pre).connect(this.level).connect(this.post);
+  }
+  unwire() {
+    super.unwire();
+    if (this.room) {
+      this.post.disconnect();
+      this.pool.release(this.room);
+      this.room = null;
     }
   }
   set(p) {
     const ctx = this.ctx;
-    const type = p.type || 'hall';
-    const irType = type === 'shimmer' ? 'hall' : type;
-    const ir = generateImpulse({ type: irType, decay: clamp(p.decay, 0.1, 15), damp: clamp(p.damp, 0, 1), sr: ctx.sampleRate });
-    if (ir.key !== this.key) {
-      const buf = ctx.createBuffer(2, ir.L.length, ctx.sampleRate);
-      buf.copyToChannel(ir.L, 0);
-      buf.copyToChannel(ir.R, 1);
-      this.conv.buffer = buf;
-      this.key = ir.key;
+    const mix = clamp(p.mix, 0, 1);
+    if (p.on) {
+      const room = this.pool.acquire(p);
+      if (room !== this.room) {
+        if (this.room) {
+          this.post.disconnect();
+          this.pool.release(this.room);
+        }
+        this.post.connect(room.input);
+        this.room = room;
+      } else this.pool.release(room); // already counted
     }
     ramp(this.pre.delayTime, clamp(p.predelay, 0, 0.25), ctx);
     ramp(this.lowcut.frequency, clamp(p.lowcut || 20, 20, 1000), ctx);
-    ramp(this.shimGain.gain, type === 'shimmer' && this.shifter ? clamp(p.shimmer, 0, 0.7) : 0, ctx);
-    this.setOn(p.on, clamp(p.mix, 0, 1));
+    ramp(this.level.gain, p.on ? mix : 0, ctx);
+    this.setOn(p.on, mix);
+    ramp(this.wet.gain, 0, ctx); // the wet sound comes back through the shared room, not this stage
   }
 }
 
 // ------------------------------------------------------------------ the chain
 
 export class PartChain {
-  constructor(ctx, { shimmer = false } = {}) {
+  /**
+   * `reverbs`: the shared ReverbPool. Without one the chain makes its own, returning into its output
+   * (a chain rendered on its own, as the tests do).
+   */
+  constructor(ctx, { shimmer = false, reverbs = null } = {}) {
     this.ctx = ctx;
+    this.input = ctx.createGain();
+    this.output = ctx.createGain();
+    const pool = reverbs || new ReverbPool(ctx, this.output, { shimmer });
     this.stages = {
       comp: new Comp(ctx),
       drive: new Drive(ctx),
@@ -577,17 +724,20 @@ export class PartChain {
       trem: new Trem(ctx),
       rotary: new Rotary(ctx),
       delay: new Delay(ctx),
-      reverb: new Reverb(ctx, shimmer),
+      reverb: new Reverb(ctx, pool),
     };
-    this.input = ctx.createGain();
     let node = this.input;
     for (const k of FX_ORDER) {
       node.connect(this.stages[k].input);
       node = this.stages[k].output;
     }
-    this.output = node;
+    node.connect(this.output);
     this.state = null;
     this.bpm = 120;
+  }
+  /** The part's fader gain (0 when muted), so its reverb send follows the fader like a post-fader send. */
+  setPost(gain) {
+    ramp(this.stages.reverb.post.gain, gain, this.ctx, 0.02);
   }
   /** Apply a full fx state (see defaultFx). Only stages whose settings changed are touched. */
   set(fx, bpm = this.bpm) {

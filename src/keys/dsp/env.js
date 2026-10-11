@@ -29,6 +29,12 @@ export class Adsr {
   release() {
     if (this.stage !== IDLE) this.stage = RELEASE;
   }
+  /** Let a release tail go quickly but smoothly (about 0.2 s to silence): a part with too many tails. */
+  hurry() {
+    if (this.stage === IDLE) return;
+    this.stage = RELEASE;
+    this.rCoef = Math.max(this.rCoef, tcCoef(0.03, this.sr));
+  }
   /** Choke quickly (voice stealing): a 3 ms fade. */
   kill() {
     this.stage = RELEASE;

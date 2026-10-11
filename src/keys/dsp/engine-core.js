@@ -16,6 +16,17 @@ const RENDERERS = { synth: synthRenderer, organ: organRenderer, string: stringRe
 
 export const MAX_PARTS = 8;
 const POOL = 160;
+/**
+ * Voice budgets. Every part may keep this many voices sounding, release tails included; past that its
+ * oldest tails fade out quickly. Without it a pad or choir played chord after chord with long releases
+ * fills the whole pool with tails nobody hears, and a phone cannot render that many voices in time.
+ * Light mode (phones) is tighter and thins synth unison stacks too.
+ */
+export const BUDGETS = [
+  { part: 40, pool: 128, unison: 7, linear: false }, // full
+  { part: 18, pool: 64, unison: 3, linear: false }, // light (phones)
+  { part: 10, pool: 40, unison: 2, linear: true }, // lighter: a device that still fell behind
+];
 
 class Voice {
   constructor(id, sr) {
@@ -36,6 +47,7 @@ class Voice {
     this.age = 0;
     this.released = false;
     this.held = false;
+    this.hurried = false;
     this.env = new Adsr(sr);
     this.fenv = new Adsr(sr);
     this.rng = new Rng(0x1234567 + id * 7919);
@@ -88,6 +100,14 @@ export class EngineCore {
     this.voiceCount = 0;
     this.scratchL = new Float32Array(128);
     this.scratchR = new Float32Array(128);
+    this.setLight(false);
+  }
+
+  /** Light level 0 (full), 1 (light: phones) or 2 (lighter): voice budgets and how rich each voice is. */
+  setLight(level) {
+    const l = level === true ? 1 : Math.max(0, Math.min(2, level | 0));
+    this.light = l;
+    this.budget = BUDGETS[l];
   }
 
   // ------------------------------------------------------------------ messages
@@ -139,6 +159,9 @@ export class EngineCore {
         break;
       case 'tempo':
         this.bpm = clamp(m.bpm, 20, 300);
+        break;
+      case 'light':
+        this.setLight(m.level != null ? m.level : m.on ? 1 : 0);
         break;
       default:
         break;
@@ -208,6 +231,7 @@ export class EngineCore {
     const layers = prog.type === 'layer' ? prog.layers : [prog];
     if (!layers.length) return;
     if (prog.type === 'drums') {
+      this.trimTails(idx, 1);
       this.startVoice(this.alloc(part), part, note, vel, prog, 0);
       return;
     }
@@ -245,6 +269,7 @@ export class EngineCore {
         if (!oldest || v.age < oldest.age) oldest = v;
       }
       if (count >= prog.voices && oldest) for (const v of this.voices) if (v.active && v.part === idx && v.srcNote === oldest.srcNote && v.age === oldest.age) this.release(v, true);
+      this.trimTails(idx, layers.length);
     }
     const started = [];
     for (let li = 0; li < layers.length; li++) {
@@ -273,6 +298,7 @@ export class EngineCore {
     v.age = this.frame;
     v.released = false;
     v.held = false;
+    v.hurried = false;
     // stereo placement: pianos/samples follow the keyboard, synths alternate
     const spread = prog.spread || 0;
     let pan = 0;
@@ -364,6 +390,41 @@ export class EngineCore {
     }
   }
 
+  /** Keep a part within its voice budget before `incoming` new voices start: its oldest tails fade out. */
+  trimTails(idx, incoming) {
+    let count = 0;
+    for (const v of this.voices) if (v.active && v.part === idx && !v.hurried) count++;
+    let over = count + incoming - this.budget.part;
+    while (over > 0) {
+      let oldest = null;
+      for (const v of this.voices) if (v.active && v.part === idx && v.released && !v.hurried && (!oldest || v.age < oldest.age)) oldest = v;
+      if (!oldest) break;
+      oldest.hurried = true;
+      if (oldest.r.hurry) oldest.r.hurry(oldest);
+      else oldest.env.hurry();
+      over--;
+    }
+  }
+
+  /** Fade the oldest tail anywhere (else the oldest note): keeps the pool near its budget, without a click. */
+  hurryOldest() {
+    let best = null,
+      bestScore = Infinity;
+    for (const v of this.voices) {
+      if (!v.active || v.hurried) continue;
+      const score = (v.released ? 0 : 1e12) + v.age;
+      if (score < bestScore) {
+        bestScore = score;
+        best = v;
+      }
+    }
+    if (!best) return;
+    if (!best.released) this.release(best);
+    best.hurried = true;
+    if (best.r.hurry) best.r.hurry(best);
+    else best.env.hurry();
+  }
+
   releasePart(part, fast) {
     for (const v of this.voices) if (v.active && v.part === part.index) this.release(v, fast);
     part.monoVoices = [];
@@ -371,10 +432,21 @@ export class EngineCore {
 
   alloc(part) {
     let best = null;
-    for (const v of this.voices) if (!v.active) return v;
-    // Steal: the quietest voice already in release, else the oldest.
+    let free = null,
+      active = 0;
+    for (const v of this.voices) {
+      if (v.active) active++;
+      else if (!free) free = v;
+    }
+    if (free) {
+      // Over the budget (light modes): fade the oldest voice out rather than cut one, and play now.
+      if (active >= this.budget.pool) this.hurryOldest();
+      return free;
+    }
+    // The whole pool is sounding: steal the quietest voice already in release, else the oldest.
     let bestScore = Infinity;
     for (const v of this.voices) {
+      if (!v.active) continue;
       const score = (v.released ? 0 : 1e9) + v.age;
       if (score < bestScore) {
         bestScore = score;

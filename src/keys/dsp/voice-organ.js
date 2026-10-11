@@ -54,6 +54,10 @@ export const organRenderer = {
     v.s.target = 0;
     v.s.rCoef = 0.3;
   },
+  hurry(v) {
+    v.s.target = 0;
+    v.s.rCoef = Math.max(v.s.rCoef, 0.0015);
+  },
   render(v, L, R, from, to, part, core) {
     const s = v.s;
     const sr = s.sr;

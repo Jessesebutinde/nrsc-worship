@@ -3,6 +3,7 @@
 
 import { effectiveParts, MAX_PARTS } from './state.js';
 import { presetBanks } from './presets.js';
+import { wantLight } from './engine.js';
 
 export function createSync({ engine, router, transport, looper, onLoading }) {
   let prevParts = [];
@@ -55,6 +56,7 @@ export function createSync({ engine, router, transport, looper, onLoading }) {
     const s = state.settings;
     if (s !== prevSettings) {
       if (!prevSettings || s.masterVolume !== prevSettings.masterVolume) engine.setMasterVolume(s.masterVolume);
+      if (prevSettings && (s.engineMode !== prevSettings.engineMode || s.autoLight !== prevSettings.autoLight) && engine.setLight) engine.setLight(wantLight(s));
       if (!prevSettings || s.clickVolume !== prevSettings.clickVolume) engine.setClickVolume(s.clickVolume);
       if (!prevSettings || s.quality !== prevSettings.quality) engine.samples.setQuality(s.quality);
       if (!prevSettings || s.metronome !== prevSettings.metronome) looper.metronome = s.metronome;

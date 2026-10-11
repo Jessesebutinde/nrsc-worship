@@ -2,6 +2,8 @@
 // your hands), part notes straight to a part (drum grooves, loop-only parts, the audition part), all at
 // exact audio times with a short look-ahead. Lights the on-screen keys at the moment each note sounds.
 
+import { AUDITION } from './engine.js';
+
 const LOOKAHEAD = 0.2; // seconds handed to the engine ahead of time
 const TICK = 25; // ms
 
@@ -85,9 +87,15 @@ export class DemoPlayer {
     this.lightTimers.add(t);
   }
 
+  /** The audition parts go back to costing nothing once their last notes have rung out. */
+  park() {
+    for (const p of this.parts) if (p >= AUDITION && this.engine.park) this.engine.park(p, 5000);
+  }
+
   finish() {
     clearInterval(this.timer);
     this.timer = null;
+    this.park();
     this.parts.clear();
     this.name = '';
     this.onChange();
@@ -102,6 +110,7 @@ export class DemoPlayer {
     this.queue = [];
     this.router.releaseVirtual();
     for (const p of this.parts) this.engine.allOff(false, p);
+    this.park();
     this.parts.clear();
     for (const n of this.lit) this.onLight(n, false);
     this.lit.clear();

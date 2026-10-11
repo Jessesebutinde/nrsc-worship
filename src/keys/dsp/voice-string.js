@@ -6,6 +6,9 @@ import { OnePole, Allpass1, DcBlock, Biquad } from './filter.js';
 import { velocityCurve, clamp, sine } from './util.js';
 
 const BUF = 8192;
+// Levels were matched at 44.1 kHz. White noise filtered to the same band carries more power per sample
+// at a lower rate (light mode runs at 32 kHz), so the pluck is scaled to sound the same at any rate.
+const REF_RATE = 44100;
 
 class Str {
   constructor() {
@@ -49,6 +52,9 @@ export const stringRenderer = {
     const vel = clamp(v.vel, 0.05, 1);
     s.n = prog.unisonN;
     s.sr = sr;
+    s.noiseNorm = Math.sqrt(sr / REF_RATE);
+    s.thumpDecay = Math.pow(0.9985, REF_RATE / sr);
+    s.followDecay = Math.pow(0.9995, REF_RATE / sr);
     s.muted = false;
     s.released = false;
     s.follow = 1;
@@ -122,6 +128,12 @@ export const stringRenderer = {
     s.released = true;
     for (let k = 0; k < s.n; k++) v.s.strs[k].g = 0.6;
   },
+  /** Too many tails: damp the string hard, a fast but smooth fade. */
+  hurry(v) {
+    const s = v.s;
+    s.released = true;
+    for (let k = 0; k < s.n; k++) s.strs[k].g = Math.min(s.strs[k].g, 0.9);
+  },
   render(v, L, R, from, to, part, core) {
     const s = v.s;
     const sr = s.sr;
@@ -164,7 +176,7 @@ export const stringRenderer = {
           let y = str.ap.process(str.lp.lp(d)) * str.g;
           if (str.excite > 0) {
             // noise burst, comb-filtered at the pick position
-            let e = str.exciteLp.lp(v.rng.bipolar());
+            let e = str.exciteLp.lp(v.rng.bipolar() * s.noiseNorm);
             const ci = str.combIdx - str.combDelay;
             if (ci >= 0) e -= str.combBuf ? str.combBuf[ci & 255] : 0;
             if (!str.combBuf) str.combBuf = new Float32Array(256);
@@ -176,7 +188,7 @@ export const stringRenderer = {
           if (str.thump > 0.001) {
             y += sine(str.thumpPhase) * str.thump;
             str.thumpPhase += str.thumpInc;
-            str.thump *= 0.9985;
+            str.thump *= s.thumpDecay;
           }
           buf[str.w] = y;
           str.w = str.w + 1 >= BUF ? 0 : str.w + 1;
@@ -187,7 +199,7 @@ export const stringRenderer = {
         L[i + k] += x * a * gl;
         R[i + k] += x * a * gr;
         const ax = x < 0 ? -x : x;
-        s.follow = ax > s.follow ? ax : s.follow * 0.9995;
+        s.follow = ax > s.follow ? ax : s.follow * s.followDecay;
       }
       i += n;
       s.ctrl -= n;

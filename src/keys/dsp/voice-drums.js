@@ -98,6 +98,7 @@ export const drumsRenderer = {
   kill(v) {
     v.s.len = 0;
   },
+  hurry() {}, // drum hits are short: let them ring
   render(v, L, R, from, to, part, core) {
     const s = v.s;
     const sr = s.sr;

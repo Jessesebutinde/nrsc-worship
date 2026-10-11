@@ -71,6 +71,9 @@ export const defaultSettings = () => ({
   audioOutput: '',
   latency: 'interactive',
   quality: 'medium',
+  // 'auto': light on phones, and anywhere the device was once seen falling behind; 'full'; 'light'
+  engineMode: 'auto',
+  autoLight: 0, // the light level this device was seen to need
   ccMap: { 74: 'macro1', 71: 'macro2', 73: 'macro3', 72: 'macro4' }, // the KROSS 2 tone knobs
   masterVolume: 0.8, // about 2 dB of headroom: a full band rig peaks under the safety limiter
   clickVolume: 0.6,
