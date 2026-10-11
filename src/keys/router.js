@@ -33,8 +33,9 @@ export class Router {
    * @param {(part:number, note:number, on:boolean, vel:number) => void} [o.onNote]   for the on-screen keyboard
    * @param {(part:number, ev:object) => void} [o.onLoopInput]   feeds the looper while it records
    * @param {(cc:number) => void} [o.onLearn]   a CC arrived while learning
+   * @param {(note:number) => void} [o.onMiss]   a key that no part plays
    */
-  constructor({ engine, getParts, getCcMap, onAction, onNote, onLoopInput, onLearn, onProgram }) {
+  constructor({ engine, getParts, getCcMap, onAction, onNote, onLoopInput, onLearn, onProgram, onMiss }) {
     this.engine = engine;
     this.getParts = getParts;
     this.getCcMap = getCcMap || (() => ({}));
@@ -43,6 +44,7 @@ export class Router {
     this.onLoopInput = onLoopInput || (() => {});
     this.onLearn = onLearn || (() => {});
     this.onProgram = onProgram || (() => {});
+    this.onMiss = onMiss || (() => {});
     this.active = new Map(); // "ch:note" -> [{ part, note }]
     this.learning = false;
     this.sustain = false;
@@ -82,6 +84,7 @@ export class Router {
           this.onLoopInput(i, { type: 'on', note, vel, time: this.engine.time });
         }
         if (hit.length) this.active.set(key, hit);
+        else this.onMiss(ev.note);
         break;
       }
       case 'noteoff':

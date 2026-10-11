@@ -31,8 +31,25 @@ export class Engine {
   async start({ latency = 'interactive', sinkId = '', quality = 'medium' } = {}) {
     if (this.ctx) return;
     const mode = LATENCY_MODES[latency] || LATENCY_MODES.interactive;
+    // iPhone: play through the ringer/silent switch, like a music app does.
+    try {
+      if (navigator.audioSession) navigator.audioSession.type = 'playback';
+    } catch {
+      /* older Safari */
+    }
     const ctx = new AudioContext({ latencyHint: mode.hint });
     this.ctx = ctx;
+    // Phones only let sound start inside the tap itself: resume and play a silent sample right now,
+    // before anything is awaited.
+    ctx.resume().catch(() => {});
+    try {
+      const src = ctx.createBufferSource();
+      src.buffer = ctx.createBuffer(1, 1, ctx.sampleRate);
+      src.connect(ctx.destination);
+      src.start(0);
+    } catch {
+      /* nothing to unlock */
+    }
     const base = new URL('./worklet/', import.meta.url);
     await ctx.audioWorklet.addModule(new URL('engine.js', base));
     try {
@@ -159,6 +176,26 @@ export class Engine {
     osc.connect(g).connect(this.clickGain);
     osc.start(t);
     osc.stop(t + 0.05);
+  }
+  /** A soft two-note chime: proof that sound reaches the speakers. */
+  chime() {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    const t = ctx.currentTime + 0.05;
+    [
+      [659.25, 0],
+      [987.77, 0.14],
+    ].forEach(([f, d]) => {
+      const osc = ctx.createOscillator();
+      osc.frequency.value = f;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0, t + d);
+      g.gain.linearRampToValueAtTime(0.35, t + d + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.001, t + d + 0.9);
+      osc.connect(g).connect(this.master);
+      osc.start(t + d);
+      osc.stop(t + d + 1);
+    });
   }
   setClickVolume(v) {
     if (this.clickGain) this.clickGain.gain.value = v;

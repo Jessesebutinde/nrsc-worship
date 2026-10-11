@@ -57,7 +57,7 @@ export function Perform({ ctx, state }) {
             selected=${sel}
             lit=${ctx.lit}
             onZone=${(i, patch) => dispatch({ type: 'part/patch', index: i, patch })}
-            onPlay=${(n, on) => ctx.actions.playScreenNote(n, on)}
+            onPlay=${(n, on, vel) => ctx.actions.playScreenNote(n, on, vel)}
           />`
         : null}
     </div>
