@@ -3693,3 +3693,52 @@
     scale: 1;
   }
 }
+
+/* ------------------------------------------------------------ many verses at once */
+/* The block takes the whole safe area (the Scroll's ribbon is already full width; an illustration
+   keeps its room); the text grows or shrinks to the largest size that fits. While reading verse by
+   verse every verse stays on screen: the one being read is full, the others a little dimmer. */
+
+.smany .scrip:not(.l-scroll) {
+  --sl: 96px !important;
+  --sw: 1728px !important;
+}
+.smany .scrip .ref,
+.smany .sref {
+  font-size: calc(44px * clamp(0.75, var(--fs, 1), 1.15));
+  margin-bottom: calc(30px * clamp(0.5, var(--fs, 1), 1));
+}
+.smany .scrip .pri {
+  line-height: 1.18;
+}
+.smany .scrip .sec {
+  margin-top: calc(30px * clamp(0.4, var(--fs, 1), 1));
+}
+.smany .scrip .ver {
+  font-size: calc(28px * clamp(0.8, var(--fs, 1), 1));
+}
+.smany.reveal-on .vs.next {
+  opacity: 0.5;
+}
+.smany.reveal-on .vs.read {
+  opacity: 0.5;
+}
+/* The card looks with their own column widths open up too. */
+.smany .scrip.l-cathedral,
+.smany .scrip.l-tablet,
+.smany .scrip.l-gallery,
+.smany .scrip.l-epistle,
+.smany .scrip.l-split,
+.smany .scrip.l-stack,
+.smany .scrip.l-twin,
+.smany .scrip.l-bible {
+  --sl: 96px !important;
+  --sw: 1728px !important;
+}
+.smany .l-stack .c1,
+.smany .l-stack .c2 {
+  width: auto;
+}
+.smany .l-stack .c2 {
+  margin-left: 240px;
+}

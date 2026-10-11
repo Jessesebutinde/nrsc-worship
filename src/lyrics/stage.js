@@ -102,7 +102,7 @@ function widestLine(el) {
  * `lines` do not wrap): as large as `max`, and no smaller than `min` even when a line is too wide.
  * Off: the standard size.
  */
-function useFill(ref, { on, max, min = 1, availH, lines = false }, deps) {
+function useFill(ref, { on, max, min = 1, availH, lines = false, noOverflowX = false }, deps) {
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -117,7 +117,7 @@ function useFill(ref, { on, max, min = 1, availH, lines = false }, deps) {
     try {
       const fits = (s) => {
         set(s);
-        return el.scrollHeight <= availH && (!lines || widestLine(el) <= 1);
+        return el.scrollHeight <= availH && (!lines || widestLine(el) <= 1) && (!noOverflowX || [...el.querySelectorAll('.pri, .sec')].every((t) => t.scrollWidth <= t.clientWidth + 1));
       };
       if (!fits(min)) {
         // Even the smallest size is too wide: let the lines wrap rather than cut them off.
@@ -387,8 +387,10 @@ function ScriptureFrame({ item, index, lt, fill, textW, fontsReady, marks, look 
   const cur = Math.min(sub, steps - 1);
   const card = SCRIPTURE_INFO[look] && SCRIPTURE_INFO[look].group === 'card' && look !== 'linen' && look !== 'scroll';
   // Beside an illustration the Scroll's ribbon leaves room for its reference underneath.
-  const availH = (SCRIP_H[look] || SAFE_H * 0.92) * (look === 'scroll' && textW < SAFE_W ? 0.8 : 1);
-  useFill(box, { on: fill && !lt, max: card ? CARD_MAX : SCRIP_MAX[look] || 1.8, min: 0.8, availH }, [
+  const many = Boolean(item.many);
+  const availH = (SCRIP_H[look] || SAFE_H * (many ? 0.95 : 0.92)) * (look === 'scroll' && textW < SAFE_W ? 0.8 : 1);
+  // Many verses: as large as the screen allows for this much text, smaller or bigger than standard.
+  useFill(box, many ? { on: !lt, max: 3, min: 0.3, availH, noOverflowX: true } : { on: fill && !lt, max: card ? CARD_MAX : SCRIP_MAX[look] || 1.8, min: 0.8, availH }, [
     s && s.ref,
     s && s.primary,
     s && s.secondary,
@@ -397,6 +399,7 @@ function ScriptureFrame({ item, index, lt, fill, textW, fontsReady, marks, look 
     fontsReady,
     look,
     quotes,
+    many,
   ]);
   if (!s) return null;
   const more = index < item.slides.length - 1;
@@ -405,6 +408,18 @@ function ScriptureFrame({ item, index, lt, fill, textW, fontsReady, marks, look 
   const contOut = (field) => Boolean(nf && nf.part && nf.part !== 'a' && nf[field]);
   const v = (field, extra = {}) =>
     html`<${Verses} slide=${s} field=${field} marks=${marks} cur=${cur} reveal=${reveal} quotes=${quotes} contOut=${contOut(field)} ...${extra} />`;
+  if (lt && many && s.verses && s.verses.length > 1) {
+    // The stream's lower third has room for one verse: the one being read.
+    const g = s.verses[cur];
+    const one = { ...s, verses: [g], primary: g.primary, secondary: g.secondary };
+    const ref = String(s.ref).replace(/: [\dA-Za-z]+(?:-\d+)?/g, `: ${g.verse}`);
+    const vOne = (field) => html`<${Verses} slide=${one} field=${field} marks=${null} quotes=${quotes} />`;
+    return html`<div class="lt-band lt-scrip" key=${g.verse}>
+      <div class="ln ref" style="--i:0"><span class="tab">${ref}</span>${(more || cur < steps - 1) && html`<${Dots} cls="more" />`}</div>
+      ${g.primary && html`<div class="ln pri" style="--i:1">${vOne('primary')}</div>`}
+      ${g.secondary && html`<div class="ln sec" style="--i:2">${vOne('secondary')}</div>`}
+    </div>`;
+  }
   if (lt)
     return html`<div class="lt-band lt-scrip">
       <div class="ln ref" style="--i:0"><span class="tab">${s.ref}</span>${more && html`<${Dots} cls="more" />`}</div>
@@ -679,6 +694,7 @@ export function Stage({ state, out = 'preview', layout = 'full', background = 'a
     `sfont-${st.sFont === 'sans' ? 'sans' : 'serif'}`,
     lowerThird ? '' : `smo-${motion}`,
     st.reveal !== false ? 'reveal-on' : '',
+    up === 'scripture' && st.item.many ? 'smany' : '',
     st.followDim !== false ? 'follow-dim' : '',
     keyed ? 'keyed' : '',
   ].join(' ');

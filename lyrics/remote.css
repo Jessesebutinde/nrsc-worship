@@ -617,6 +617,11 @@ main {
 .scripture select {
   width: 100%;
 }
+.per-screen .seg button {
+  min-height: 38px;
+  padding: 4px 10px;
+  font-size: 0.85rem;
+}
 /* The microphone, what it heard, and the suggestions from words typed or said. */
 .scripture .mic {
   flex: none;

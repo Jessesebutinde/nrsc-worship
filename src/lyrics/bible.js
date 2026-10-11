@@ -322,8 +322,46 @@ export function paginate(verses, { book, chapter, fit = CHAR_FIT, flow = true, p
   return slides;
 }
 
-/** Builds the scripture item sent to the screen for a passage. */
-export async function passageItem({ ref, primaryId, secondaryId, flow = true, fit = CHAR_FIT, base, fetchImpl }) {
+// "Many verses" screens: how much text a whole-passage screen may hold before it is split into
+// several screens of about the same size (so the words stay big enough to read across the hall).
+export const WHOLE_BUDGET = 1100;
+export const PER_SCREEN = ['auto', 'verse', 2, 3, 4, 6, 8, 'all'];
+/** Is this a "many verses" choice (the text grows or shrinks to fill the screen)? */
+export const isMany = (perScreen) => perScreen === 'all' || (Number(perScreen) >= 2 && Number(perScreen) <= 50);
+
+/**
+ * Verses -> screens of whole verses, never split: `perScreen` at a time, or 'all' (as many as fit
+ * the budget, spread evenly: 14 verses that need two screens become 7 + 7).
+ */
+export function groupVerses(verses, perScreen, { book, chapter, primaryLang = 'lg', secondaryLang = 'en', budget = WHOLE_BUDGET } = {}) {
+  const lg = primaryLang === 'lg' || secondaryLang === 'lg';
+  const en = primaryLang === 'en' || secondaryLang === 'en' || !lg;
+  // Screen sizes: perScreen each, or (whole passage) as few screens as the budget allows, evenly.
+  let sizes;
+  if (perScreen === 'all') {
+    const total = verses.reduce((n, v) => n + (v.primary || '').length + (v.secondary || '').length, 0);
+    const screens = Math.min(verses.length, Math.max(1, Math.ceil(total / budget)));
+    sizes = Array.from({ length: screens }, (_, i) => Math.floor(verses.length / screens) + (i < verses.length % screens ? 1 : 0));
+  } else {
+    const n = Math.max(1, Math.floor(Number(perScreen)) || 1);
+    sizes = Array.from({ length: Math.ceil(verses.length / n) }, () => n);
+  }
+  const slides = [];
+  let i = 0;
+  for (const size of sizes) {
+    const segs = verses.slice(i, i + size).map((v) => ({ verse: v.verse, part: '', primary: v.primary || '', secondary: v.secondary || '' }));
+    i += size;
+    if (segs.length) slides.push(slideOf(segs, book, chapter, { lg, en }));
+  }
+  return slides;
+}
+
+/**
+ * Builds the scripture item sent to the screen for a passage. perScreen: 'auto' (flow at the fixed
+ * size), 'verse' (one verse per slide at the fixed size), a number of verses or 'all' ("many verses":
+ * whole verses together, the text as large as the screen allows).
+ */
+export async function passageItem({ ref, primaryId, secondaryId, flow = true, perScreen = 'auto', fit = CHAR_FIT, base, fetchImpl }) {
   const { book, chapter } = ref;
   const pv = versionById(primaryId);
   const sv = secondaryId ? versionById(secondaryId) : null;
@@ -339,18 +377,16 @@ export async function passageItem({ ref, primaryId, secondaryId, flow = true, fi
   const to = Math.min(ref.to || count, count);
   const verses = [];
   for (let v = from; v <= to; v++) verses.push({ verse: v, primary: pCh[v - 1] || '', secondary: sCh[v - 1] || '' });
-  const slides = paginate(verses, {
-    book,
-    chapter,
-    fit,
-    flow,
-    primaryLang: pv ? pv.lang : 'lg',
-    secondaryLang: sv ? sv.lang : '',
-  });
+  const many = isMany(perScreen);
+  if (perScreen === 'verse') flow = false;
+  const langs = { primaryLang: pv ? pv.lang : 'lg', secondaryLang: sv ? sv.lang : '' };
+  const slides = many ? groupVerses(verses, perScreen, { book, chapter, ...langs }) : paginate(verses, { book, chapter, fit, flow, ...langs });
   const range = from === to ? `${from}` : `${from}-${to}`;
   return {
     kind: 'scripture',
-    id: `${book.code}.${chapter}.${range}.${primaryId}.${secondaryId || ''}.${flow ? 'f' : 'v'}`,
+    id: `${book.code}.${chapter}.${range}.${primaryId}.${secondaryId || ''}.${many ? `m${perScreen}` : flow ? 'f' : 'v'}`,
+    many,
+    perScreen: many ? perScreen : flow ? 'auto' : 'verse',
     title: formatRef(book, chapter, range),
     // Enough to show a title card and to lay the passage out again for another look.
     book: { lg: book.lg, en: book.en, code: book.code },

@@ -122,3 +122,37 @@ test('a spoken reference is understood wherever it is in the sentence', () => {
     assert.equal(spokenRef(said), null, said);
   }
 });
+
+import { passageItem, groupVerses, isMany } from '../src/lyrics/bible.js';
+import { parseRef } from '../src/lyrics/books.js';
+
+const fetchBook = async (url) => {
+  const m = url.match(/(lug68|kjv|web)\/(\d+)\.json$/);
+  return { ok: true, status: 200, json: async () => book(m[1], +m[2]) };
+};
+
+test('many verses at once: whole verses grouped by count, or the whole passage spread evenly', async () => {
+  assert.ok(isMany(2) && isMany(8) && isMany('all'));
+  assert.ok(!isMany('auto') && !isMany('verse') && !isMany(1));
+  const vs = Array.from({ length: 21 }, (_, i) => ({ verse: i + 1, primary: 'x'.repeat(100), secondary: '' }));
+  const bk = { lg: 'Yokaana', en: 'John', code: 'JHN' };
+  assert.deepEqual(groupVerses(vs, 4, { book: bk, chapter: 3 }).map((s) => s.verses.length), [4, 4, 4, 4, 4, 1]);
+  // 2,100 characters over a 1,100 budget: two screens, 11 + 10, never one left over.
+  assert.deepEqual(groupVerses(vs, 'all', { book: bk, chapter: 3 }).map((s) => s.verses.length), [11, 10]);
+  for (const s of groupVerses(vs, 'all', { book: bk, chapter: 3 })) assert.ok(s.verses.every((v) => v.part === ''), 'verses are never split');
+
+  const ps23 = await passageItem({ ref: parseRef('Zabbuli 23'), primaryId: 'lug68', secondaryId: '', perScreen: 'all', fetchImpl: fetchBook });
+  assert.equal(ps23.many, true);
+  assert.equal(ps23.perScreen, 'all');
+  assert.deepEqual(ps23.slides.map((s) => s.verses.length), [6], 'Psalm 23 in Luganda fits one screen');
+  assert.equal(ps23.slides[0].ref, 'Zabbuli 23 : 1-6');
+  const three = await passageItem({ ref: parseRef('Zabbuli 23'), primaryId: 'lug68', secondaryId: 'kjv', perScreen: 3, fetchImpl: fetchBook });
+  assert.deepEqual(three.slides.map((s) => s.verses.length), [3, 3]);
+  assert.notEqual(three.id, ps23.id);
+  const same = await passageItem({ ref: parseRef('Zabbuli 23'), primaryId: 'lug68', secondaryId: 'kjv', perScreen: 'auto', fetchImpl: fetchBook });
+  assert.equal(same.many, false);
+  assert.equal(same.perScreen, 'auto');
+  const one = await passageItem({ ref: parseRef('Zabbuli 23'), primaryId: 'lug68', secondaryId: 'kjv', perScreen: 'verse', fetchImpl: fetchBook });
+  assert.equal(one.perScreen, 'verse');
+  assert.equal(one.flow, false);
+});
