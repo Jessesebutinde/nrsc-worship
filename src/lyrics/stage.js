@@ -102,22 +102,24 @@ function widestLine(el) {
  * `lines` do not wrap): as large as `max`, and no smaller than `min` even when a line is too wide.
  * Off: the standard size.
  */
-function useFill(ref, { on, max, min = 1, availH, lines = false, noOverflowX = false }, deps) {
+function useFill(ref, { on, max, min = 1, availH, lines = false, noOverflowX = false, boost = 1 }, deps) {
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
     const set = (s) => el.style.setProperty('--fs', String(s));
     el.classList.remove('squeeze');
     if (!on) {
-      set(1);
+      set(boost);
       return;
     }
     // Measured with the entrance animations suspended: a word mid-flight would inflate its line.
     el.classList.add('measuring');
+    // No word may run past the edge.
+    const inside = () => [...el.querySelectorAll('.ln, .pri, .sec')].every((t) => t.scrollWidth <= t.clientWidth + 1);
     try {
       const fits = (s) => {
         set(s);
-        return el.scrollHeight <= availH && (!lines || widestLine(el) <= 1) && (!noOverflowX || [...el.querySelectorAll('.pri, .sec')].every((t) => t.scrollWidth <= t.clientWidth + 1));
+        return el.scrollHeight <= availH && (!lines || widestLine(el) <= 1) && (!noOverflowX || inside());
       };
       if (!fits(min)) {
         // Even the smallest size is too wide: let the lines wrap rather than cut them off.
@@ -132,7 +134,28 @@ function useFill(ref, { on, max, min = 1, availH, lines = false, noOverflowX = f
         if (fits(mid)) lo = mid;
         else hi = mid;
       }
-      set(Math.floor(lo * 100) / 100);
+      let size = Math.floor(lo * 100) / 100;
+      if (boost < 1) size = Math.floor(size * boost * 100) / 100;
+      else if (boost > 1) {
+        // Larger text: let lines wrap, and grow as far as the height allows (up to boost x the fit).
+        el.classList.add('squeeze');
+        const tall = (s) => {
+          set(s);
+          return el.scrollHeight <= availH && inside();
+        };
+        let a = size;
+        let b = size * boost;
+        if (tall(b)) a = b;
+        else
+          for (let i = 0; i < 8; i++) {
+            const mid = (a + b) / 2;
+            if (tall(mid)) a = mid;
+            else b = mid;
+          }
+        if (a < size * 1.03) el.classList.remove('squeeze');
+        else size = Math.floor(a * 100) / 100;
+      }
+      set(size);
     } finally {
       el.classList.remove('measuring');
     }
@@ -296,14 +319,15 @@ function bestLines(lines, preset, caps, textW) {
   return best;
 }
 
-function SongFrame({ item, index, lt, fill, caps, preset, textW, fontsReady, marks, hero = false, place = 'center', mix = false, wc = null }) {
+function SongFrame({ item, index, lt, fill, caps, preset, textW, fontsReady, marks, hero = false, place = 'center', mix = false, wc = null, size = 1 }) {
   const slide = item.slides[index];
   const box = useRef(null);
   const refill = fill && !lt;
   // Re-breaking lines needs widths in one font; with mixed fonts or a hero word the DOM measure in useFill decides.
   const lines = slide ? (refill && fontsReady && !mix && !hero ? bestLines(slide.lines, preset, caps || UPPER.has(preset), textW) : slide.lines) : [];
   // A line is never allowed to wrap into a third: wide display fonts may shrink to half the standard.
-  useFill(box, { on: refill, max: maxLyric(preset), min: 0.5, availH: LYRIC_H, lines: true }, [
+  useFill(box, { on: refill, max: maxLyric(preset), min: 0.5, availH: LYRIC_H, lines: true, boost: size }, [
+    size,
     lines.join('\n'),
     fill,
     caps,
@@ -380,7 +404,7 @@ const TWO_CARDS = new Set(['twin', 'stack', 'bible']);
 /** The three dots that say the passage goes on. */
 const Dots = ({ cls = 'smore' }) => html`<div class=${cls} aria-label="continues"><i></i><i></i><i></i></div>`;
 
-function ScriptureFrame({ item, index, lt, fill, textW, fontsReady, marks, look = 'ink', sub = 0, reveal = false, quotes = true }) {
+function ScriptureFrame({ item, index, lt, fill, textW, fontsReady, marks, look = 'ink', sub = 0, reveal = false, quotes = true, size = 1 }) {
   const s = item.slides[index];
   const box = useRef(null);
   const steps = s && s.verses ? s.verses.length : 1;
@@ -393,7 +417,17 @@ function ScriptureFrame({ item, index, lt, fill, textW, fontsReady, marks, look 
   const placed = useRef(false);
   const availH = (SCRIP_H[look] || SAFE_H * (many ? 0.95 : 0.92)) * (look === 'scroll' && textW < SAFE_W ? 0.8 : 1);
   // Many verses: as large as the screen allows for this much text, smaller or bigger than standard.
-  useFill(box, scroll ? { on: false, availH } : many ? { on: !lt, max: 3, min: 0.3, availH, noOverflowX: true } : { on: fill && !lt, max: card ? CARD_MAX : SCRIP_MAX[look] || 1.8, min: 0.8, availH }, [
+  // Text size: a scrolling column is simply scaled; standard slides (laid out for this size) grow
+  // within a range scaled with it; many verses are already as large as they can be.
+  useFill(
+    box,
+    scroll
+      ? { on: false, availH, boost: size }
+      : many
+        ? { on: !lt, max: 3, min: 0.3, availH, noOverflowX: true }
+        : { on: !lt && (fill || size !== 1), max: (card ? CARD_MAX : SCRIP_MAX[look] || 1.8) * Math.max(1, size), min: 0.8 * size, availH, noOverflowX: size > 1 },
+    [
+    size,
     s && s.ref,
     s && s.primary,
     s && s.secondary,
@@ -657,6 +691,9 @@ const LogoFrame = () => html`<div class="logo">
 // How long a scripture frame takes to leave, by motion (the page turn and the slide travel further).
 const SMO_OUT = { gentle: 250, page: 760, type: 300, reveal: 420, slide: 520 };
 
+// Text size multipliers (state.lSize for lyrics, state.sSize for scripture).
+const sizeOf = (v) => (Number(v) > 0.5 && Number(v) < 3 ? Number(v) : 1);
+
 const marksFor = (st, item, index) => (st.marks && item ? st.marks[`${item.id}:${index}`] : null) || null;
 
 /** Which frame the state shows on an output: { key, kind, preset } (preset = the song's look). */
@@ -752,9 +789,9 @@ export function Stage({ state, out = 'preview', layout = 'full', background = 'a
       const preset = kind === 'song' ? data.f.preset : kind;
       return html`<div key=${k} class=${`frame k-${kind} p-${preset} ik-${data.item ? data.item.kind : 'none'} ${leaving ? 'out' : 'in'}`} style=${`--out:${o}ms`}>
         ${kind === 'song' &&
-        html`<${SongFrame} item=${data.item} index=${data.index} lt=${lowerThird} fill=${fill} caps=${st.caps !== false} preset=${data.f.preset} textW=${textW} fontsReady=${fontsReady} marks=${marksFor(st, data.item, data.index)} hero=${Boolean(st.hero)} place=${st.place || 'center'} mix=${Boolean(st.mixFonts)} wc=${!leaving && data.index === (st.index || 0) && Array.isArray(st.wc) && (out !== 'stream' || st.followStream !== false) ? st.wc : null} />`}
+        html`<${SongFrame} item=${data.item} index=${data.index} lt=${lowerThird} fill=${fill} caps=${st.caps !== false} preset=${data.f.preset} textW=${textW} fontsReady=${fontsReady} marks=${marksFor(st, data.item, data.index)} hero=${Boolean(st.hero)} place=${st.place || 'center'} mix=${Boolean(st.mixFonts)} size=${sizeOf(st.lSize)} wc=${!leaving && data.index === (st.index || 0) && Array.isArray(st.wc) && (out !== 'stream' || st.followStream !== false) ? st.wc : null} />`}
         ${kind === 'scripture' &&
-        html`<${ScriptureFrame} item=${data.item} index=${data.index} lt=${lowerThird} fill=${fill} textW=${textW} fontsReady=${fontsReady} marks=${marksFor(st, data.item, data.index)} look=${sLook} sub=${data.index === (st.index || 0) ? st.sub || 0 : steps} reveal=${st.reveal !== false} quotes=${st.quotes !== false} />`}
+        html`<${ScriptureFrame} item=${data.item} index=${data.index} lt=${lowerThird} fill=${fill} textW=${textW} fontsReady=${fontsReady} marks=${marksFor(st, data.item, data.index)} look=${sLook} sub=${data.index === (st.index || 0) ? st.sub || 0 : steps} reveal=${st.reveal !== false} quotes=${st.quotes !== false} size=${sizeOf(st.sSize)} />`}
         ${kind === 'media' && html`<${MediaFrame} item=${data.item} index=${data.index} live=${out !== 'preview' && !leaving} />`}
         ${kind === 'title' && html`<${TitleFrame} item=${data.item} />`}
         ${kind === 'logo' && html`<${LogoFrame} />`}

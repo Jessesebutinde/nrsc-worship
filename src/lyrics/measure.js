@@ -87,7 +87,8 @@ function textWidth(text, weight, size, family = 'Montserrat') {
   ctx.font = `${weight} ${size}px ${family}`;
   return ctx.measureText(text).width;
 }
-export function scriptureFit(look = 'ink', font = 'serif') {
+export function scriptureFit(look = 'ink', font = 'serif', size = 1) {
+  const k = Number(size) > 0.5 && Number(size) < 3 ? Number(size) : 1;
   const f = SCRIP_FIT[look] || SCRIP_FIT.ink;
   const fam = font === 'sans' ? 'Montserrat' : SERIF;
   const sFam = f.sSans ? 'Montserrat' : fam;
@@ -95,7 +96,7 @@ export function scriptureFit(look = 'ink', font = 'serif') {
   const pw = f.w - (f.cap || 0);
   // Room for the quotation marks and the dots of a verse that goes on.
   return {
-    primary: { width: (t) => textWidth(`“…${t}…”`, f.p[0], f.p[1], fam) / pw, lines: f.p[2] },
-    secondary: { width: (t) => textWidth(`“…${t}…”`, f.s[0], f.s[1], sFam) / (f.sw || f.w), lines: f.s[2] },
+    primary: { width: (t) => (textWidth(`“…${t}…”`, f.p[0], f.p[1], fam) * k) / pw, lines: f.p[2] },
+    secondary: { width: (t) => (textWidth(`“…${t}…”`, f.s[0], f.s[1], sFam) * k) / (f.sw || f.w), lines: f.s[2] },
   };
 }

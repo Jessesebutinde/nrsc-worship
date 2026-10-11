@@ -188,6 +188,18 @@ and in the stream's lower third at once. Tapping it again with the same pen take
 and **Clear all** remove them. Marks stay while you step back and forth through the passage and go when a new
 song or passage is shown.
 
+## Text size
+
+Under the live slide, **A− / A+** sets the text size for what is up, lyrics and scripture separately: **Smaller,
+Standard, Large, Larger, Huge** (tap the size name to go back to Standard). The **+** and **−** keys do the same on
+the laptop. Everything stays on the screen, nothing is cut off:
+
+- **Lyrics** already grow to the width of the screen, so Large and up let a long line wrap onto another line at a
+  bigger size (Amazing Grace: 127 px at Standard, 153 Large, 178 Larger, 185 Huge), as far as the height allows.
+- **Scripture** at the standard size is laid out again for the chosen size: fewer words on each slide, and bigger
+  (John 3:16: 113 px at Standard, 142 Large, 154 Larger). In **Scroll** the column is simply scaled. **Many verses**
+  is already as large as the screen allows, so it is unchanged; pick fewer verses per screen to go bigger.
+
 ## Follow the singer: J and F
 
 While a song is up, tap **J** as each word is sung: that word swells a little and glows in the look's accent colour

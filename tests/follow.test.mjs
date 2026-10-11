@@ -77,3 +77,17 @@ test('J, F and U by default; other letters can be chosen, but not ones already i
   // No storage here (node): the defaults.
   assert.deepEqual(readFollowKeys(), FOLLOW_KEYS);
 });
+
+test('text size steps: Smaller, Standard, Large, Larger, Huge, never past the ends', async () => {
+  const { TEXT_SIZES, stepSize } = await import('../src/lyrics/state.js');
+  assert.deepEqual(TEXT_SIZES, [0.85, 1, 1.2, 1.4, 1.7]);
+  assert.equal(stepSize(1, 1), 1.2);
+  assert.equal(stepSize(1.2, 1), 1.4);
+  assert.equal(stepSize(1.7, 1), 1.7);
+  assert.equal(stepSize(1, -1), 0.85);
+  assert.equal(stepSize(0.85, -1), 0.85);
+  assert.equal(stepSize(undefined, 1), 1.2, 'no size yet counts as Standard');
+  const e = emptyState();
+  assert.equal(e.lSize, 1);
+  assert.equal(e.sSize, 1);
+});
