@@ -156,3 +156,17 @@ test('many verses at once: whole verses grouped by count, or the whole passage s
   assert.equal(one.perScreen, 'verse');
   assert.equal(one.flow, false);
 });
+
+test('scroll: the whole passage as one column that steps verse by verse, even with reveal off', async () => {
+  const { emptyState, reduce, stepsOf } = await import('../src/lyrics/state.js');
+  const it = await passageItem({ ref: parseRef('Yokaana 3:1-21'), primaryId: 'lug68', secondaryId: 'kjv', perScreen: 'scroll', fetchImpl: fetchBook });
+  assert.equal(it.scroll, true);
+  assert.equal(it.many, false);
+  assert.equal(it.perScreen, 'scroll');
+  assert.equal(it.slides.length, 1);
+  assert.equal(it.slides[0].verses.length, 21);
+  let s = reduce({ ...emptyState(), reveal: false }, { type: 'item', item: it }, 'r');
+  assert.equal(stepsOf(s), 21);
+  for (let i = 0; i < 5; i++) s = reduce(s, { type: 'next' }, 'r');
+  assert.deepEqual([s.index, s.sub], [0, 5]);
+});

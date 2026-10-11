@@ -388,9 +388,12 @@ function ScriptureFrame({ item, index, lt, fill, textW, fontsReady, marks, look 
   const card = SCRIPTURE_INFO[look] && SCRIPTURE_INFO[look].group === 'card' && look !== 'linen' && look !== 'scroll';
   // Beside an illustration the Scroll's ribbon leaves room for its reference underneath.
   const many = Boolean(item.many);
+  const scroll = Boolean(item.scroll);
+  const col = useRef(null);
+  const placed = useRef(false);
   const availH = (SCRIP_H[look] || SAFE_H * (many ? 0.95 : 0.92)) * (look === 'scroll' && textW < SAFE_W ? 0.8 : 1);
   // Many verses: as large as the screen allows for this much text, smaller or bigger than standard.
-  useFill(box, many ? { on: !lt, max: 3, min: 0.3, availH, noOverflowX: true } : { on: fill && !lt, max: card ? CARD_MAX : SCRIP_MAX[look] || 1.8, min: 0.8, availH }, [
+  useFill(box, scroll ? { on: false, availH } : many ? { on: !lt, max: 3, min: 0.3, availH, noOverflowX: true } : { on: fill && !lt, max: card ? CARD_MAX : SCRIP_MAX[look] || 1.8, min: 0.8, availH }, [
     s && s.ref,
     s && s.primary,
     s && s.secondary,
@@ -401,6 +404,22 @@ function ScriptureFrame({ item, index, lt, fill, textW, fontsReady, marks, look 
     quotes,
     many,
   ]);
+  // Scroll: glide the column so the verse being read sits a little below the top of the view.
+  useLayoutEffect(() => {
+    const c = col.current;
+    if (!scroll || !c) return;
+    const view = c.parentElement;
+    const el = c.querySelector(`[data-v="${cur}"]`);
+    if (!el || !view) return;
+    const y = Math.min(0, view.clientHeight * 0.2 - el.offsetTop);
+    if (!placed.current) c.style.transition = 'none';
+    c.style.transform = `translateY(${Math.round(y)}px)`;
+    if (!placed.current) {
+      void c.offsetHeight;
+      c.style.transition = '';
+      placed.current = true;
+    }
+  }, [scroll, cur, look, s && s.ref, fontsReady, quotes]);
   if (!s) return null;
   const more = index < item.slides.length - 1;
   // Does this slide stop in the middle of a verse (in this language)?
@@ -408,7 +427,7 @@ function ScriptureFrame({ item, index, lt, fill, textW, fontsReady, marks, look 
   const contOut = (field) => Boolean(nf && nf.part && nf.part !== 'a' && nf[field]);
   const v = (field, extra = {}) =>
     html`<${Verses} slide=${s} field=${field} marks=${marks} cur=${cur} reveal=${reveal} quotes=${quotes} contOut=${contOut(field)} ...${extra} />`;
-  if (lt && many && s.verses && s.verses.length > 1) {
+  if (lt && (many || scroll) && s.verses && s.verses.length > 1) {
     // The stream's lower third has room for one verse: the one being read.
     const g = s.verses[cur];
     const one = { ...s, verses: [g], primary: g.primary, secondary: g.secondary };
@@ -437,6 +456,34 @@ function ScriptureFrame({ item, index, lt, fill, textW, fontsReady, marks, look 
   const vs = s.verses || [];
   const range = vs.length ? (vs[0].verse === vs[vs.length - 1].verse ? `${vs[0].verse}` : `${vs[0].verse}–${vs[vs.length - 1].verse}`) : '';
 
+  if (scroll && !lt) {
+    // Each verse with its translation right under it; the whole passage is one quotation.
+    const segs = s.verses || [];
+    let pStart = 0;
+    let sStart = 0;
+    const last = segs.length - 1;
+    const q = (open) => quotes && html`<span class="q">${open ? '“' : '”'}</span>`;
+    const rows = segs.map((g, i) => {
+      const st = i < cur ? 'read' : i === cur ? 'cur' : 'next';
+      const pw = String(g.primary || '').split(/\s+/).filter(Boolean).length;
+      const sw = String(g.secondary || '').split(/\s+/).filter(Boolean).length;
+      const row = html`<div class=${`sv ${st}`} data-v=${i}>
+        ${g.primary &&
+        html`<div class="pri"><sup class="vn">${g.verse}</sup><${Words} text=${g.primary} field="p" start=${pStart} marks=${marks} head=${i === 0 ? q(true) : null} tail=${i === last ? q(false) : null} /></div>`}
+        ${g.secondary &&
+        html`<div class="sec"><sup class="vn">${g.verse}</sup><${Words} text=${g.secondary} field="s" start=${sStart} marks=${marks} head=${i === 0 && !g.primary ? q(true) : null} tail=${i === last && !g.primary ? q(false) : null} /></div>`}
+      </div>`;
+      pStart += pw;
+      sStart += sw;
+      return row;
+    });
+    const column = html`<div class="scol" ref=${col}><div class="ref">${s.ref}</div>${rows}</div>`;
+    // Looks whose ink is meant for a card or ribbon keep one behind the column.
+    const onCard = card || look === 'scroll' || look === 'linen';
+    return html`<div class=${`scrip sview l-${look} ${onCard ? 'lc' : ''}`} ref=${box}>
+      ${onCard ? html`<div class="card scard">${column}</div>` : column}
+    </div>`;
+  }
   if (card && TWO_CARDS.has(look)) {
     // One card (or page) per language.
     const bible = look === 'bible';

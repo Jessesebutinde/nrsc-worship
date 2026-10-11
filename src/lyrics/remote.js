@@ -942,6 +942,7 @@ const PER_SCREEN_LABELS = [
   [6, '6'],
   [8, '8'],
   ['all', 'Whole passage', 'As much as can be read at once; a long passage is shared evenly over a few screens'],
+  ['scroll', 'Scroll', 'The whole passage in one long column; Next glides it to the next verse'],
 ];
 const perScreenOf = (prefs) => {
   const p = prefs.perScreen;
@@ -1159,7 +1160,9 @@ function Scripture({ prefs, setPrefs, onShow, look = 'ink', font = 'serif', rela
           </button>`,
         )}
       </div>
-      <small class="muted">${isMany(perScreenOf(prefs))
+      <small class="muted">${perScreenOf(prefs) === 'scroll'
+        ? 'The whole passage in one long column at the standard size, each verse with its translation under it. Next glides it up to the next verse; the stream shows the verse being read.'
+        : isMany(perScreenOf(prefs))
         ? 'Whole verses together, the words as large as the screen allows for that much text. Verse by verse lights each one in turn; the stream shows the verse being read.'
         : perScreenOf(prefs) === 'verse'
           ? 'One verse per screen at the standard size (a long verse is split).'

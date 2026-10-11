@@ -325,7 +325,7 @@ export function paginate(verses, { book, chapter, fit = CHAR_FIT, flow = true, p
 // "Many verses" screens: how much text a whole-passage screen may hold before it is split into
 // several screens of about the same size (so the words stay big enough to read across the hall).
 export const WHOLE_BUDGET = 1100;
-export const PER_SCREEN = ['auto', 'verse', 2, 3, 4, 6, 8, 'all'];
+export const PER_SCREEN = ['auto', 'verse', 2, 3, 4, 6, 8, 'all', 'scroll'];
 /** Is this a "many verses" choice (the text grows or shrinks to fill the screen)? */
 export const isMany = (perScreen) => perScreen === 'all' || (Number(perScreen) >= 2 && Number(perScreen) <= 50);
 
@@ -378,15 +378,22 @@ export async function passageItem({ ref, primaryId, secondaryId, flow = true, pe
   const verses = [];
   for (let v = from; v <= to; v++) verses.push({ verse: v, primary: pCh[v - 1] || '', secondary: sCh[v - 1] || '' });
   const many = isMany(perScreen);
+  // Scroll: the whole passage as one long column that glides from verse to verse.
+  const scroll = perScreen === 'scroll';
   if (perScreen === 'verse') flow = false;
   const langs = { primaryLang: pv ? pv.lang : 'lg', secondaryLang: sv ? sv.lang : '' };
-  const slides = many ? groupVerses(verses, perScreen, { book, chapter, ...langs }) : paginate(verses, { book, chapter, fit, flow, ...langs });
+  const slides = scroll
+    ? groupVerses(verses, verses.length, { book, chapter, ...langs })
+    : many
+      ? groupVerses(verses, perScreen, { book, chapter, ...langs })
+      : paginate(verses, { book, chapter, fit, flow, ...langs });
   const range = from === to ? `${from}` : `${from}-${to}`;
   return {
     kind: 'scripture',
-    id: `${book.code}.${chapter}.${range}.${primaryId}.${secondaryId || ''}.${many ? `m${perScreen}` : flow ? 'f' : 'v'}`,
+    id: `${book.code}.${chapter}.${range}.${primaryId}.${secondaryId || ''}.${scroll ? 'scroll' : many ? `m${perScreen}` : flow ? 'f' : 'v'}`,
     many,
-    perScreen: many ? perScreen : flow ? 'auto' : 'verse',
+    scroll,
+    perScreen: scroll ? 'scroll' : many ? perScreen : flow ? 'auto' : 'verse',
     title: formatRef(book, chapter, range),
     // Enough to show a title card and to lay the passage out again for another look.
     book: { lg: book.lg, en: book.en, code: book.code },
