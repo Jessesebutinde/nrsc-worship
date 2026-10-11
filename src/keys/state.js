@@ -48,6 +48,7 @@ export function partFromPreset(preset, over = {}) {
   return newPart({
     name: preset.name,
     presetId: preset.id,
+    basePreset: preset.basePreset || null,
     family: preset.family,
     kind: preset.kind,
     prog: fillProgram(preset.prog),
@@ -71,7 +72,7 @@ export const defaultSettings = () => ({
   latency: 'interactive',
   quality: 'medium',
   ccMap: { 74: 'macro1', 71: 'macro2', 73: 'macro3', 72: 'macro4' }, // the KROSS 2 tone knobs
-  masterVolume: 0.9,
+  masterVolume: 0.8, // about 2 dB of headroom: a full band rig peaks under the safety limiter
   clickVolume: 0.6,
   metronome: false,
   quantize: true,
@@ -154,6 +155,7 @@ export function reduce(state, action) {
         ...p,
         name: a.preset.name,
         presetId: a.preset.id,
+        basePreset: a.preset.basePreset || null,
         family: a.preset.family,
         kind: a.preset.kind,
         prog: fillProgram(a.preset.prog),

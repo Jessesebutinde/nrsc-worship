@@ -6,6 +6,11 @@ import { PartChain } from './fx.js';
 import { SampleLibrary } from './samples.js';
 
 export { MAX_PARTS };
+/** Parts after the rig's eight: a sound being auditioned in the browser, the drums under it, a backing part. */
+export const AUDITION = MAX_PARTS;
+export const AUDITION_DRUMS = MAX_PARTS + 1;
+export const AUDITION_BED = MAX_PARTS + 2; // a quiet backing part under a lead or bass demo
+const ALL_PARTS = MAX_PARTS + 3;
 
 export const LATENCY_MODES = {
   interactive: { label: 'Normal (safe)', hint: 'interactive' },
@@ -60,9 +65,9 @@ export class Engine {
     }
     this.node = new AudioWorkletNode(ctx, 'stage-engine', {
       numberOfInputs: 0,
-      numberOfOutputs: MAX_PARTS,
-      outputChannelCount: new Array(MAX_PARTS).fill(2),
-      processorOptions: { parts: MAX_PARTS },
+      numberOfOutputs: ALL_PARTS,
+      outputChannelCount: new Array(ALL_PARTS).fill(2),
+      processorOptions: { parts: ALL_PARTS },
     });
     this.node.port.onmessage = (e) => {
       if (e.data && e.data.t === 'voices') this.voices = e.data.n;
@@ -79,7 +84,7 @@ export class Engine {
     this.masterAnalyser.fftSize = 512;
     this.masterData = new Float32Array(512);
     this.master.connect(this.limiter).connect(this.masterAnalyser).connect(ctx.destination);
-    for (let p = 0; p < MAX_PARTS; p++) {
+    for (let p = 0; p < ALL_PARTS; p++) {
       const chain = new PartChain(ctx, { shimmer: this.shimmer });
       const gain = ctx.createGain();
       gain.gain.value = FADER_LAW(0.8);
@@ -117,9 +122,10 @@ export class Engine {
   setDrawbars(part, values) {
     this.send({ t: 'drawbars', part, values });
   }
-  setFx(part, fx) {
+  /** `bpm` overrides the tempo for this chain's synced delay and tremolo (a demo at its own tempo). */
+  setFx(part, fx, bpm = this.bpm) {
     const p = this.parts[part];
-    if (p) p.chain.set(fx, this.bpm);
+    if (p) p.chain.set(fx, bpm);
   }
   setMix(part, { volume, pan, mute }) {
     const p = this.parts[part];
@@ -141,7 +147,10 @@ export class Engine {
   setTempo(bpm) {
     this.bpm = bpm;
     this.send({ t: 'tempo', bpm });
-    for (const p of this.parts) if (p.chain.state) p.chain.set(p.chain.state, bpm);
+    for (let i = 0; i < MAX_PARTS; i++) {
+      const p = this.parts[i];
+      if (p.chain.state) p.chain.set(p.chain.state, bpm);
+    }
   }
 
   // ---------------------------------------------------------------- notes
@@ -205,7 +214,7 @@ export class Engine {
 
   /** Peak levels 0..1 for every part and the master; call from requestAnimationFrame. */
   levels() {
-    const out = { parts: new Float32Array(MAX_PARTS), master: 0 };
+    const out = { parts: new Float32Array(ALL_PARTS), master: 0 };
     if (!this.ctx) return out;
     for (let i = 0; i < this.parts.length; i++) {
       const p = this.parts[i];

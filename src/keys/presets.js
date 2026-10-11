@@ -13,6 +13,9 @@ export const FAMILIES = [
   { id: 'billie', label: 'Billie / dark', blurb: 'Sub bass with grit, lo-fi keys, airy vocal pads, intimate piano', color: 'lime' },
   { id: 'strings', label: 'Strings & orchestral', blurb: 'Ensembles, gospel strings, pizzicato, harp', color: 'gold' },
   { id: 'mallets', label: 'Mallets & bells', blurb: 'Vibes, marimba, music box, celesta, kalimba', color: 'teal' },
+  { id: 'sagospel', label: 'SA gospel', blurb: 'Spirit of Praise / Joyous Celebration: bright gospel piano, Hammond, mass choir, singing bass', color: 'gold' },
+  { id: 'naija', label: 'Naija praise', blurb: 'Nigerian praise: bright keys with strings, highlife guitar, organ stabs, trumpets, praise lead', color: 'lime' },
+  { id: 'afro', label: 'Afrobeats & Afrobeat', blurb: 'Lagos pop and Fela: sub and log-drum bass, chopped EP, marimba, combo organ, horns, tenor guitar', color: 'coral' },
   { id: 'drums', label: 'Drums', blurb: 'Kits for the grooves and loops', color: 'coral' },
 ];
 
@@ -1138,6 +1141,469 @@ export const PRESETS = [
     fx: { comp: { on: true, thresh: -18, ratio: 3, attack: 0.005, release: 0.15, gain: 2 }, reverb: { on: true, type: 'room', decay: 1.4, mix: 0.2 } },
   },
 ];
+
+// ------------------------------------------------------------------ band styles (from the style research)
+
+const PLATE_SHORT = PLATE(1.3, 0.12);
+
+PRESETS.push(
+  // ---- South African gospel
+  {
+    id: 'sa-gospel-piano',
+    name: 'SA Gospel Piano',
+    family: 'sagospel',
+    kind: 'Sampled',
+    desc: 'Bright, compressed grand for Spirit of Praise comping: add-9 chords off the beat, octaves under them.',
+    tags: ['piano', 'gospel', 'south africa'],
+    prog: { type: 'sampler', bank: 'MusyngKite/bright_acoustic_piano', env: { r: 0.35 }, level: 0.7, velAmp: 0.6, spread: 0.6 },
+    fx: { comp: { on: true, thresh: -20, ratio: 3.5, attack: 0.008, release: 0.15, gain: 3 }, eq: { on: true, mid: 1, midFreq: 2500, high: 2.5 }, reverb: PLATE(1.6, 0.14) },
+  },
+  {
+    id: 'sa-praise-organ',
+    name: 'SA Praise Organ',
+    family: 'sagospel',
+    kind: 'Organ',
+    desc: '888000000, C3, fast Leslie: the shout organ under a praise break; glissandos into the chorus.',
+    tags: ['organ', 'b3', 'gospel', 'south africa'],
+    prog: { type: 'organ', drawbars: [8, 8, 8, 0, 0, 0, 0, 0, 0], vibrato: 'C3', click: 0.45, level: 0.42 },
+    fx: { rotary: { on: true, speed: 'fast', drive: 0.35 }, reverb: PLATE(1.4, 0.1) },
+  },
+  {
+    id: 'sa-worship-organ',
+    name: 'SA Worship Organ',
+    family: 'sagospel',
+    kind: 'Organ',
+    desc: '838000000, slow Leslie, soft attack: the swelling organ bed of a slow SA worship song.',
+    tags: ['organ', 'worship', 'south africa'],
+    prog: { type: 'organ', drawbars: [8, 3, 8, 0, 0, 0, 0, 0, 0], vibrato: 'C3', click: 0.12, attack: 0.04, release: 0.3, level: 0.42 },
+    fx: { rotary: { on: true, speed: 'slow', drive: 0.1 }, reverb: HALL(3.5, 0.25) },
+  },
+  {
+    id: 'sa-mass-choir',
+    name: 'SA Mass Choir',
+    family: 'sagospel',
+    kind: 'Hybrid',
+    desc: 'A big SATB choir in one part: aahs, oohs an octave under, a slower octave above, a wide hall.',
+    tags: ['choir', 'gospel', 'south africa'],
+    prog: {
+      type: 'layer',
+      voices: 10,
+      layers: [
+        { type: 'sampler', bank: 'MusyngKite/choir_aahs', env: { a: 0.35, r: 1.8 }, level: 0.85, spread: 0.7 },
+        { type: 'sampler', bank: 'MusyngKite/voice_oohs', env: { a: 0.5, r: 2 }, level: 0.45, spread: 0.6, transpose: -12 },
+        { type: 'sampler', bank: 'MusyngKite/choir_aahs', env: { a: 0.7, r: 2.2 }, level: 0.3, spread: 0.8, transpose: 12, detune: 6 },
+      ],
+    },
+    fx: { eq: { on: true, hpf: 110, high: 1 }, reverb: HALL(4.5, 0.35, { predelay: 0.03 }) },
+  },
+  {
+    id: 'sa-lead-bass',
+    name: 'SA Lead Bass',
+    family: 'sagospel',
+    kind: 'Sampled',
+    desc: 'The melodic SA gospel bass: bright and singing, legato slides, octave jumps and fills on beat 4.',
+    tags: ['bass', 'gospel', 'south africa'],
+    prog: { type: 'sampler', bank: 'MusyngKite/electric_bass_finger', env: { r: 0.12 }, mode: 'legato', glide: 0.03, level: 0.8, velAmp: 0.6 },
+    fx: { comp: { on: true, thresh: -18, ratio: 4, attack: 0.004, release: 0.15, gain: 4 }, eq: { on: true, hpf: 35, low: 2, mid: 3, midFreq: 900, high: 1 } },
+  },
+  // ---- Nigerian praise
+  {
+    id: 'naija-praise-keys',
+    name: 'Naija Praise Keys',
+    family: 'naija',
+    kind: 'Hybrid',
+    desc: 'Bright piano with strings inside it, the Lagos church keyboard sound for highlife runs and praise chords.',
+    tags: ['piano', 'strings', 'nigeria', 'praise'],
+    prog: {
+      type: 'layer',
+      layers: [
+        { type: 'sampler', bank: 'MusyngKite/bright_acoustic_piano', env: { r: 0.3 }, level: 0.75, velAmp: 0.6, spread: 0.5 },
+        { type: 'sampler', bank: 'MusyngKite/string_ensemble_1', env: { a: 0.08, r: 0.5 }, level: 0.3, spread: 0.7 },
+      ],
+    },
+    fx: { comp: { on: true, thresh: -20, ratio: 3, attack: 0.01, release: 0.15, gain: 2 }, eq: { on: true, high: 2 }, mod: CHORUS(0.5, 0.2, 0.15), reverb: PLATE(1.5, 0.15) },
+  },
+  {
+    id: 'naija-organ-stabs',
+    name: 'Naija Organ Stabs',
+    family: 'naija',
+    kind: 'Organ',
+    desc: 'Percussive organ for the shout: third-harmonic percussion, key click, fast Leslie, short notes.',
+    tags: ['organ', 'nigeria', 'praise'],
+    prog: { type: 'organ', drawbars: [8, 8, 8, 0, 0, 0, 0, 0, 0], vibrato: 'C3', click: 0.5, perc: { on: true, third: true, fast: true, soft: false }, release: 0.03, level: 0.42 },
+    fx: { rotary: { on: true, speed: 'fast', drive: 0.4 }, reverb: PLATE(1.2, 0.08) },
+  },
+  {
+    id: 'highlife-guitar',
+    name: 'Highlife Guitar',
+    family: 'naija',
+    kind: 'Modelled',
+    desc: 'Clean two-finger-picked highlife guitar: thirds and sixths in a lilting 16th pattern.',
+    tags: ['guitar', 'highlife', 'nigeria'],
+    prog: { type: 'string', model: 'guitar', pick: 0.2, bright: 0.8, decay: 1.4, damp: 0.4, release: 0.09, tone: 5000, body: 0.35, level: 0.95, voices: 8 },
+    fx: { comp: { on: true, thresh: -20, ratio: 3, attack: 0.01, release: 0.1, gain: 3 }, eq: { on: true, hpf: 110, high: 2 }, mod: CHORUS(0.7, 0.3, 0.3), reverb: PLATE_SHORT },
+  },
+  {
+    id: 'naija-trumpet',
+    name: 'Praise Trumpets',
+    family: 'naija',
+    kind: 'Sampled',
+    desc: 'Trumpet with a brass section behind it for praise riffs and answers to the choir.',
+    tags: ['brass', 'trumpet', 'nigeria'],
+    prog: {
+      type: 'layer',
+      layers: [
+        { type: 'sampler', bank: 'MusyngKite/trumpet', env: { a: 0.01, r: 0.2 }, level: 0.75, spread: 0.3 },
+        { type: 'sampler', bank: 'MusyngKite/brass_section', env: { a: 0.02, r: 0.25 }, level: 0.45, spread: 0.6 },
+      ],
+    },
+    fx: { comp: { on: true, thresh: -18, ratio: 3, attack: 0.008, release: 0.12, gain: 2 }, reverb: PLATE(1.5, 0.15) },
+  },
+  {
+    id: 'naija-synth-lead',
+    name: 'Naija Praise Lead',
+    family: 'naija',
+    kind: 'Synth',
+    desc: 'The arranger-keyboard praise lead: square and saw with delayed vibrato, legato slides.',
+    tags: ['lead', 'synth', 'nigeria'],
+    prog: {
+      type: 'synth',
+      osc: [{ wave: 'square', level: 0.6, pw: 0.45 }, { wave: 'saw', level: 0.45, fine: 6 }],
+      filter: { type: 'lp', slope: 24, cutoff: 3200, res: 0.15, env: 0.5, key: 0.5 },
+      env: { a: 0.008, d: 0.2, s: 0.85, r: 0.15 },
+      lfo: { rate: 5.6, pitch: 0.15, delay: 0.35, fade: 0.4 },
+      modWheel: { vibrato: 0.4 },
+      mode: 'legato',
+      glide: 0.03,
+      level: 0.5,
+    },
+    fx: { delay: { on: true, sync: true, time: 'e', feedback: 0.2, mix: 0.15, tone: 3500 }, reverb: PLATE(1.6, 0.15) },
+  },
+  // ---- Afrobeats and Afrobeat
+  {
+    id: 'afro-sub',
+    name: 'Afro Sub Bass',
+    family: 'afro',
+    kind: 'Synth',
+    desc: 'Warm sine sub that follows the kick and glides between notes: the Afrobeats low end.',
+    tags: ['bass', 'sub', 'afrobeats'],
+    prog: {
+      type: 'synth',
+      osc: [{ wave: 'sine', level: 0.9 }, { wave: 'tri', level: 0.25, octave: 1 }],
+      filter: { type: 'lp', slope: 24, cutoff: 900, res: 0, key: 0.3 },
+      env: { a: 0.003, d: 0.35, s: 0.6, r: 0.15 },
+      mode: 'legato',
+      glide: 0.06,
+      level: 0.62,
+      voices: 1,
+    },
+    fx: { drive: { on: true, amount: 0.15, tone: 0.3, level: 0.95, type: 'tube' }, comp: { on: true, thresh: -16, ratio: 4, attack: 0.004, release: 0.15, gain: 2 }, eq: { on: true, hpf: 28 } },
+  },
+  {
+    id: 'log-drum',
+    name: 'Log Drum Bass',
+    family: 'afro',
+    kind: 'Synth',
+    desc: 'Woody, plucked amapiano-style log drum: short, pitched, with a slide between notes.',
+    tags: ['bass', 'log drum', 'amapiano', 'afrobeats'],
+    prog: {
+      type: 'synth',
+      osc: [{ wave: 'sine', level: 0.85 }, { wave: 'square', level: 0.25 }, { wave: 'sine', level: 0.3, octave: 1, semi: 7 }],
+      filter: { type: 'lp', slope: 24, cutoff: 380, res: 0.25, env: 2.8, key: 0.4, vel: 0.4 },
+      env: { a: 0.002, d: 0.38, s: 0.15, r: 0.18 },
+      fenv: { a: 0.001, d: 0.12, s: 0, r: 0.1 },
+      mode: 'legato',
+      glide: 0.04,
+      level: 0.62,
+      voices: 1,
+    },
+    fx: { drive: { on: true, amount: 0.25, tone: 0.35, level: 0.9, type: 'tube' }, comp: { on: true, thresh: -16, ratio: 4, attack: 0.003, release: 0.12, gain: 2 }, eq: { on: true, hpf: 30, low: 3 } },
+  },
+  {
+    id: 'afro-ep',
+    name: 'Afro EP',
+    family: 'afro',
+    kind: 'Sampled',
+    desc: 'Rhodes chopped in short syncopated 7th and 9th chords, light chorus and a little echo.',
+    tags: ['ep', 'rhodes', 'afrobeats'],
+    prog: { type: 'sampler', bank: 'MusyngKite/electric_piano_1', env: { r: 0.25 }, level: 0.85, spread: 0.3 },
+    fx: { mod: CHORUS(0.6, 0.35, 0.3), delay: { on: true, sync: true, time: 'e', feedback: 0.2, mix: 0.1, tone: 3000 }, reverb: PLATE(1.2, 0.12) },
+  },
+  {
+    id: 'afro-marimba',
+    name: 'Afro Marimba Pluck',
+    family: 'afro',
+    kind: 'Sampled',
+    desc: 'Marimba with a kalimba an octave up and a dotted echo: the Afrobeats hook pluck.',
+    tags: ['marimba', 'kalimba', 'pluck', 'afrobeats'],
+    prog: {
+      type: 'layer',
+      layers: [
+        { type: 'sampler', bank: 'MusyngKite/marimba', env: { r: 0.3 }, level: 0.8, spread: 0.5 },
+        { type: 'sampler', bank: 'MusyngKite/kalimba', env: { r: 0.3 }, level: 0.35, spread: 0.6, transpose: 12 },
+      ],
+    },
+    fx: { delay: DOTTED(0.18, 0.25), reverb: PLATE(1.3, 0.12) },
+  },
+  {
+    id: 'afro-sax',
+    name: 'Afro Sax Hook',
+    family: 'afro',
+    kind: 'Sampled',
+    desc: 'Tenor sax for a short hook between vocal lines; legato slides.',
+    tags: ['sax', 'afrobeats'],
+    prog: { type: 'sampler', bank: 'MusyngKite/tenor_sax', env: { a: 0.01, r: 0.2 }, mode: 'legato', glide: 0.03, level: 0.8, modWheel: { vibrato: 0.3 } },
+    fx: { comp: { on: true, thresh: -20, ratio: 3, attack: 0.01, release: 0.15, gain: 2 }, reverb: PLATE(1.4, 0.15) },
+  },
+  {
+    id: 'fela-organ',
+    name: 'Fela Combo Organ',
+    family: 'afro',
+    kind: 'Organ',
+    desc: 'Bright, reedy combo organ, a little driven, no Leslie: Dorian stabs on the off-beats.',
+    tags: ['organ', 'afrobeat', 'fela'],
+    prog: { type: 'organ', drawbars: [0, 0, 8, 8, 6, 4, 0, 0, 0], vibrato: 'V1', click: 0.3, level: 0.45 },
+    fx: { drive: { on: true, amount: 0.35, tone: 0.55, level: 0.85, type: 'amp' }, eq: { on: true, mid: 3, midFreq: 1200 }, reverb: PLATE(1, 0.08) },
+  },
+  {
+    id: 'fela-horns',
+    name: 'Fela Horns',
+    family: 'afro',
+    kind: 'Sampled',
+    desc: 'Brass section and tenor sax in unison and octaves for the Afrobeat riff.',
+    tags: ['brass', 'sax', 'afrobeat'],
+    prog: {
+      type: 'layer',
+      layers: [
+        { type: 'sampler', bank: 'MusyngKite/brass_section', env: { a: 0.015, r: 0.2 }, level: 0.75, spread: 0.5 },
+        { type: 'sampler', bank: 'MusyngKite/tenor_sax', env: { a: 0.01, r: 0.2 }, level: 0.55, spread: 0.3 },
+      ],
+    },
+    fx: { comp: { on: true, thresh: -18, ratio: 3, attack: 0.008, release: 0.12, gain: 2 }, eq: { on: true, high: 1 }, reverb: { on: true, type: 'room', decay: 1.2, mix: 0.15 } },
+  },
+  {
+    id: 'fela-bass',
+    name: 'Afrobeat Bass',
+    family: 'afro',
+    kind: 'Sampled',
+    desc: 'Short, muted finger bass for the long two-bar Afrobeat vamp.',
+    tags: ['bass', 'afrobeat'],
+    prog: { type: 'sampler', bank: 'MusyngKite/electric_bass_finger', env: { r: 0.07 }, level: 0.8, velAmp: 0.6 },
+    fx: { comp: { on: true, thresh: -18, ratio: 5, attack: 0.004, release: 0.12, gain: 4 }, eq: { on: true, hpf: 35, low: 2, mid: 2, midFreq: 600, high: -2 } },
+  },
+  {
+    id: 'tenor-guitar',
+    name: 'Afrobeat Tenor Guitar',
+    family: 'afro',
+    kind: 'Modelled',
+    desc: 'Muted single-note ostinato guitar that locks with the bass and the hats.',
+    tags: ['guitar', 'muted', 'afrobeat'],
+    prog: { type: 'string', model: 'guitar', pick: 0.12, bright: 0.7, decay: 0.8, damp: 0.5, mute: 0.45, release: 0.05, tone: 4000, body: 0.3, level: 0.9, voices: 6 },
+    fx: { comp: { on: true, thresh: -18, ratio: 4, attack: 0.005, release: 0.08, gain: 3 }, eq: { on: true, hpf: 200, mid: 3, midFreq: 1500 } },
+  },
+  // ---- Elevation and Hillsong
+  {
+    id: 'elevation-keys',
+    name: 'Elevation Keys',
+    family: 'keys',
+    kind: 'Hybrid',
+    desc: 'One big layered patch: grand piano with a saw pad inside it, 1/8 echo and a long hall.',
+    tags: ['piano', 'pad', 'layer', 'elevation'],
+    prog: {
+      type: 'layer',
+      layers: [
+        { type: 'sampler', bank: 'MusyngKite/acoustic_grand_piano', env: { r: 0.4 }, level: 0.85, spread: 0.6 },
+        { ...SAW_PAD, level: 0.14, env: { a: 0.9, d: 1, s: 0.9, r: 3 } },
+      ],
+    },
+    fx: { eq: { on: true, mid: -1.5, midFreq: 300, high: 1.5 }, delay: { on: true, sync: true, time: 'e', feedback: 0.25, mix: 0.12, tone: 3200 }, reverb: HALL(4, 0.25) },
+  },
+  {
+    id: 'anthem-sub',
+    name: 'Anthem Sub Bass',
+    family: 'bass',
+    kind: 'Synth',
+    desc: 'Synth sub to layer under a bass guitar: whole notes in verses, 8th-note pulse in the build.',
+    tags: ['bass', 'sub', 'elevation'],
+    prog: {
+      type: 'synth',
+      osc: [{ wave: 'sine', level: 0.9 }, { wave: 'saw', level: 0.18 }],
+      filter: { type: 'lp', slope: 24, cutoff: 320, res: 0.05, key: 0.4 },
+      env: { a: 0.005, d: 0.3, s: 0.9, r: 0.15 },
+      mode: 'legato',
+      level: 0.6,
+      voices: 1,
+    },
+    fx: { comp: { on: true, thresh: -16, ratio: 4, attack: 0.004, release: 0.15, gain: 2 }, eq: { on: true, hpf: 28 } },
+  },
+  {
+    id: 'elevation-arp',
+    name: 'Elevation Arp',
+    family: 'leads',
+    kind: 'Synth',
+    desc: 'Short bright pluck for the 16th-note arpeggio that drives a build, with a 1/16 echo.',
+    tags: ['arp', 'pluck', 'elevation'],
+    prog: {
+      type: 'synth',
+      osc: [{ wave: 'saw', level: 0.6, unison: 2, detune: 0.2, spread: 0.6 }, { wave: 'square', level: 0.3, octave: 1 }],
+      filter: { type: 'lp', slope: 24, cutoff: 1400, res: 0.2, env: 2.2, key: 0.5, vel: 0.3 },
+      env: { a: 0.002, d: 0.18, s: 0, r: 0.15 },
+      fenv: { a: 0.001, d: 0.15, s: 0, r: 0.1 },
+      level: 0.7,
+      spread: 0.4,
+    },
+    fx: { delay: { on: true, sync: true, time: 's', feedback: 0.25, mix: 0.2, tone: 4000, pingpong: true }, reverb: PLATE(2, 0.2) },
+  },
+  {
+    id: 'swell-guitar',
+    name: 'Ambient Swell Guitar',
+    family: 'leads',
+    kind: 'Sampled',
+    desc: 'Clean electric with a volume-swell attack, dotted echo and shimmer: the worship guitar pad.',
+    tags: ['guitar', 'ambient', 'swell', 'hillsong', 'elevation'],
+    prog: { type: 'sampler', bank: 'MusyngKite/electric_guitar_clean', env: { a: 0.45, r: 1.5 }, loop: 'none', level: 0.9, spread: 0.4 },
+    fx: { delay: DOTTED(0.35, 0.45), reverb: { on: true, type: 'shimmer', decay: 6, damp: 0.4, mix: 0.4, shimmer: 0.4, lowcut: 250 } },
+  },
+  {
+    id: 'hillsong-piano',
+    name: 'Hillsong Piano',
+    family: 'keys',
+    kind: 'Sampled',
+    desc: 'Open, warm grand for anthems: add-9 voicings, a touch of dotted echo, a big hall.',
+    tags: ['piano', 'hillsong'],
+    prog: { type: 'sampler', bank: 'MusyngKite/acoustic_grand_piano', env: { r: 0.45 }, level: 0.88, spread: 0.6 },
+    fx: { eq: { on: true, low: -1, mid: -1, midFreq: 350, high: 1 }, delay: DOTTED(0.08, 0.3), reverb: HALL(3.2, 0.25) },
+  },
+  // ---- Billie Eilish / FINNEAS
+  {
+    id: 'birds-bass',
+    name: 'Round Melodic Bass',
+    family: 'billie',
+    kind: 'Sampled',
+    desc: 'Warm, round finger bass that sings a melody under soft chords, dry.',
+    tags: ['bass', 'billie'],
+    prog: { type: 'sampler', bank: 'MusyngKite/electric_bass_finger', env: { r: 0.15 }, filter: { type: 'lp', slope: 12, cutoff: 700, res: 0, key: 0.2, vel: 0.8 }, level: 0.85, velAmp: 0.6 },
+    fx: { comp: { on: true, thresh: -20, ratio: 3, attack: 0.008, release: 0.2, gain: 3 }, eq: { on: true, hpf: 32, low: 2, high: -4 } },
+  },
+  {
+    id: 'pumping-piano',
+    name: 'Pumping Piano',
+    family: 'billie',
+    kind: 'Sampled',
+    desc: 'Dark felt-like piano that dips on every beat as if side-chained to a ghost kick; dry.',
+    tags: ['piano', 'billie', 'sidechain'],
+    prog: { type: 'sampler', bank: 'MusyngKite/acoustic_grand_piano', env: { r: 0.5 }, filter: { type: 'lp', slope: 12, cutoff: 1800, res: 0.05, key: 0.2, vel: 0.9 }, level: 0.95, velAmp: 0.8, velCurve: 'soft', spread: 0.3 },
+    fx: { comp: { on: true, thresh: -26, ratio: 3, attack: 0.015, release: 0.3, gain: 4 }, trem: { on: true, type: 'tremolo', sync: 'q', depth: 0.6, shape: 'saw' }, reverb: { on: true, type: 'room', decay: 0.9, damp: 0.6, mix: 0.12 } },
+  },
+  {
+    id: 'whistle-synth',
+    name: 'Whistle Synth',
+    family: 'billie',
+    kind: 'Synth',
+    desc: 'A soft whistling sine lead with slow vibrato for a high answering line.',
+    tags: ['lead', 'whistle', 'billie'],
+    prog: {
+      type: 'synth',
+      osc: [{ wave: 'sine', level: 0.8 }, { wave: 'tri', level: 0.2, octave: 1 }],
+      noise: { level: 0.03, color: 'pink' },
+      filter: { type: 'lp', slope: 12, cutoff: 5000, res: 0, key: 0.3 },
+      env: { a: 0.04, d: 0.2, s: 0.9, r: 0.25 },
+      lfo: { rate: 5, pitch: 0.12, delay: 0.25, fade: 0.4 },
+      mode: 'legato',
+      glide: 0.05,
+      level: 0.5,
+    },
+    fx: { delay: { on: true, sync: true, time: 'e', feedback: 0.2, mix: 0.12, tone: 2500 }, reverb: { on: true, type: 'room', decay: 1.1, mix: 0.15 } },
+  },
+  {
+    id: 'folk-acoustic',
+    name: 'Folk Acoustic',
+    family: 'billie',
+    kind: 'Sampled',
+    desc: 'Steel-string acoustic for folk-pop ballads and acoustic worship verses: picked chords, close and dry.',
+    tags: ['guitar', 'acoustic', 'billie', 'worship'],
+    prog: { type: 'sampler', bank: 'MusyngKite/acoustic_guitar_steel', env: { r: 0.4 }, level: 0.85, velAmp: 0.6, spread: 0.4 },
+    fx: { comp: { on: true, thresh: -22, ratio: 3, attack: 0.01, release: 0.15, gain: 2 }, eq: { on: true, hpf: 90, mid: -2, midFreq: 250, high: 1.5 }, reverb: { on: true, type: 'room', decay: 1.1, mix: 0.14 } },
+  },
+  // ---- kits
+  {
+    id: 'afro-kit',
+    name: 'Afro Percussion Kit',
+    family: 'drums',
+    kind: 'Synth',
+    desc: 'Tight kit with talking drum, agogo, congas and shaker: for Naija praise, highlife, Afrobeats and SA gospel.',
+    tags: ['drums', 'kit', 'afro'],
+    prog: { type: 'drums', kit: 'afro', level: 0.85, decay: 0.85, tune: 1 },
+    fx: { comp: { on: true, thresh: -16, ratio: 4, attack: 0.003, release: 0.1, gain: 2 }, reverb: { on: true, type: 'room', decay: 0.6, mix: 0.08 } },
+  },
+  {
+    id: 'pop-kit',
+    name: 'Dry Pop Kit',
+    family: 'drums',
+    kind: 'Synth',
+    desc: 'Dry, close kit with finger snaps and an 808: for Billie-style and modern pop.',
+    tags: ['drums', 'kit', 'pop', 'billie'],
+    prog: { type: 'drums', kit: 'pop', level: 0.85, decay: 0.9 },
+    fx: { comp: { on: true, thresh: -18, ratio: 4, attack: 0.004, release: 0.12, gain: 2 } },
+  },
+);
+
+// Velocity shapes the tone of acoustic samples (soft is darker, hard is brighter), as on the instrument:
+// a gentle lowpass that opens with velocity, on presets that do not have their own filter.
+const VELOCITY_TONE = { piano: 2600, ep: 1700, guitar: 1900, bass: 950, mallet: 2600 };
+const TONE_OF = (p) =>
+  p.bank && /piano|electric_piano|clavinet|harpsichord/.test(p.bank)
+    ? /electric_piano/.test(p.bank) ? 'ep' : 'piano'
+    : p.bank && /guitar/.test(p.bank)
+      ? 'guitar'
+      : p.bank && /bass/.test(p.bank) && !/synth_bass/.test(p.bank)
+        ? 'bass'
+        : p.bank && /marimba|vibraphone|kalimba|celesta|glockenspiel|music_box/.test(p.bank)
+          ? 'mallet'
+          : null;
+for (const preset of PRESETS) {
+  const progs = preset.prog.type === 'layer' ? preset.prog.layers : [preset.prog];
+  for (const p of progs) {
+    const kind = p.type === 'sampler' && !p.filter && TONE_OF(p);
+    if (kind) p.filter = { type: 'lp', slope: 12, cutoff: VELOCITY_TONE[kind], res: 0, key: 0.25, vel: 1.1 };
+  }
+}
+
+// Level matching: every sound is trimmed so its demo plays at the same loudness (-21 dB RMS at fader 0.8,
+// peaks under 0.9), so switching sounds live never jumps. Measured by rendering each demo through the real
+// engine with the real samples (see README, "Level matching"); values in dB.
+export const LEVEL_TRIM_DB = {
+  'sebene-solo': -1.8, 'sebene-solo-legato': -0.7, 'sebene-solo-sampled': 12, 'sebene-solo-hybrid': 2.8,
+  'sebene-octave': -2.6, 'mi-solo': 2.7, 'mi-solo-sampled': 3.2, 'rhythm-muted-sampled': 6.2, 'soukous-jc': 12.9,
+  'sebene-bass': -10.5, 'sebene-bass-poly': -7.9, 'sebene-bass-sampled': -8.5, 'sebene-bass-hybrid': -6.9,
+  'ndombolo-synth-bass': -11.6, likembe: 9.3, 'oceans-pad': 5.9, 'shimmer-pad': 4.6, 'swell-pad': 7.4, 'glass-pad': 5.1,
+  'warm-analog-pad': 6.5, 'choir-pad': 10.7, 'halo-pad': 11.6, 'dark-drone': 2, 'air-pad': 8.1, 'pulse-pad': 8.2,
+  'strings-pad': 8.4, 'worship-grand': 9.9, 'ambient-piano': 19.7, 'felt-piano': 7.9, 'gospel-grand': -3.3,
+  'trem-rhodes': 5.7, wurli: 2.3, 'lofi-keys': -11.6, 'nord-piano-pad': 9.2, 'gospel-full': -6.7, 'gospel-shout': -3.2,
+  'worship-organ-soft': 2.6, 'jazz-organ': -0.9, 'rock-organ': -7.2, 'hammond-pad': 7.6, 'church-pipe': 6.2,
+  'brooklyn-choir': 10.2, 'gospel-oohs': 11.2, 'choir-aahs': 8.8, 'cathedral-choir': 6.5, 'vocal-pad': 7.7,
+  'prophet-lead': 6.2, 'verby-saw': 3.6, 'pulse-pluck': 9.6, 'glass-bells': 9.4, 'super-saw': -2.1, 'synth-brass': 6.2,
+  'juno-poly': 4.3, 'sampled-saw-lead': 14, 'finger-bass': -9.2, 'pick-bass': -7.8, fretless: 4.3, 'slap-bass': 3,
+  'moog-bass': -11.5, 'sub-808': -12, 'bad-guy-bass': -20.6, 'ocean-air-pad': 10.3, 'intimate-piano': 6.4,
+  'bellyache-pluck': 4.5, 'dark-hook-lead': 7.6, 'vinyl-choir': 4.1, 'string-ensemble': 7.3, 'gospel-strings': 5.5,
+  'octave-strings': 7.3, pizzicato: 13.4, harp: 12, 'brass-section': 6.9, vibes: 11.7, marimba: 6.8, 'music-box': 23.6,
+  celesta: 11.9, glock: 23.1, tubular: 16.9, 'sebene-kit': -7.6, 'worship-kit': -2.3, 'sa-gospel-piano': -5.8,
+  'sa-praise-organ': -2.6, 'sa-worship-organ': 4.1, 'sa-mass-choir': 7.8, 'sa-lead-bass': -4.2, 'naija-praise-keys': 3.5,
+  'naija-organ-stabs': 2.2, 'highlife-guitar': -5.7, 'naija-trumpet': 7.5, 'naija-synth-lead': 2.9, 'afro-sub': -13.4,
+  'log-drum': -14, 'afro-ep': 5.3, 'afro-marimba': 10.5, 'afro-sax': 6.7, 'fela-organ': -1.2, 'fela-horns': 4.6,
+  'fela-bass': -6.7, 'tenor-guitar': -7.4, 'elevation-keys': 7.2, 'anthem-sub': -10.1, 'elevation-arp': 9.1,
+  'swell-guitar': 23.4, 'hillsong-piano': 9.6, 'birds-bass': -8.1, 'pumping-piano': 5, 'whistle-synth': 3,
+  'folk-acoustic': 4.1, 'afro-kit': -7.7, 'pop-kit': -4.6,
+};
+
+const LEVEL_DEFAULTS = { synth: 0.5, organ: 0.45, string: 0.7, sampler: 0.8, drums: 0.8 };
+for (const preset of PRESETS) {
+  const db = LEVEL_TRIM_DB[preset.id];
+  if (!db) continue;
+  const k = Math.pow(10, db / 20);
+  const progs = preset.prog.type === 'layer' ? preset.prog.layers : [preset.prog];
+  for (const p of progs) p.level = +((p.level ?? LEVEL_DEFAULTS[p.type]) * k).toFixed(4);
+}
 
 const BY_ID = new Map(PRESETS.map((p) => [p.id, p]));
 export const presetById = (id) => BY_ID.get(id) || null;

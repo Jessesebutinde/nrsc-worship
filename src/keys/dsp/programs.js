@@ -74,6 +74,7 @@ export const DEFAULTS = {
     modWheel: { vibrato: 0, filter: 0, amp: 0, mute: 1 },
     lfo: { ...LFO, rate: 5.5 },
     spread: 0.2,
+    humanize: 0.4,
   },
   sampler: {
     type: 'sampler',
@@ -97,6 +98,7 @@ export const DEFAULTS = {
     transpose: 0,
     fine: 0,
     start: 0,
+    humanize: 0.4,
   },
   drums: { type: 'drums', kit: 'sebene', level: 0.8, tune: 0, decay: 1, voices: 16, mode: 'poly', bendRange: 0 },
   // Two or three sources stacked in one part (they share the part's effects): hybrids and choir stacks.

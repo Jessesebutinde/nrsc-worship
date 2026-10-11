@@ -2,7 +2,12 @@
 
 import { html, render, useState, useEffect, useRef } from '../ui/h.js';
 import { createStore, loadState, saveState, partFromPreset, newSong, clone, MAX_PARTS } from './state.js';
-import { Engine } from './engine.js';
+import { Engine, AUDITION, AUDITION_DRUMS, AUDITION_BED } from './engine.js';
+import { DemoPlayer } from './demo.js';
+import { soundDemo, rigDemo, BED_PROGRAMS, SOUND_GUIDE, KIT_FOR_STYLE } from './guide.js';
+import { songPerformance, demoBars } from './songbook.js';
+import { presetById, presetBanks } from './presets.js';
+import { mergeFx } from './fx.js';
 import { MidiInput, TypingKeyboard } from './midi.js';
 import { Router } from './router.js';
 import { Transport, Looper } from './looper.js';
@@ -15,6 +20,7 @@ import { Sounds } from './ui/sounds.js';
 import { Loops } from './ui/loops.js';
 import { Songs } from './ui/songs.js';
 import { Settings } from './ui/settings.js';
+import { Keyboard } from './ui/keyboard.js';
 
 const store = createStore(loadState());
 const engine = new Engine();
@@ -52,6 +58,20 @@ const router = new Router({
     const s = store.get();
     if (s.settings.programChange && s.songs[n]) actions.selectSong(n);
   },
+});
+// Demos light the keys they play, in the colour of the part whose zone the key is in.
+const demo = new DemoPlayer({
+  engine,
+  router,
+  onLight: (note, on, color) => {
+    if (on) {
+      const parts = store.get().performance.parts;
+      const p = parts.find((x) => x.enabled !== false && note >= x.keyLow && note <= x.keyHigh);
+      lit.set(note, color || (p ? p.color : 'amber'));
+    } else lit.delete(note);
+    bump();
+  },
+  onChange: () => bump(),
 });
 const midi = new MidiInput({ onMessage: (ev) => router.handle(ev), onDevices: () => bump() });
 const typing = new TypingKeyboard((ev) => router.handle(ev));
@@ -206,6 +226,7 @@ const actions = {
     store.dispatch({ type: 'part/remove', index: i });
   },
   loadCombo(combo) {
+    demo.stop();
     router.panic();
     looper.clearAll();
     const perf = buildPerformance(combo);
@@ -223,6 +244,7 @@ const actions = {
     bump();
   },
   panic() {
+    demo.stop();
     router.panic();
     looper.muteAll();
     lit.clear();
@@ -276,14 +298,75 @@ const actions = {
   get learning() {
     return learnTarget;
   },
-  /** A short phrase on a part, to hear a sound without a keyboard. */
+  /** A part's own demo, on the part itself with your edits (falls back to a short arpeggio). */
   preview(i) {
-    const t = engine.time + 0.05;
-    const notes = [60, 64, 67, 72];
-    notes.forEach((n, k) => {
-      engine.noteOn(i, n, 100, t + k * 0.12);
-      engine.noteOff(i, n, t + 1.2);
-    });
+    const p = store.get().performance.parts[i];
+    if (!p) return;
+    const base = SOUND_GUIDE[p.presetId] ? p.presetId : p.basePreset;
+    const plan = base && SOUND_GUIDE[base] ? soundDemo(base) : null;
+    if (!plan) {
+      const t = engine.time + 0.05;
+      [60, 64, 67, 72].forEach((n, k) => {
+        engine.noteOn(i, n, 100, t + k * 0.12);
+        engine.noteOff(i, n, t + 1.2);
+      });
+      return;
+    }
+    playSoundPlan(plan, { main: i, shift: (p.octave || 0) * 12 + (p.transpose || 0), name: p.name, style: SOUND_GUIDE[base].style });
+  },
+  /** Hear a sound from the library without touching the rig: it plays on the audition part. */
+  async demoSound(id) {
+    const preset = presetById(id) || store.get().userPresets.find((x) => x.id === id);
+    const plan = soundDemo(preset && preset.user ? preset.basePreset || id : id);
+    if (!preset || !plan) {
+      toast('No demo for this sound yet');
+      return;
+    }
+    demo.stop();
+    engine.setProgram(AUDITION, preset.prog);
+    engine.setFx(AUDITION, mergeFx(preset.fx), plan.bpm);
+    engine.setMix(AUDITION, { volume: 0.8, pan: 0, mute: false });
+    const ok = await loadBanksFor(preset.prog, preset.name);
+    if (!ok) return;
+    playSoundPlan(plan, { main: AUDITION, shift: (preset.octave || 0) * 12, name: preset.name, style: SOUND_GUIDE[preset.basePreset || id].style });
+  },
+  /** Load a rig and play its arrangement through the keys, so the lit keys show what each hand does. */
+  async demoRig(combo) {
+    demo.stop();
+    actions.loadCombo(combo);
+    const perf = store.get().performance;
+    if (!(await loadAllBanks(perf))) return;
+    const script = rigDemo(combo.id, perf);
+    if (!script) {
+      toast('No demo for this rig yet');
+      return;
+    }
+    demo.play(script, combo.name);
+  },
+  /** Load a song's rig (with its tempo, groove and swapped parts) and play its chorus or vamp. */
+  async demoSong(song) {
+    demo.stop();
+    router.panic();
+    looper.clearAll();
+    const perf = songPerformance(song);
+    store.dispatch({ type: 'performance/load', performance: perf });
+    store.dispatch({ type: 'ui/patch', patch: { view: 'perform' } });
+    applyGroove(perf);
+    const loaded = store.get().performance;
+    if (!(await loadAllBanks(loaded))) return;
+    const script = rigDemo(song.combo, loaded, { bars: demoBars(song), bpm: song.bpm, groove: song.groove, keys: song.keys });
+    demo.play(script, `${song.title} (${song.demo})`);
+  },
+  /** Put a song idea in the set list, with its rig, key, tempo and chord sections as notes. */
+  addSongIdea(song) {
+    const s = store.get();
+    const perf = songPerformance(song);
+    const notes = `${song.feel}. ${perf.notes.replace(/\n/g, ' · ')}. ${song.tip}${song.check ? ' Check: ' + song.check : ''}`;
+    store.dispatch({ type: 'song/add', song: newSong({ name: song.title, key: song.key, tempo: song.bpm, performance: perf, notes }) });
+    toast(`${song.title} added as song ${s.songs.length + 1}`);
+  },
+  stopDemo() {
+    demo.stop();
   },
   playScreenNote(note, on, vel = 100) {
     router.handle({ type: on ? 'noteon' : 'noteoff', ch: 1, note, vel: on ? vel : 0, time: performance.now() });
@@ -306,6 +389,64 @@ const actions = {
     }
   },
 };
+
+/** Waits for a program's sample sets, showing progress; false if one could not be downloaded. */
+async function loadBanksFor(prog, label) {
+  const ids = presetBanks({ prog }).filter((id) => !engine.samples.isLoaded(id));
+  if (!ids.length) return true;
+  toast(`Loading ${label}…`);
+  try {
+    await Promise.all(
+      ids.map((id) =>
+        engine.samples.load(id, {
+          onProgress: (p) => {
+            loading.set(id, p);
+            bump();
+          },
+        }),
+      ),
+    );
+    for (const id of ids) loading.set(id, 1);
+    bump();
+    return true;
+  } catch (e) {
+    toast(e.message || `${label} could not be downloaded`);
+    return false;
+  }
+}
+
+async function loadAllBanks(perf) {
+  const loads = await Promise.all(perf.parts.map((p) => loadBanksFor(p.prog, p.name)));
+  return !loads.includes(false);
+}
+
+/** Plays a sound's demo plan: the sound on `main`, a backing part and drums on the audition parts. */
+async function playSoundPlan(plan, { main, shift, name, style }) {
+  demo.stop();
+  const bed = plan.tracks.find((t) => t.part === 'bed');
+  if (bed) {
+    const src = BED_PROGRAMS[bed.preset] || presetById(bed.preset);
+    engine.setProgram(AUDITION_BED, src.prog);
+    engine.setFx(AUDITION_BED, mergeFx(src.fx), plan.bpm);
+    engine.setMix(AUDITION_BED, { volume: bed.volume || 0.4, pan: 0, mute: false });
+    if (!(await loadBanksFor(src.prog, 'the backing sound'))) return;
+  }
+  if (plan.tracks.some((t) => t.part === 'drums')) {
+    const kit = presetById(KIT_FOR_STYLE[style] || 'worship-kit');
+    engine.setProgram(AUDITION_DRUMS, kit.prog);
+    engine.setFx(AUDITION_DRUMS, mergeFx(kit.fx), plan.bpm);
+    engine.setMix(AUDITION_DRUMS, { volume: 0.55, pan: 0, mute: false });
+  }
+  const parts = { main, bed: AUDITION_BED, drums: AUDITION_DRUMS };
+  demo.play(
+    {
+      bpm: plan.bpm,
+      beats: plan.beats,
+      tracks: plan.tracks.map((t) => ({ kind: 'part', part: parts[t.part], shift: t.part === 'main' ? shift : 0, light: t.light, color: 'amber', events: t.events })),
+    },
+    name,
+  );
+}
 
 function applyGroove(perf) {
   if (!perf.groove) return;
@@ -344,6 +485,7 @@ const ctx = {
   loading,
   lit,
   actions,
+  demo,
   meterRef: (i) => (el) => {
     meterEls[i] = el;
   },
@@ -407,6 +549,7 @@ function App() {
       ${TABS.map(([id, ico, label]) => html`<button key=${id} class=${view === id ? 'on' : ''} onClick=${() => dispatch({ type: 'ui/patch', patch: { view: id, editor: null } })}><span class="ico">${ico}</span>${label}</button>`)}
     </nav>
     ${state.ui.editor != null && state.performance.parts[state.ui.selectedPart] ? html`<${Editor} ctx=${ctx} state=${state} />` : null}
+    ${demo.playing ? html`<${DemoBar} state=${state} />` : null}
     ${started && engine.ctx.state !== 'running'
       ? html`<div class="soundoff" role="alert" onClick=${() => engine.ctx.resume().then(bump, () => {})}>
           <span class="grow">The sound is paused. Tap here to turn it back on.</span>
@@ -414,6 +557,25 @@ function App() {
       : null}
     ${!started ? html`<${Start} />` : null}
     <${Toast} />
+  </div>`;
+}
+
+function DemoBar({ state }) {
+  const [, tick] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => tick((x) => x + 1), 250);
+    return () => clearInterval(t);
+  }, []);
+  const left = Math.ceil(demo.remaining());
+  // On pages without the keyboard strip, the bar brings its own, so the lit keys are always in view.
+  const showKeys = state.ui.view !== 'perform' || !state.settings.showKeys;
+  return html`<div class=${'demobar' + (showKeys ? ' withkeys' : '')} role="status">
+    <div class="row" style="flex-wrap:nowrap;width:100%">
+      <span class="pulse"></span>
+      <span class="grow">Demo: <b>${demo.name}</b><span class="dim"> · watch the keys light up · ${left} s</span></span>
+      <button class="small" onClick=${() => demo.stop()}>■ Stop</button>
+    </div>
+    ${showKeys ? html`<${Keyboard} parts=${state.performance.parts} selected=${-1} lit=${lit} onZone=${() => {}} onPlay=${() => {}} watch />` : null}
   </div>`;
 }
 

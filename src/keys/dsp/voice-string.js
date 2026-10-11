@@ -78,7 +78,9 @@ export const stringRenderer = {
       const comp = Math.min(2.5, Math.pow(Math.max(1, f / 110), 0.35));
       str.exciteGain = 1.1 * comp * (0.4 + 0.6 * vel) * (k === 0 ? 1 : 0.8);
       str.comp = comp;
-      str.combDelay = Math.max(1, Math.round(prog.pick * str.delay));
+      // the pick never lands in quite the same place
+      const h = prog.humanize || 0;
+      str.combDelay = Math.max(1, Math.round(prog.pick * (1 + v.rng.bipolar() * 0.18 * h) * str.delay));
       str.combIdx = 0;
       // a fingered bass gets a soft low "thump" under the pluck
       str.thump = bass ? 0.25 * vel : 0;
@@ -90,7 +92,7 @@ export const stringRenderer = {
     s.body.peaking(bass ? 110 : 220, 1.1, prog.body * 6, sr);
     s.body.reset();
     s.dc.x1 = s.dc.y1 = 0;
-    s.amp = ((1 - prog.velAmp + prog.velAmp * velocityCurve(vel * 127, prog.velCurve)) * prog.level) / Math.sqrt(s.n);
+    s.amp = (((1 - prog.velAmp + prog.velAmp * velocityCurve(vel * 127, prog.velCurve)) * prog.level) / Math.sqrt(s.n)) * (1 + v.rng.bipolar() * 0.07 * (prog.humanize || 0));
     s.ctrl = 0;
   },
   retune(v, prog, part, core, legato) {

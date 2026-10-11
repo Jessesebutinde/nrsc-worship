@@ -43,3 +43,12 @@ test('the deploy can stamp the shell cache version', () => {
   const workflow = fs.readFileSync(path.join(path.dirname(SW), '..', '.github', 'workflows', 'pages.yml'), 'utf8');
   assert.ok(workflow.includes(`s/PREFIX + '1'/`), 'the workflow stamps it');
 });
+
+test('the offline shell lists every Stage Keys module', () => {
+  const root = path.join(path.dirname(SW), '..', 'src', 'keys');
+  const src = fs.readFileSync(SW, 'utf8');
+  const listed = new Set([...src.matchAll(/'([a-z\-/]+\.js)'/g)].map((m) => m[1]));
+  const files = [];
+  for (const dir of ['', 'ui/', 'worklet/', 'dsp/']) for (const f of fs.readdirSync(path.join(root, dir))) if (f.endsWith('.js')) files.push(dir + f);
+  for (const f of files) assert.ok(listed.has(f), `${f} is cached for offline use`);
+});

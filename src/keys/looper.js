@@ -401,9 +401,11 @@ export class Looper {
 }
 
 // Built-in grooves. One character per step (`steps` per beat): X accent, x normal, o ghost, . rest; a lane
-// shorter than the groove repeats. GM notes: 36 kick, 38 snare, 37 rim, 42 closed hat, 46 open hat, 39 clap,
-// 56 cowbell (cloche), 70 shaker, 63/64 conga hi/lo, 62 conga mute. Spaces only separate bars for the eye.
-// bpm is in transport beats: in 6/8 the beat is the 8th note, so 180 is a dotted quarter at 60.
+// shorter than the groove repeats. GM notes: 36 kick, 35 808 sub kick, 38 snare, 37 rim, 39 clap, 31 snap,
+// 42 closed hat, 46 open hat, 51 ride, 49 crash, 48 tom hi, 43 tom low, 54 tambourine, 56 cowbell (cloche),
+// 67/68 agogo hi/lo, 65/66 talking drum hi/lo, 70 shaker, 63/64 conga hi/lo, 62 conga mute. Spaces only
+// separate bars for the eye. bpm is in transport beats: in 6/8 the beat is the 8th note, so 180 is a dotted
+// quarter at 60; a 12/8 groove counts dotted quarters with 3 steps each (steps: 3).
 export const GROOVES = [
   {
     id: 'sebene', name: 'Sebene (cavacha)', bpm: 132, bars: 2, beatsPerBar: 4, steps: 4,
@@ -461,6 +463,137 @@ export const GROOVES = [
   {
     id: 'pop', name: 'Pop 4/4', bpm: 96, bars: 1, beatsPerBar: 4, steps: 4,
     lanes: { 36: 'x.....x.x.......', 38: '....X.......X...', 39: '....x.......x...', 42: 'x.x.x.x.x.x.x.x.' },
+  },
+  {
+    id: 'gospel', name: 'Gospel pocket', bpm: 92, bars: 2, beatsPerBar: 4, steps: 4,
+    lanes: {
+      36: 'x.....x...x..... x.....x...x...x.',
+      38: '....X..o.o..X..o ....X..o.o..X.oo',
+      42: 'x.xox.xox.xox.xo',
+      46: '................ ..............x.',
+    },
+  },
+  // South African gospel (Spirit of Praise / Joyous Celebration): a bouncing praise groove, and a 12/8 worship
+  {
+    id: 'sa-praise', name: 'SA gospel praise', bpm: 124, bars: 2, beatsPerBar: 4, steps: 4,
+    lanes: {
+      36: 'x...x...x...x..x',
+      38: '....X..o....X.o. ....X..o....X.oo',
+      42: 'xxXxxxXxxxXxxxXx',
+      46: '................ ..............x.',
+      39: '....x.......x...',
+      54: '..x...x...x...x.',
+    },
+  },
+  {
+    id: 'sa-worship', name: 'SA gospel worship 12/8', bpm: 66, bars: 2, beatsPerBar: 4, steps: 3,
+    lanes: { 36: 'x.....x..x.. x.....x..x.x', 38: '...X.....X..', 42: 'xooxooxooxoo', 49: 'x........... ............' },
+  },
+  // Nigerian praise: four on the floor under the agogo time-line, congas, shaker and a talking drum call
+  {
+    id: 'naija-praise', name: 'Naija praise', bpm: 128, bars: 2, beatsPerBar: 4, steps: 4,
+    lanes: {
+      36: 'x...x...x...x...',
+      38: '....X..o.o..X..o',
+      42: 'xo.oxo.oxo.oxo.o',
+      46: '..x...x...x...x.',
+      67: 'x..x..x...x.x...',
+      62: 'x...x...x...x...',
+      63: '......xx......xx',
+      70: 'XxxxXxxxXxxxXxxx',
+      65: 'x..x..x.x.X..... ................',
+      66: '................ x..x..x...x.x...',
+    },
+  },
+  {
+    id: 'highlife', name: 'Highlife praise', bpm: 118, bars: 2, beatsPerBar: 4, steps: 4,
+    lanes: {
+      36: 'x.......x.......',
+      37: '....x.......x...',
+      42: 'x.x.x.x.x.x.x.x.',
+      67: 'x.x.xx.x.x.x.xx.',
+      68: '...x.......x....',
+      63: '..x...x...x...x.',
+      64: '.......x.......x',
+      70: 'xoxoxoxoxoxoxoxo',
+    },
+  },
+  // Amapiano (South African house-gospel crossover): four on the floor, shakers, off-beat hats; the log drum
+  // bass is played on the keys
+  {
+    id: 'amapiano', name: 'Amapiano', bpm: 113, bars: 2, beatsPerBar: 4, steps: 4,
+    lanes: {
+      36: 'x...x...x...x...',
+      42: '..x...x...x...x.',
+      70: 'XxxxXxxxXxxxXxxx',
+      37: '...x.x.....x.x.. ...x.x.....x..x.',
+      39: '....x.......x...',
+      63: '......x.......x.',
+    },
+  },
+  // Afrobeats (2020s Lagos pop) and Afrobeat (Tony Allen's first pattern)
+  {
+    id: 'afrobeats', name: 'Afrobeats', bpm: 104, bars: 2, beatsPerBar: 4, steps: 4,
+    lanes: {
+      36: 'x..x....x.x.....',
+      37: '...x..x......x..',
+      39: '....x.......x...',
+      70: 'XxoxXxoxXxoxXxox',
+      63: '......x.......x. ......x....x..x.',
+      46: '................ ..............x.',
+    },
+  },
+  {
+    id: 'afrobeat', name: 'Afrobeat (Tony Allen)', bpm: 112, bars: 1, beatsPerBar: 4, steps: 4,
+    lanes: {
+      36: 'xx......xx......',
+      38: '...x.xx......xx.',
+      42: 'x.Xxx.Xxx.Xxx.Xx',
+      70: 'xoxoxoxoxoxoxoxo',
+      62: '..x...x...x...x.',
+      75: 'x..x..x...x.x...',
+    },
+  },
+  // Worship bands: Elevation's driving chorus, its floor-tom build and 6/8 anthems; Hillsong's chorus and
+  // half-time verse
+  {
+    id: 'elevation', name: 'Elevation drive', bpm: 130, bars: 2, beatsPerBar: 4, steps: 4,
+    lanes: {
+      36: 'x.x.x.x.x.x.x.x.',
+      38: '....X.......X...',
+      51: 'x.x.x.x.x.x.x.x.',
+      49: 'x............... ................',
+    },
+  },
+  {
+    id: 'elevation-build', name: 'Elevation build', bpm: 130, bars: 2, beatsPerBar: 4, steps: 4,
+    lanes: { 36: 'x.x.x.x.x.x.x.x.', 43: 'XoxoXoxoXoxoXoxo', 38: '................ ............xxXX' },
+  },
+  {
+    id: 'elevation68', name: 'Anthem 6/8', bpm: 70, bars: 2, beatsPerBar: 4, steps: 3,
+    lanes: { 36: 'x.....x..... x.....x..x..', 38: '...X.....X..', 42: 'xxxxxxxxxxxx', 49: 'x........... ............' },
+  },
+  {
+    id: 'hillsong', name: 'Hillsong chorus', bpm: 72, bars: 2, beatsPerBar: 4, steps: 4,
+    lanes: {
+      36: 'x.....x...x..... x.....x...x...x.',
+      38: '....X.......X...',
+      51: 'x.x.x.x.x.x.x.x.',
+      49: 'x............... ................',
+    },
+  },
+  {
+    id: 'hillsong-half', name: 'Hillsong verse (half-time)', bpm: 72, bars: 1, beatsPerBar: 4, steps: 4,
+    lanes: { 36: 'x.........x.....', 37: '........x.......', 42: 'o.o.o.o.o.o.o.o.' },
+  },
+  // Billie Eilish / FINNEAS: dry, snaps instead of snares, the bass carries the low end
+  {
+    id: 'billie-pop', name: 'Billie pop', bpm: 105, bars: 1, beatsPerBar: 4, steps: 4,
+    lanes: { 36: 'x...x...x...x...', 31: '....X.......X...', 42: '..o...o...o...o.' },
+  },
+  {
+    id: 'billie-half', name: 'Billie half-time', bpm: 72, bars: 1, beatsPerBar: 4, steps: 4,
+    lanes: { 36: 'x.........x.....', 31: '........X.......', 42: '..o...o...o...o.' },
   },
 ];
 

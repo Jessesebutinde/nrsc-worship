@@ -2,9 +2,54 @@
 
 import { html, useState } from '../../ui/h.js';
 import { exportJson, importJson } from '../state.js';
-import { toast } from './controls.js';
+import { toast, Seg } from './controls.js';
+import { SONGBOOK, SONG_STYLES } from '../songbook.js';
+import { comboById } from '../combos.js';
+
+const barText = (b) => (Array.isArray(b) ? b.join(' ') : b);
+
+/** Two 2024-25 songs per style, ready to hear on their rig and to add to the set list. */
+function SongIdeas({ ctx }) {
+  const [style, setStyle] = useState(SONG_STYLES[0].id);
+  return html`<div style="display:grid;gap:12px">
+    <p class="muted" style="margin:0">Two songs from 2024-2025 for each style, with key, tempo, feel and chords, on a rig made for them. <b>▶ Hear it</b> loads the rig and plays the chorus or vamp: watch the keys to see what each hand does. Chords and tempos only; confirm anything marked <i>check by ear</i>.</p>
+    <div class="families chiprow">
+      ${SONG_STYLES.map((st) => html`<button key=${st.id} class=${style === st.id ? 'on' : ''} onClick=${() => setStyle(st.id)}>${st.label}</button>`)}
+    </div>
+    <div class="presets">
+      ${SONGBOOK.filter((x) => x.style === style).map((song) => {
+        const combo = comboById(song.combo);
+        return html`<div class="preset songidea" key=${song.id} style="--c:var(--accent)">
+          <div class="pname"><span>${song.title}</span><span class="pkind">${song.year}</span></div>
+          <div class="pdesc">${song.artist}</div>
+          <div class="row" style="gap:6px">
+            <span class="pill">Key ${song.key}</span><span class="pill">${song.bpm} bpm</span><span class="pill">${combo ? combo.name : song.combo}</span>
+          </div>
+          <div class="pdesc">${song.feel}</div>
+          ${song.sections.map(
+            (sec) => html`<div class="chords" key=${sec.name}><b>${sec.name}</b> ${sec.bars.map((b, i) => html`<span key=${i} class="chord">${barText(b)}</span>`)}</div>`,
+          )}
+          <div class="tip"><b>How to play:</b> ${song.tip}</div>
+          ${song.check ? html`<div class="pdesc warnline">Check by ear: ${song.check}</div>` : null}
+          <div class="pact">
+            <button class="primary" onClick=${() => ctx.actions.demoSong(song)}>▶ Hear it</button>
+            <button onClick=${() => ctx.actions.addSongIdea(song)}>+ Add to set list</button>
+          </div>
+        </div>`;
+      })}
+    </div>
+  </div>`;
+}
 
 export function Songs({ ctx, state }) {
+  const [tab, setTab] = useState(state.songs.length ? 'list' : 'ideas');
+  return html`<div style="display:grid;gap:12px;max-width:1100px">
+    <${Seg} value=${tab} options=${[{ v: 'list', label: 'My set list' }, { v: 'ideas', label: 'Song ideas (2025)' }]} onChange=${setTab} />
+    ${tab === 'ideas' ? html`<${SongIdeas} ctx=${ctx} />` : html`<${SetList} ctx=${ctx} state=${state} />`}
+  </div>`;
+}
+
+function SetList({ ctx, state }) {
   const { dispatch } = ctx.store;
   const cur = state.currentSong;
   const [editing, setEditing] = useState(-1);

@@ -2,7 +2,8 @@
 
 import { html, useState } from '../../ui/h.js';
 import { FAMILIES, PRESETS, searchPresets, presetBanks } from '../presets.js';
-import { COMBOS } from '../combos.js';
+import { COMBO_GROUPS, combosIn } from '../combos.js';
+import { SOUND_GUIDE, RIG_GUIDE } from '../guide.js';
 import { noteName } from './controls.js';
 
 export function Sounds({ ctx, state }) {
@@ -36,19 +37,33 @@ export function Sounds({ ctx, state }) {
       ${fam === 'combos' && !q
         ? html`<div>
             <p class="muted" style="margin:0 0 10px">A combo replaces the whole rig: its parts, splits, macros and groove. Save the current rig as a song first if you want it back.</p>
+            ${COMBO_GROUPS.map(
+              (grp) => html`<div key=${grp.id} class="group">
+            <h3 class="grouphead">${grp.label}</h3>
             <div class="presets">
-              ${COMBOS.map(
+              ${combosIn(grp).map(
                 (c) => html`<div class="preset" key=${c.id} style=${`--c:var(--${(FAMILIES.find((f) => f.id === c.family) || {}).color || 'amber'})`} onClick=${() => ctx.actions.loadCombo(c)}>
                   <div class="pname"><span>${c.name}</span><span class="pkind">${c.parts.length} parts · ${c.tempo} bpm</span></div>
                   <div class="pdesc">${c.desc}</div>
                   <div class="pdesc">${c.parts.map((sp) => zoneText(sp)).join(' · ')}</div>
-                  <div class="pact"><button class="primary" onClick=${(e) => {
-                    e.stopPropagation();
-                    ctx.actions.loadCombo(c);
-                  }}>Load rig</button></div>
+                  ${RIG_GUIDE[c.id] ? html`<div class="tip"><b>How to play:</b> ${RIG_GUIDE[c.id].tip}</div>` : null}
+                  <div class="pact">
+                    <button class="primary" onClick=${(e) => {
+                      e.stopPropagation();
+                      ctx.actions.loadCombo(c);
+                    }}>Load rig</button>
+                    ${RIG_GUIDE[c.id]
+                      ? html`<button onClick=${(e) => {
+                          e.stopPropagation();
+                          ctx.actions.demoRig(c);
+                        }}>▶ Demo</button>`
+                      : null}
+                  </div>
                 </div>`,
               )}
             </div>
+          </div>`,
+            )}
           </div>`
         : html`<div>
             ${fam !== 'favorites' && fam !== 'mine' && !q ? html`<p class="muted" style="margin:0 0 10px">${(FAMILIES.find((f) => f.id === fam) || {}).blurb || ''}</p>` : null}
@@ -74,6 +89,7 @@ function PresetCard({ ctx, state, preset: p, current }) {
   const banks = presetBanks(p);
   const needs = banks.filter((b) => !(ctx.engine.samples && ctx.engine.samples.isLoaded(b)));
   const fav = state.favorites.includes(p.id);
+  const guide = SOUND_GUIDE[p.user ? p.basePreset : p.id];
   const load = () => ctx.actions.loadPreset(state.ui.selectedPart, p);
   return html`<div class=${'preset' + (current ? ' current' : '')} style=${`--c:var(--${fam.color || 'sky'})`} onClick=${load}>
     <div class="pname">
@@ -84,8 +100,15 @@ function PresetCard({ ctx, state, preset: p, current }) {
       }}>★</button></span>
     </div>
     <div class="pdesc">${p.desc}</div>
+    ${guide ? html`<div class="tip"><b>How to play:</b> ${guide.tip}</div>` : null}
     ${banks.length ? html`<div class="pdesc dim">${needs.length ? `Downloads ${needs.length} sample set${needs.length > 1 ? 's' : ''} on first use` : 'Samples ready'}</div>` : null}
     <div class="pact">
+      ${guide
+        ? html`<button onClick=${(e) => {
+            e.stopPropagation();
+            ctx.actions.demoSound(p.id);
+          }}>▶ Demo</button>`
+        : null}
       <button class="primary" onClick=${(e) => {
         e.stopPropagation();
         load();

@@ -18,6 +18,7 @@ const SHELL = [
   '../lyrics/fonts/montserrat-latin-ext.woff2',
 ];
 const SRC = ['app.js', 'sync.js', 'state.js', 'engine.js', 'fx.js', 'midi.js', 'router.js', 'looper.js', 'presets.js', 'combos.js', 'samples.js', 'banks.js',
+  'music.js', 'phrases.js', 'demo.js', 'guide.js', 'songbook.js',
   'ui/controls.js', 'ui/perform.js', 'ui/editor.js', 'ui/sounds.js', 'ui/loops.js', 'ui/songs.js', 'ui/settings.js', 'ui/keyboard.js',
   'worklet/engine.js', 'worklet/pitch-shift.js',
   'dsp/util.js', 'dsp/env.js', 'dsp/filter.js', 'dsp/osc.js', 'dsp/programs.js', 'dsp/voice-synth.js', 'dsp/voice-organ.js', 'dsp/voice-string.js', 'dsp/voice-sampler.js', 'dsp/voice-drums.js', 'dsp/loop-detect.js', 'dsp/engine-core.js', 'dsp/pitch-shift.js',

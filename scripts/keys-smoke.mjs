@@ -48,6 +48,7 @@ function serve() {
 const RENDER_PAGE = `<!doctype html><html><body><script type="module">
 import { PRESETS } from '/src/keys/presets.js';
 import { generateImpulse } from '/src/keys/fx.js';
+import { bankInfo } from '/src/keys/banks.js';
 window.renderPreset = async (id, opts = {}) => {
   const preset = PRESETS.find((p) => p.id === id);
   const sr = 48000, secs = opts.secs || 1.6;
@@ -62,11 +63,15 @@ window.renderPreset = async (id, opts = {}) => {
   // sampler presets get a synthetic bank so they can be rendered too
   const prog = preset.prog;
   const layers = prog.type === 'layer' ? prog.layers : [prog];
+  // Stand-in samples, shaped like the real ones: a held, looped tone for sustaining instruments (pads,
+  // choirs, organs), a short decaying pluck for the rest (pianos, guitars, bells), both at the level the
+  // sample loader normalises real notes to. The sounds' level trims were measured on the real samples.
   for (const l of layers) if (l.type === 'sampler') {
+    const sustain = bankInfo(l.bank).sustain;
     const len = sr * 2; const L = new Float32Array(len); const R = new Float32Array(len);
-    for (let i = 0; i < len; i++) { const t = i / sr; const v = (2 * ((t * 220) % 1) - 1) * 0.3 * Math.min(1, t * 100) * Math.exp(-t * 0.5); L[i] = v; R[i] = v; }
+    for (let i = 0; i < len; i++) { const t = i / sr; const env = sustain ? Math.min(1, t * 100) * Math.exp(-t * 0.5) : Math.min(1, t * 500) * Math.exp(-t * 4); const v = (2 * ((t * 220) % 1) - 1) * 0.12 * env; L[i] = v; R[i] = v; }
     node.port.postMessage({ t: 'bankStart', id: l.bank });
-    node.port.postMessage({ t: 'bankNote', id: l.bank, note: 57, L, R, rate: sr, loopStart: Math.round(sr * 0.5), loopEnd: Math.round(sr * 0.5 + Math.round(sr / 220) * 150), loopAuto: true }, [L.buffer, R.buffer]);
+    node.port.postMessage({ t: 'bankNote', id: l.bank, note: 57, L, R, rate: sr, loopStart: sustain ? Math.round(sr * 0.5) : 0, loopEnd: sustain ? Math.round(sr * 0.5 + Math.round(sr / 220) * 150) : 0, loopAuto: sustain }, [L.buffer, R.buffer]);
     node.port.postMessage({ t: 'bankDone', id: l.bank });
   }
   node.port.postMessage({ t: 'program', part: 0, prog });
@@ -161,6 +166,38 @@ async function main() {
       return { parts: sk.store.get().performance.parts.map((p) => p.name), bass: lv.parts[0], lead: lv.parts[1], drums: lv2.parts[di], master: lv.master, voices: sk.engine.voices, state: sk.engine.ctx.state, latency: sk.engine.latency(), midi: sk.midi.access ? 'granted' : sk.midi.error || 'pending' };
     });
     console.log('app:', JSON.stringify(info));
+    // demos: a sound on the audition part, then a rig through the keys (modelled sounds: no downloads)
+    const demos = await app.evaluate(async () => {
+      const sk = window.stageKeys;
+      const watch = async (ms) => {
+        const peak = new Array(11).fill(0);
+        let lit = 0;
+        for (let t = 0; t < ms; t += 60) {
+          await new Promise((r) => setTimeout(r, 60));
+          sk.engine.levels().parts.forEach((v, i) => (peak[i] = Math.max(peak[i], v)));
+          lit = Math.max(lit, document.querySelectorAll('.kbd .on').length);
+        }
+        return { peak, lit };
+      };
+      await sk.actions.demoSound('sebene-solo');
+      const sound = await watch(1500);
+      sk.actions.stopDemo();
+      const { comboById } = await import('/src/keys/combos.js');
+      await sk.actions.demoRig(comboById('sebene-rig'));
+      const rig = await watch(1500);
+      const playing = sk.demo.playing;
+      sk.actions.stopDemo();
+      return { audition: sound.peak[8], auditionBed: sound.peak[10], soundLit: sound.lit, rigBass: rig.peak[0], rigLead: rig.peak[1], rigDrums: rig.peak[2], rigLit: rig.lit, playing };
+    });
+    console.log('demos:', JSON.stringify(demos));
+    if (!(demos.audition > 0.01 && demos.soundLit > 0)) {
+      failed++;
+      console.log('FAIL: the sound demo did not play or did not light the keys');
+    }
+    if (!(demos.rigBass > 0.01 && demos.rigLead > 0.01 && demos.rigDrums > 0.01 && demos.rigLit > 0 && demos.playing)) {
+      failed++;
+      console.log('FAIL: the rig demo did not play every part through the keys');
+    }
     if (!(info.bass > 0.01 && info.lead > 0.01)) {
       failed++;
       console.log('FAIL: the app did not produce sound on both split parts');

@@ -5,7 +5,7 @@ import { Biquad } from './filter.js';
 import { sine, clamp } from './util.js';
 
 const KIT = {
-  35: 'kick', 36: 'kick', 38: 'snare', 40: 'snare', 37: 'rim', 42: 'chh', 44: 'phh', 46: 'ohh', 39: 'clap',
+  35: 'kick808', 36: 'kick', 31: 'snap', 65: 'talkHi', 66: 'talkLo', 67: 'agogoHi', 68: 'agogoLo', 38: 'snare', 40: 'snare', 37: 'rim', 42: 'chh', 44: 'phh', 46: 'ohh', 39: 'clap',
   49: 'crash', 57: 'crash', 51: 'ride', 59: 'ride', 56: 'cowbell', 70: 'shaker', 69: 'shaker', 54: 'tamb',
   75: 'claves', 62: 'congaMute', 63: 'congaHi', 64: 'congaLo', 60: 'bongoHi', 61: 'bongoLo', 33: 'click', 34: 'clickHi',
   45: 'tom', 47: 'tom', 48: 'tomHi', 50: 'tomHi', 43: 'tomLo', 41: 'tomLo',
@@ -34,6 +34,18 @@ export const drumsRenderer = {
     switch (kind) {
       case 'kick':
         s.len = 0.5 * dec; s.decay = 0.12 * dec; s.f0 = 48 * tune; s.sweep = 140 * tune; s.sweepT = 0.035; break;
+      case 'kick808':
+        s.len = 1.4 * dec; s.decay = 0.45 * dec; s.f0 = 46 * tune; s.sweep = 70 * tune; s.sweepT = 0.05; break;
+      case 'snap':
+        s.len = 0.12; s.decay = 0.022; s.f1.bandpass(2300, 1.4, sr); s.f2.highpass(1200, 0.7, sr); break;
+      case 'talkHi':
+        s.len = 0.45 * dec; s.decay = 0.12 * dec; s.f0 = 190 * tune; s.sweep = 1.3; s.sweepT = 0.09; break;
+      case 'talkLo':
+        s.len = 0.5 * dec; s.decay = 0.14 * dec; s.f0 = 130 * tune; s.sweep = 1.35; s.sweepT = 0.11; break;
+      case 'agogoHi':
+        s.len = 0.4 * dec; s.decay = 0.09 * dec; s.f0 = 920 * tune; break;
+      case 'agogoLo':
+        s.len = 0.45 * dec; s.decay = 0.1 * dec; s.f0 = 690 * tune; break;
       case 'snare':
         s.len = 0.35 * dec; s.decay = 0.07 * dec; s.f0 = 185 * tune; s.f1.highpass(1200, 0.7, sr); s.f2.peaking(3200, 1, 6, sr); break;
       case 'rim':
@@ -103,6 +115,36 @@ export const drumsRenderer = {
           s.ph += f / sr;
           x = sine(s.ph) * env * 1.6 + (t < 0.002 ? v.rng.bipolar() * 0.5 : 0);
           x = Math.tanh(x);
+          break;
+        }
+        case 'kick808': {
+          // a long sub boom that drops in pitch and saturates a little: the trap and afrobeats low end
+          const f = s.f0 + s.sweep * Math.exp(-t / s.sweepT);
+          s.ph += f / sr;
+          x = Math.tanh(sine(s.ph) * env * 1.8) * 0.95;
+          break;
+        }
+        case 'snap': {
+          // finger snap: a hard click and a short bright burst
+          const click = t < 0.0015 ? 1 - t / 0.0015 : 0;
+          x = s.f1.process(v.rng.bipolar()) * env * 2.2 + s.f2.process(click) * 0.8;
+          break;
+        }
+        case 'talkHi':
+        case 'talkLo': {
+          // talking drum: a skin whose pitch is squeezed up after the hit
+          const bend = 1 + (s.sweep - 1) * (1 - Math.exp(-t / s.sweepT));
+          s.ph += (s.f0 * bend) / sr;
+          s.ph2 += (s.f0 * bend * 1.58) / sr;
+          x = (sine(s.ph) + 0.3 * sine(s.ph2)) * env * 0.95 + v.rng.bipolar() * Math.exp(-t / 0.006) * 0.3;
+          break;
+        }
+        case 'agogoHi':
+        case 'agogoLo': {
+          // a cast bell: two inharmonic partials
+          s.ph += s.f0 / sr;
+          s.ph2 += (s.f0 * 2.76) / sr;
+          x = (sine(s.ph) * 0.8 + sine(s.ph2) * 0.35 * Math.exp(-t / 0.03)) * env * 0.9;
           break;
         }
         case 'snare': {

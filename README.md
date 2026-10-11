@@ -419,8 +419,10 @@ The rig is organised like a stage keyboard (Montage / MODX live sets, Nord progr
 | Idea | How it works here |
 | --- | --- |
 | **Performance (rig)** | Up to 8 **parts**, each one sound with its own key range (split), velocity range, octave, MIDI channel, fader, pan and effect chain. Parts layer when their ranges overlap. |
-| **Sounds** | 84 presets in 11 families, led by the sebene ones. Each is a program for the engine plus an effect chain; sampled, synthesised, modelled or stacked. |
-| **Combos** | 14 ready rigs: *Sebene Rig* (bass left, solo right, cavacha kit), *Sebene Praise*, *Ndombolo Praise*, *Elevation Night*, *Hillsong Sunday*, *Nord: Piano + Pad*, *Gospel B3 + Piano*, *Brooklyn Choir Stack*, *Billie Dark*… one tap loads the lot. |
+| **Sounds** | 114 presets in 14 families, led by the sebene ones, then SA gospel, Naija praise, Afrobeats and Afrobeat, worship pads, keys, organs, choirs, leads, bass, Billie, strings, mallets, kits. Each is a program for the engine plus an effect chain; sampled, synthesised, modelled or stacked; all level-matched. |
+| **Combos** | 26 ready rigs, grouped by style. Twelve are band arrangements, two per style: *Spirit of Praise: Praise Break* and *Worship*, *Naija Praise: Lagos* and *Highlife*, *Afrobeats: Lagos* and *Afrobeat: Fela*, *Elevation: Anthem Drive* and *6/8 Anthem*, *Hillsong: Anthem* and *Up-tempo*, *Billie: Soft Pop* and *Whisper Ballad*. The others: *Sebene Rig*, *Sebene Praise*, *Ndombolo Praise*, *Elevation Night*, *Hillsong Sunday*, *Nord: Piano + Pad*, *Gospel B3 + Piano*, *Brooklyn Choir Stack*… one tap loads the lot. |
+| **Demos and tips** | Every sound, rig and song has a **▶ Demo** (or **▶ Hear it**) that plays it the way it is meant to be played, in its style, while the on-screen keys light up to show what each hand does, plus a short *How to play* tip. |
+| **Song ideas** | Fourteen 2024-25 songs, two per style (Congolese gospel, Spirit of Praise, Nigerian praise, Afrobeats/Afrobeat, Elevation, Hillsong, Billie Eilish): key, tempo, feel, chord sections and the rig to play them on. *Hear it* plays the chorus or vamp on that rig; *Add to set list* keeps it. |
 | **Macros** | Four knobs per rig, each driving any number of parameters over a range (reverb mix, filter, pad level, palm mute…). The KROSS 2 tone knobs drive them with no setup. |
 | **Loops** | One phrase loop per part, Ableton-session style but MIDI: arm, play the phrase once, stop at the end; it rounds to whole bars and keeps going, quantised to 16ths, phase-locked to the tempo. Mute it for the next song, overdub, or clear. Built-in drum grooves (sebene cavacha, ndombolo, rumba, worship 4/4 and 6/8, pop) are loops on a kit part. |
 | **Songs** | The set list: each song keeps its rig, tempo and loops. Next / Previous by button, arrow keys, a learned pedal or a program change from the keyboard. Old notes ring out through a change. |
@@ -474,6 +476,34 @@ bass, dry and punchy, with muted ghost notes):
 Tempos of 120–155 bpm with a 16th feel; the *Sebene (cavacha)* groove has the kick on every beat and the snare's
 accent pattern, congas, cloche and shaker.
 
+### Band rigs, demos and the song book
+
+The twelve band rigs come from research into how each style is played (sources in `src/keys/songbook.js` and the
+grooves' comments): the cavacha snare for sebene; the SA praise bounce and 12/8 worship with a melodic lead bass,
+add-9 piano off the beat, Hammond and a mass choir; Lagos praise with the agogo time-line and a talking-drum call,
+and Igbo highlife with picked guitar in thirds and sixths; modern Afrobeats with the skipping rim and a sub that
+follows the kick, and Tony Allen's Afrobeat pattern under a two-bar Dorian vamp with combo organ, horns and tenor
+guitar; Elevation's 8th-note drive, floor-tom build and 6/8 anthems; Hillsong's half-time verse and full chorus;
+Billie's dry snaps and long 808. Each rig has an arrangement (`src/keys/guide.js`): what the left hand, the right
+hand and each loop part play, so the **demo plays exactly the rig you get**, through the same splits and layers.
+
+- **Sound demos** play on a separate audition part (with a quiet backing part and drums where the sound is a lead,
+  bass or rhythm part), so trying a sound never touches the rig. The editor's ▶ plays the demo on the part itself,
+  with your edits.
+- **Rig and song demos** load the rig and play it through the keys: watch which keys light in which colour.
+- **The song book** (`src/keys/songbook.js`) holds chords, keys and tempos only, never lyrics or melodies. Facts that
+  come from one source or an automatic chord estimate are marked *check by ear* in the app.
+
+### Level matching
+
+Every sound is trimmed so its demo plays at the same loudness (about -21 dB RMS at fader 0.8, peaks under 0.9), so
+switching sounds live never jumps; the trims are in `LEVEL_TRIM_DB` in `src/keys/presets.js`. They were measured by
+rendering each demo offline through the real worklet and effect chains with the real samples, each part captured on
+its own channels, and correcting until the loudness matched. The band rigs' part volumes were set the same way:
+bass and the main keys level, drums a little under, layers and loops well under, the mix peaking below the limiter.
+Sampled pianos, Rhodes, guitars, basses and mallets also get darker when played softly (velocity opens a gentle
+lowpass), and every sampled or modelled note varies by a few cents and a little level, as a hand does.
+
 ## Setting up the KROSS 2
 
 1. Connect the KROSS 2's square **USB B** port to the laptop. It is class-compliant: Windows and macOS see a
@@ -498,6 +528,8 @@ The full guide is under *Settings → KROSS 2 setup guide* in the app.
 - **Perform** shows the parts: fader with meter, mute, octave, **Edit** (sound, effects, mix & zone), **Change**
   (sound browser), ▶ to hear it. Tap a card to select it; the keyboard strip at the bottom shows every part's range
   as a band (drag a band's end to move a split) and lights the keys as you play. Esc is panic.
+- **Demos**: ▶ Demo on any sound or rig, ▶ Hear it on a song idea; a bar at the bottom shows what is playing with
+  ■ Stop. Esc stops it too.
 - **Sounds**: families on the left, search on top. **Load** replaces the selected part; **+ Layer** adds the sound as
   a new part on the whole keyboard; **+ Left hand** / **+ Right hand** add it on one side of middle C. ★ keeps
   favourites; *Save as my sound* in the editor keeps your tweaks.
@@ -533,7 +565,9 @@ src/keys/fx.js        the effect stages and impulse generator
 src/keys/samples.js   soundfont download, cache, decode, loop detection → worklet;  banks.js the catalogue
 src/keys/midi.js      Web MIDI input + typing keyboard;  router.js zones, channels, pedals, CC learn
 src/keys/looper.js    transport, phrase loops, grooves, metronome
-src/keys/presets.js   the sound library;  combos.js the rigs
+src/keys/presets.js   the sound library;  combos.js the rigs;  songbook.js the song ideas
+src/keys/guide.js     how each sound and rig is played: demos, arrangements, tips
+src/keys/music.js     chords, voicings, progressions;  phrases.js the playing roles;  demo.js the demo player
 src/keys/dsp/         the engine (pure modules);  worklet/ the AudioWorklet shells
 src/keys/ui/          Preact views: perform, editor, sounds, loops, songs, settings, keyboard, controls
 ```
