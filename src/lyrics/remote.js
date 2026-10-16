@@ -18,13 +18,13 @@ import { onlineConfig, saveOnlineConfig, listBibles } from './online.js';
 import { relayConfig, cloudConfigured, loadSession, captureSession, sendMagicLink, signOut, pullSongs, pushSongs } from './cloud.js';
 import { canCast, castTo, displayPermission, extraDisplays, openOn, displayOf, platform } from './cast.js';
 import { fontsReady, scriptureFit } from './measure.js';
-import { idbSet, idbDel } from './idb.js';
+import { myMedia, addMediaFiles, addMediaUrl, removeMedia, onMediaChange } from './media.js';
+import { Orbit } from './orbit.js';
 import { SongEditor } from './editor.js';
 import qrcode from '../../vendor/qrcode.js';
 
 const LS_PREFS = 'ls-remote-prefs';
 const LS_RECENT_REFS = 'ls-recent-refs';
-const LS_MEDIA = 'ls-media';
 const LS_DISPLAYS = 'ls-displays';
 
 const read = (k, d) => {
@@ -58,6 +58,10 @@ const LAYOUTS = {
   console: { name: 'Console', hint: 'Library, live slide and outputs side by side.' },
   focus: { name: 'Focus', hint: 'A big live picture for running Next and Back. The library and the outputs open from the side rails (Esc closes them).' },
   compact: { name: 'Compact', hint: 'Tighter, for a 1366 × 768 laptop: the live picture beside Next and Back, a narrow outputs column.' },
+  orbit: {
+    name: 'Orbit',
+    hint: 'The floating console: orbs drift around the live picture, waiting. Touch one and it opens; close it and it floats back. While a passage is up the orbs slip to the bottom edge and the reading takes the room. Google, the calendar of verses and the sermon board live here.',
+  },
 };
 const FONTS = {
   montserrat: { name: 'Montserrat', hint: 'The church type, as on the TV.', family: "'Montserrat', sans-serif" },
@@ -723,6 +727,33 @@ function ScriptureControls({ state, act, setLook, hints = false }) {
     html`<small class="muted">${SCRIPTURE_LOOKS.length} looks: ${SCRIPTURE_LOOKS.filter((k) => SCRIPTURE_INFO[k].group === 'page').length} pages and ${SCRIPTURE_LOOKS.filter((k) => SCRIPTURE_INFO[k].group === 'card').length} cards; ‹ › step through them, All looks shows them all. Motion: Gentle lines rise in turn; Page turn turns the old page over from its edge (the open Bible turns its right-hand leaf); Typing writes each word in; Reveal sweeps a soft edge of light across; Slide comes in from the right and leaves to the left. Calm mode always crossfades. Verse by verse: with several verses on a slide, Next reveals them one at a time and dims the ones already read. Each verse starts with its number; a verse that goes on to the next slide ends with … and continues with …; three dots at the corner say the passage goes on.</small>`}`;
 }
 
+/** A song's look and how its words play (the Live tab and the Orbit Looks orb). */
+function SongLooks({ state, act }) {
+  return html`<div class="looks chips" role="group" aria-label="Look">
+      <button class=${`chip ${!state.look ? 'on' : ''}`} onClick=${() => act({ type: 'set', patch: { look: '' } })} title="Each song's own look">Song's own</button>
+      ${PRESETS.map(
+        (p) => html`<button class=${`chip ${state.look === p ? 'on' : ''}`} onClick=${() => act({ type: 'set', patch: { look: p } })} title=${PRESET_INFO[p].hint}>${PRESET_INFO[p].name}</button>`,
+      )}
+    </div>
+    <div class="wordplay row wrap">
+      <${SizeControl} value=${state.lSize} onChange=${(v) => act({ type: 'set', patch: { lSize: v } })} label="Lyrics text size" />
+      <span class="seg play" role="group" aria-label="How much the words play">
+        ${Object.entries(PLAY_LEVELS).map(
+          ([k, l]) => html`<button class=${(state.play || 'mid') === k ? 'on' : ''} onClick=${() => act({ type: 'set', patch: { play: k } })}>${l}</button>`,
+        )}
+      </span>
+      <span class="seg" role="group" aria-label="Mix">
+        <button class=${state.mixFonts ? 'on' : ''} onClick=${() => act({ type: 'set', patch: { mixFonts: !state.mixFonts } })} title="A different font on each word">Mixed fonts</button>
+        <button class=${state.hero ? 'on' : ''} onClick=${() => act({ type: 'set', patch: { hero: !state.hero } })} title="One word (or the second line) swells, like GOD I'M JUST / GRATEFUL">Hero word</button>
+      </span>
+      <span class="seg" role="group" aria-label="Where the words sit">
+        ${Object.entries(PLACES).map(
+          ([k, l]) => html`<button class=${(state.place || 'center') === k ? 'on' : ''} onClick=${() => act({ type: 'set', patch: { place: k } })}>${l}</button>`,
+        )}
+      </span>
+    </div>`;
+}
+
 function Live({ state, act, info, goTab, onOutputs, wide, setLook }) {
   const item = state.item;
   const list = useRef(null);
@@ -761,31 +792,7 @@ function Live({ state, act, info, goTab, onOutputs, wide, setLook }) {
     <div class="modes">${modeBtn('clear', 'Clear')}${modeBtn('black', 'Black')}${modeBtn('logo', 'Logo')}</div>
     </div>
     <div class="live-rest">
-    ${item &&
-    item.kind === 'song' &&
-    html`<div class="looks chips" role="group" aria-label="Look">
-      <button class=${`chip ${!state.look ? 'on' : ''}`} onClick=${() => act({ type: 'set', patch: { look: '' } })} title="Each song's own look">Song's own</button>
-      ${PRESETS.map(
-        (p) => html`<button class=${`chip ${state.look === p ? 'on' : ''}`} onClick=${() => act({ type: 'set', patch: { look: p } })} title=${PRESET_INFO[p].hint}>${PRESET_INFO[p].name}</button>`,
-      )}
-    </div>
-    <div class="wordplay row wrap">
-      <${SizeControl} value=${state.lSize} onChange=${(v) => act({ type: 'set', patch: { lSize: v } })} label="Lyrics text size" />
-      <span class="seg play" role="group" aria-label="How much the words play">
-        ${Object.entries(PLAY_LEVELS).map(
-          ([k, l]) => html`<button class=${(state.play || 'mid') === k ? 'on' : ''} onClick=${() => act({ type: 'set', patch: { play: k } })}>${l}</button>`,
-        )}
-      </span>
-      <span class="seg" role="group" aria-label="Mix">
-        <button class=${state.mixFonts ? 'on' : ''} onClick=${() => act({ type: 'set', patch: { mixFonts: !state.mixFonts } })} title="A different font on each word">Mixed fonts</button>
-        <button class=${state.hero ? 'on' : ''} onClick=${() => act({ type: 'set', patch: { hero: !state.hero } })} title="One word (or the second line) swells, like GOD I'M JUST / GRATEFUL">Hero word</button>
-      </span>
-      <span class="seg" role="group" aria-label="Where the words sit">
-        ${Object.entries(PLACES).map(
-          ([k, l]) => html`<button class=${(state.place || 'center') === k ? 'on' : ''} onClick=${() => act({ type: 'set', patch: { place: k } })}>${l}</button>`,
-        )}
-      </span>
-    </div>`}
+    ${item && item.kind === 'song' && html`<${SongLooks} state=${state} act=${act} />`}
     ${item && item.kind === 'scripture' && html`<${ScriptureControls} state=${state} act=${act} setLook=${setLook} />`}
     ${!connected &&
     !wide &&
@@ -1227,7 +1234,7 @@ function Scripture({ prefs, setPrefs, onShow, look = 'ink', font = 'serif', size
 
 function Media({ onShow, onIllustrate, illustration, liveId, relayOn }) {
   const [folder, setFolder] = useState(null);
-  const [mine, setMine] = useState(() => read(LS_MEDIA, []));
+  const [mine, setMine] = useState(myMedia);
   const [url, setUrl] = useState('');
   const [to, setTo] = useState('both');
   const [loop, setLoop] = useState(false);
@@ -1240,41 +1247,20 @@ function Media({ onShow, onIllustrate, illustration, liveId, relayOn }) {
       .then((list) => setFolder(list.map((f) => ({ id: `f:${f.file}`, title: f.title, type: f.type, src: `media/${f.file}` }))))
       .catch(() => setFolder([]));
   }, []);
+  // The Google orb adds pictures too: show them as they come.
+  useEffect(() => onMediaChange(() => setMine(myMedia())), []);
 
   const opts = () => ({ to, loop });
   const show = (files) => onShow(mediaItem(files, opts()));
 
   const addFiles = async (files) => {
-    const added = [];
-    for (const f of files) {
-      const id = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
-      try {
-        await idbSet('files', `media:${id}`, f);
-        added.push({ id, title: f.name.replace(/\.[^.]+$/, ''), type: f.type.startsWith('video') ? 'video' : 'image', src: `idb:media:${id}` });
-      } catch {
-        showToast(`${f.name} is too big to keep`);
-      }
-    }
-    const next = [...mine, ...added];
-    setMine(next);
-    write(LS_MEDIA, next);
+    const { added, tooBig } = await addMediaFiles(files);
+    for (const name of tooBig) showToast(`${name} is too big to keep`);
     if (added.length) showToast(`Added ${added.length} file${added.length === 1 ? '' : 's'}`);
   };
-  const remove = (m) => {
-    idbDel('files', `media:${m.id}`).catch(() => {});
-    const next = mine.filter((x) => x.id !== m.id);
-    setMine(next);
-    write(LS_MEDIA, next);
-  };
+  const remove = (m) => removeMedia(m);
   const addUrl = () => {
-    const u = url.trim();
-    if (!u) return;
-    const type = /\.(mp4|webm|m4v|mov|ogv)(\?|$)/i.test(u) ? 'video' : 'image';
-    const m = { id: `u:${u}`, title: u.split('/').pop().split('?')[0] || u, type, src: u };
-    const next = [...mine.filter((x) => x.id !== m.id), m];
-    setMine(next);
-    write(LS_MEDIA, next);
-    setUrl('');
+    if (addMediaUrl(url)) setUrl('');
   };
 
   const toggle = (m) => {
@@ -1965,10 +1951,12 @@ function App() {
     if (ui.layout === 'focus') setDrawer(drawer === 'lib' && libTab === k ? null : 'lib');
   };
   const livePane = html`<${Live} state=${state} act=${act} info=${info} wide=${wide} goTab=${wide ? openLib : setTab} onOutputs=${() => setOutputs(true)} setLook=${setLook} />`;
+  const keysHint = html`Space / → next · ← back · B black · C clear · L logo · <${FollowKeyHint} /> word by word · + / − size`;
   const header = html`<header class="top">
     <div class="brand"><span class="cross">✝</span> Lyric Slides</div>
-    ${wide && html`<span class="muted small keys">Space / → next · ← back · B black · C clear · L logo · <${FollowKeyHint} /> word by word · + / − size</span>`}
+    ${wide && html`<span class="muted small keys">${keysHint}</span>`}
     <div class="row top-end">
+      ${wide && html`<button class="ghost small" onClick=${() => setUi({ layout: 'orbit' })} title="The floating console: orbs around the live picture (Settings → This console → Layout)">Orbit</button>`}
       <${LightSwitch} ui=${ui} setUi=${setUi} />
       <button class=${`pill ${connected ? 'ok' : 'warn'}`} onClick=${() => setOutputs(true)}>
         ${connected ? 'TV ✓' : 'Show on TV'}${info.pending ? ' · waiting' : ''}
@@ -1990,6 +1978,32 @@ function App() {
       }}
     />`}
     <${Toast} />`;
+
+  // Orbit: the floating console (src/lyrics/orbit.js), on a laptop-wide window.
+  if (wide && ui.layout === 'orbit') {
+    const looksPane =
+      state.item && state.item.kind === 'scripture'
+        ? html`<${ScriptureControls} state=${state} act=${act} setLook=${setLook} /><${Emphasis} state=${state} act=${act} />`
+        : state.item && state.item.kind === 'song'
+          ? html`<${SongLooks} state=${state} act=${act} /><${FollowBar} state=${state} act=${act} /><${Emphasis} state=${state} act=${act} />`
+          : html`<p class="muted">Put a song or a passage up first; its looks come here.</p>`;
+    return html`<${Orbit}
+      state=${state}
+      act=${act}
+      info=${info}
+      prefs=${prefs}
+      setPrefs=${setPrefs}
+      setUi=${setUi}
+      showItem=${showItem}
+      setLook=${setLook}
+      relayout=${(k) => setLook({}, k)}
+      panes=${{ songs: songsPane, scripture: scripturePane, media: mediaPane, settings: settingsPane, looks: looksPane }}
+      onOutputs=${() => setOutputs(true)}
+      toast=${(m) => showToast(m)}
+      sheets=${sheets}
+      keysHint=${keysHint}
+    />`;
+  }
 
   // Laptop: library | live | outputs, all on one screen (Settings → This console → Layout).
   // Console and Compact show the three columns; Focus shows the rails and opens either side as a drawer.

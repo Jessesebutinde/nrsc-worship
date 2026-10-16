@@ -273,9 +273,13 @@ function follow(s, dir, unit) {
   } else s.wc = null;
 }
 
-/** How many steps the slide takes: its verses one by one when reveal is on (scripture), else one. */
+/**
+ * How many steps the slide takes: its verses one by one when reveal is on (scripture), a sermon
+ * board's nodes one by one (its one slide), else one.
+ */
 export function stepsOf(state, index = state.index) {
   const it = state.item;
+  if (it && it.kind === 'board') return state.reveal === false ? 1 : Math.max(1, it.nodes.length);
   // A scrolling passage always steps verse by verse (that is what moves it).
   if (!it || it.kind !== 'scripture' || (state.reveal === false && !it.scroll)) return 1;
   const slide = it.slides && it.slides[index];
@@ -325,6 +329,18 @@ export function reduce(state, cmd, by) {
       s.mode = 'show';
       s.marks = {};
       break;
+    case 'board': {
+      // The sermon board being built: the editor sends this on every change while it is live, so
+      // nothing else is touched. Without `sub`, everything built so far is up (a node the operator
+      // adds appears at once); with it, the board is stepped back to that node.
+      s.item = cmd.item;
+      s.index = 0;
+      s.mode = 'show';
+      const last = Math.max(0, (cmd.item && cmd.item.nodes ? cmd.item.nodes.length : 0) - 1);
+      s.sub = cmd.sub == null ? last : Math.max(0, Math.min(last, cmd.sub));
+      s.wc = null;
+      break;
+    }
     case 'mark': {
       // Tapping a word with the same pen again takes the mark off.
       const all = { ...(s.marks || {}) };

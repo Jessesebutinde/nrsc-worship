@@ -121,6 +121,46 @@ outputs side by side), Focus (a big live picture with Next / Back; the library a
 rails, Esc closes them) or Compact (tuned for 1366 × 768: the live picture beside Next / Back, a narrow outputs
 column). **Font**: Montserrat, System (the laptop's own) or Serif. The choice is kept on this laptop only.
 
+## Orbit: the floating console
+
+**Settings → This console → Layout → Orbit** (or the **Orbit** button in the header; **Classic** in Orbit's header
+comes back) swaps the console for a floating one. The live picture sits in the middle with Next, Back, Clear,
+Black and Logo under it; around it the orbs drift, waiting: **Scripture**, **Songs**, **Pictures**, **Google**,
+**Sermon board**, **Looks**, and small ones for Settings and the TV. Touch an orb and it opens into a panel that grows
+out of it (Esc or the × closes it, and it shrinks back); pick something from a library orb and the panel pops back on
+its own as the TV changes. The classic console is unchanged and a click away, and the TV never knows which one is in
+use.
+
+**Reading.** The moment a passage goes up, everything else slips to the bottom edge: the orbs shrink into a row along
+the bottom (still there to touch), the live picture grows, and the **reading panel** takes the right: the chapter's
+verses as tiles like the dates of a month, the verses on the TV marked, the one being read lit. Touch a tile in the
+passage to go to it; touch one outside to put that verse up; Shift-touch (or **Range**, then two touches) for a
+range; **To the end**, **Whole chapter**, the chapter before and after, the **On screen** choices and the look
+swatches are right there. **Done reading** clears the TV and the orbs float back.
+
+**Scripture: the calendar.** The Scripture orb lays out the Bible as tiles: the 66 books (Luganda short name, English
+below), then the chapters, then the verses, each verse with its first words and the whole verse shown as the pointer
+rests on it. Touch a verse and it is on the TV; Shift-touch a second for a range; Shift-touch a chapter for the
+whole chapter. Typing in the box finds a book by any name, or takes a full reference and shows it on Enter. **Type,
+say or search** in the same panel is the classic box, with the microphone and search by words.
+
+**Google.** Google will not sit inside another site, so the Google orb opens it in a window of its own beside the
+console (every search goes to that same window): type what you are after, **Pictures** or **Web**. A picture found
+there comes in by dragging it across onto the orb's drop zone, or with right-click → *Copy image* in Google and
+Ctrl+V in the console. It lands in Pictures with **Show** and **Beside the words** right there, and the thumbnail
+Google drags (a small `data:` picture) is kept on the laptop like a file.
+
+**Sermon board.** A diagram drawn while the preacher speaks, so the hall sees the message take shape. **+ Box**,
+**+ Pill**, **+ Circle**, **+ Note** (a sticky note), **+ Picture** (any picture in the app) and **+ Verse** (a
+reference in either version, up to four verses) add points; with **Chain** on, each new point gets an arrow from the
+last. The canvas is the TV picture itself: drag a point to move it, touch it to edit its text, small line, shape,
+colour and size on the right, **Arrow to…** then another point to join them (the same pair again takes the arrow
+away), **Earlier** / **Later** to change the order they appear in, Delete to remove. Four looks: **Slate**, **Paper**,
+**Night** and **Chalkboard** (chalk outlines on the green board). **Show on TV** puts the board up and from then on
+every change goes to the TV as it is made, each new point popping in; **Next** and **Back** step through the points
+in order, **Replay** goes back to the first, the progress bar runs along the bottom, and the stream's lower third
+shows the point being made. Boards are kept on the laptop by name (New, Rename, Delete).
+
 ## Words that use the screen
 
 By default the words **grow to fill the TV**: each slide is measured in the real font and sized as large as fits
