@@ -6,6 +6,7 @@
 
 import { bookByCode, bookByNumber, findBook, formatRef } from './books.js';
 import { idbGet, idbSet } from './idb.js';
+import { onlineConfig, saveOnlineConfig, isOnlineId, fetchChapter } from './online.js';
 import { splitAtPauses } from './split.js';
 
 export const BUILTIN_VERSIONS = [
@@ -182,12 +183,25 @@ export function importedVersions() {
   }
 }
 
-export function allVersions() {
-  return [...BUILTIN_VERSIONS, ...importedVersions()];
+/** The licensed Bibles added online on this laptop (Settings → Online Bibles), as versions. */
+export function onlineVersions(config = onlineConfig()) {
+  return (config.bibles || []).map((b) => ({
+    id: `api:${b.id}`,
+    bibleId: b.id,
+    name: b.abbreviation && b.name && b.abbreviation !== b.name ? `${b.name} (${b.abbreviation})` : b.name || b.abbreviation,
+    label: b.abbreviation || b.name,
+    lang: b.lang === 'lg' ? 'lg' : 'en',
+    notice: b.copyright || 'Licensed online through API.Bible; the text stays on this laptop.',
+    online: true,
+  }));
 }
 
-export function versionById(id) {
-  return allVersions().find((v) => v.id === id) || null;
+export function allVersions(config) {
+  return [...BUILTIN_VERSIONS, ...importedVersions(), ...onlineVersions(config)];
+}
+
+export function versionById(id, config) {
+  return allVersions(config).find((v) => v.id === id) || null;
 }
 
 /** Stores an imported version. Returns { id, books, verses }. */
@@ -212,6 +226,42 @@ export function removeVersion(id) {
 }
 
 const cache = new Map();
+
+const idbStore = { get: (k) => idbGet('bible', k), set: (k, v) => idbSet('bible', k, v) };
+
+/**
+ * One chapter of a version: the verses as strings, verse 1 first (empty for a missing verse).
+ * An online Bible's chapter is fetched the first time and kept on this laptop; the others come
+ * from the version's book.
+ */
+export async function loadChapter(versionId, bookNumber, chapter, { base = './bibles', fetchImpl = globalThis.fetch, config = null, store = idbStore } = {}) {
+  if (!isOnlineId(versionId)) {
+    const book = await loadBook(versionId, bookNumber, { base, fetchImpl });
+    return (book && book[chapter - 1]) || [];
+  }
+  const key = `${versionId}/${bookNumber}`;
+  let chapters = cache.get(key);
+  if (!chapters) {
+    // A browser that blocks IndexedDB (a private window) still reads from the service.
+    chapters = (await store.get(key).catch(() => null)) || [];
+    cache.set(key, chapters);
+  }
+  if (Array.isArray(chapters[chapter - 1])) return chapters[chapter - 1];
+  const c = config || onlineConfig();
+  const bibleId = versionId.slice(4);
+  const entry = (c.bibles || []).find((b) => b.id === bibleId);
+  if (!c.key || !entry) throw new Error('This online Bible is no longer set up on this laptop (Settings → Online Bibles).');
+  const bk = bookByNumber(bookNumber);
+  const { verses, copyright } = await fetchChapter(c.key, bibleId, bk.code, chapter, fetchImpl);
+  chapters[chapter - 1] = verses;
+  await store.set(key, chapters).catch(() => {});
+  // The publisher's copyright line, kept with the version the first time it is seen.
+  if (copyright && !entry.copyright && !config) {
+    entry.copyright = copyright;
+    saveOnlineConfig(c);
+  }
+  return verses;
+}
 
 /** All chapters of one book in one version (null if the version doesn't have the book). */
 export async function loadBook(versionId, bookNumber, { base = './bibles', fetchImpl = globalThis.fetch } = {}) {
@@ -364,16 +414,16 @@ export function groupVerses(verses, perScreen, { book, chapter, primaryLang = 'l
  * size), 'verse' (one verse per slide at the fixed size), a number of verses or 'all' ("many verses":
  * whole verses together, the text as large as the screen allows).
  */
-export async function passageItem({ ref, primaryId, secondaryId, flow = true, perScreen = 'auto', fit = CHAR_FIT, base, fetchImpl }) {
+export async function passageItem({ ref, primaryId, secondaryId, flow = true, perScreen = 'auto', fit = CHAR_FIT, base, fetchImpl, config, store }) {
   const { book, chapter } = ref;
-  const pv = versionById(primaryId);
-  const sv = secondaryId ? versionById(secondaryId) : null;
-  const [pBook, sBook] = await Promise.all([
-    pv ? loadBook(pv.id, book.n, { base, fetchImpl }) : null,
-    sv ? loadBook(sv.id, book.n, { base, fetchImpl }) : null,
+  const pv = versionById(primaryId, config);
+  const sv = secondaryId ? versionById(secondaryId, config) : null;
+  const opts = { base, fetchImpl, config };
+  if (store) opts.store = store;
+  const [pCh, sCh] = await Promise.all([
+    pv ? loadChapter(pv.id, book.n, chapter, opts) : [],
+    sv ? loadChapter(sv.id, book.n, chapter, opts) : [],
   ]);
-  const pCh = (pBook && pBook[chapter - 1]) || [];
-  const sCh = (sBook && sBook[chapter - 1]) || [];
   const count = Math.max(pCh.length, sCh.length);
   if (!count) throw new Error(`${book.lg} ${chapter} / ${book.en} ${chapter} isn't in the chosen Bible versions.`);
   const from = Math.min(ref.from || 1, count);

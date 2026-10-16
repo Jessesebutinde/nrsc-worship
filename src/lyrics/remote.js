@@ -14,6 +14,7 @@ import { spokenRef, refText } from './spoken.js';
 import { Listener, canListen, SPEECH_LANGS } from './voice.js';
 import { readFollowKeys, saveFollowKeys, followCommand, validKey, FOLLOW_KEYS, FOLLOW_KEY_NAMES } from './keys.js';
 import { allVersions, importVersion, removeVersion, passageItem, BUILTIN_VERSIONS, loadBook, versionById, isMany } from './bible.js';
+import { onlineConfig, saveOnlineConfig, listBibles } from './online.js';
 import { relayConfig, cloudConfigured, loadSession, captureSession, sendMagicLink, signOut, pullSongs, pushSongs } from './cloud.js';
 import { canCast, castTo, displayPermission, extraDisplays, openOn, displayOf, platform } from './cast.js';
 import { fontsReady, scriptureFit } from './measure.js';
@@ -876,7 +877,8 @@ function Songs({ songs, onShow, onEdit, onNew, liveId }) {
 const indexes = new Map();
 function versionIndex(id) {
   let e = indexes.get(id);
-  if (!e && versionById(id)) {
+  // An online Bible is not downloaded, so it is not searched by words.
+  if (!e && versionById(id) && !versionById(id).online) {
     const v = versionById(id);
     e = { ix: new VerseIndex(v.lang === 'lg' ? 'lg' : 'en'), books: 0, subs: new Set() };
     indexes.set(id, e);
@@ -1385,6 +1387,108 @@ function FollowSettings({ state, act }) {
   </div>`;
 }
 
+/** Licensed Bibles online (NIV, Amplified, ...) through API.Bible with the church's own key. */
+function OnlineBibles({ prefs, setPrefs, onChange }) {
+  const [cfg, setCfg] = useState(onlineConfig);
+  const [key, setKey] = useState(cfg.key);
+  const [show, setShow] = useState(false);
+  const [found, setFound] = useState(null);
+  const [filter, setFilter] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+  const save = (next) => {
+    setCfg(next);
+    saveOnlineConfig(next);
+    onChange();
+  };
+  const connect = async () => {
+    const k = key.trim();
+    if (!k) return;
+    setBusy(true);
+    setMsg('');
+    try {
+      const list = await listBibles(k);
+      setFound(list);
+      save({ ...cfg, key: k });
+      setMsg(`${list.length} Bibles this key may use.`);
+    } catch (e) {
+      setFound(null);
+      setMsg(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const add = (b) => {
+    if (cfg.bibles.some((x) => x.id === b.id)) return;
+    save({ ...cfg, bibles: [...cfg.bibles, { id: b.id, abbreviation: b.abbreviation, name: b.name, lang: b.lang, copyright: b.copyright }] });
+  };
+  const remove = (id) => {
+    save({ ...cfg, bibles: cfg.bibles.filter((x) => x.id !== id) });
+    const vid = `api:${id}`;
+    if (prefs.primary === vid || prefs.secondary === vid)
+      setPrefs({ ...prefs, primary: prefs.primary === vid ? 'lug68' : prefs.primary, secondary: prefs.secondary === vid ? 'kjv' : prefs.secondary });
+  };
+  const forget = () => {
+    save({ key: '', bibles: [] });
+    setKey('');
+    setFound(null);
+    setMsg('');
+    if (String(prefs.primary).startsWith('api:') || String(prefs.secondary).startsWith('api:'))
+      setPrefs({ ...prefs, primary: String(prefs.primary).startsWith('api:') ? 'lug68' : prefs.primary, secondary: String(prefs.secondary).startsWith('api:') ? 'kjv' : prefs.secondary });
+  };
+  const q = filter.trim().toLowerCase();
+  const shown = (found || []).filter((b) => !q || `${b.abbreviation} ${b.name} ${b.langName}`.toLowerCase().includes(q)).slice(0, 40);
+  return html`<section class="card online">
+    <h2>Online Bibles <span class="muted small">NIV, Amplified, NLT …</span></h2>
+    <p class="muted small">
+      These translations are copyrighted, so they are not built into the app. They come from <b>API.Bible</b> (the
+      American Bible Society) with the church's own key: sign up free at api.bible, add the translations you want to
+      your app there (the free plan allows up to 3 licensed Bibles for non-commercial use, some need the publisher's
+      own permission), then paste the key here. Chapters are fetched as they are read and kept on this laptop only;
+      they are not searched by words.
+    </p>
+    <form
+      class="row"
+      onSubmit=${(e) => {
+        e.preventDefault();
+        connect();
+      }}
+    >
+      <input class="grow" type=${show ? 'text' : 'password'} value=${key} onInput=${(e) => setKey(e.target.value)} placeholder="API.Bible key" autocomplete="off" aria-label="API.Bible key" />
+      <button type="button" class="ghost" onClick=${() => setShow(!show)}>${show ? 'Hide' : 'Show'}</button>
+      <button class="primary" disabled=${busy || !key.trim()}>${busy ? '…' : cfg.key ? 'Find Bibles' : 'Connect'}</button>
+    </form>
+    ${msg && html`<p class=${`small ${found ? 'ok' : 'error'}`}>${msg}</p>`}
+    ${cfg.bibles.length > 0 &&
+    html`<ul class="plain">
+      ${cfg.bibles.map(
+        (b) => html`<li class="row between">
+          <span><b>${b.abbreviation}</b> ${b.name} <span class="muted small">${b.lang === 'lg' ? 'Luganda' : b.lang === 'en' ? 'English' : ''}</span>
+            ${b.copyright && html`<br /><span class="muted small">${b.copyright}</span>`}</span>
+          <button class="ghost small" onClick=${() => remove(b.id)}>Remove</button>
+        </li>`,
+      )}
+    </ul>`}
+    ${found &&
+    html`<div class="found">
+      <input class="grow" value=${filter} onInput=${(e) => setFilter(e.target.value)} placeholder="Find: NIV, Amplified, NLT…" aria-label="Find a Bible" />
+      <ul class="plain">
+        ${shown.map(
+          (b) => html`<li class="row between">
+            <span><b>${b.abbreviation}</b> ${b.name} <span class="muted small">${b.langName}</span></span>
+            ${cfg.bibles.some((x) => x.id === b.id)
+              ? html`<span class="muted small">added</span>`
+              : html`<button class="chip" onClick=${() => add(b)}>Add</button>`}
+          </li>`,
+        )}
+        ${found.length > shown.length && html`<li class="muted small">${found.length - shown.length} more; type to find one.</li>`}
+      </ul>
+    </div>`}
+    ${cfg.key && html`<button class="ghost small" onClick=${forget}>Forget the key and its Bibles</button>`}
+    <p class="muted small">The key is kept in this browser only, never in the app or on the TV. The service counts what is shown (its fair-use rule) and asks for that on every web app.</p>
+  </section>`;
+}
+
 function Settings({ state, act, info, prefs, setPrefs, songs, setSongs, session, setSession, onOutputs, setLook, ui, setUi, wide }) {
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
@@ -1558,13 +1662,15 @@ function Settings({ state, act, info, prefs, setPrefs, songs, setSongs, session,
       <${ScriptureControls} state=${state} act=${act} setLook=${setLook} hints=${true} />
     </section>
 
+    <${OnlineBibles} prefs=${prefs} setPrefs=${setPrefs} onChange=${() => setVersions(allVersions())} />
+
     <section class="card">
       <h2>Bible versions</h2>
       <ul class="plain">
         ${versions.map(
           (v) => html`<li class="row between">
-            <span><b>${v.name}</b> <span class="muted small">${v.lang === 'lg' ? 'Luganda' : 'English'}</span></span>
-            ${!BUILTIN_VERSIONS.some((b) => b.id === v.id) &&
+            <span><b>${v.name}</b> <span class="muted small">${v.lang === 'lg' ? 'Luganda' : 'English'}${v.online ? ' · online' : ''}</span></span>
+            ${!BUILTIN_VERSIONS.some((b) => b.id === v.id) && !v.online &&
             html`<button
               class="ghost small"
               onClick=${() => {

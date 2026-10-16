@@ -617,6 +617,22 @@ main {
 .scripture select {
   width: 100%;
 }
+.online .found {
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 10px;
+  background: var(--card-2);
+  border: 1px solid var(--line);
+}
+.online .found ul {
+  margin-top: 8px;
+  max-height: 320px;
+  overflow: auto;
+}
+.online ul.plain li {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+}
 .size-ctl button {
   min-width: 42px;
   font-weight: 700;
