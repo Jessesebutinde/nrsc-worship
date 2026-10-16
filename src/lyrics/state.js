@@ -142,6 +142,10 @@ export function emptyState() {
     // Text size, as a multiple of the standard: lyrics and scripture separately.
     lSize: 1,
     sSize: 1,
+    // Scripture: how big the language below is next to the one on top (1 = the look's own), and
+    // whether the words run edge to edge (a slim margin) instead of inside the safe area.
+    sBalance: 1,
+    sWide: false,
     followDim: true,
     followStream: true,
   };
@@ -183,6 +187,10 @@ export function stepSize(v, dir) {
   const i = TEXT_SIZES.indexOf(cur);
   return TEXT_SIZES[Math.max(0, Math.min(TEXT_SIZES.length - 1, i + (dir > 0 ? 1 : -1)))];
 }
+
+// The language below, as a share of the look's own size for it.
+export const BALANCE_STEPS = [0.6, 0.8, 1, 1.15, 1.3];
+export const BALANCE_NAMES = { 0.6: 'Smallest', 0.8: 'Smaller', 1: 'Normal', 1.15: 'Bigger', 1.3: 'Same size' };
 
 export const PLAY_LEVELS = { low: 'Gentle', mid: 'Lively', high: 'Playful', wild: 'Wild' };
 export const PLACES = { center: 'Centre', alternate: 'Alternate', lines: 'Left / right', random: 'Random' };

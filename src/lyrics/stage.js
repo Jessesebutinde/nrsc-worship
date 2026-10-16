@@ -404,7 +404,7 @@ const TWO_CARDS = new Set(['twin', 'stack', 'bible']);
 /** The three dots that say the passage goes on. */
 const Dots = ({ cls = 'smore' }) => html`<div class=${cls} aria-label="continues"><i></i><i></i><i></i></div>`;
 
-function ScriptureFrame({ item, index, lt, fill, textW, fontsReady, marks, look = 'ink', sub = 0, reveal = false, quotes = true, size = 1 }) {
+function ScriptureFrame({ item, index, lt, fill, textW, fontsReady, marks, look = 'ink', sub = 0, reveal = false, quotes = true, size = 1, balance = 1 }) {
   const s = item.slides[index];
   const box = useRef(null);
   const steps = s && s.verses ? s.verses.length : 1;
@@ -415,7 +415,7 @@ function ScriptureFrame({ item, index, lt, fill, textW, fontsReady, marks, look 
   const scroll = Boolean(item.scroll);
   const col = useRef(null);
   const placed = useRef(false);
-  const availH = (SCRIP_H[look] || SAFE_H * (many ? 0.95 : 0.92)) * (look === 'scroll' && textW < SAFE_W ? 0.8 : 1);
+  const availH = (SCRIP_H[look] || SAFE_H * (many ? 0.95 : 0.92)) * (look === 'scroll' && textW < SAFE_W - 200 ? 0.8 : 1);
   // Many verses: as large as the screen allows for this much text, smaller or bigger than standard.
   // Text size: a scrolling column is simply scaled; standard slides (laid out for this size) grow
   // within a range scaled with it; many verses are already as large as they can be.
@@ -425,9 +425,10 @@ function ScriptureFrame({ item, index, lt, fill, textW, fontsReady, marks, look 
       ? { on: false, availH, boost: size }
       : many
         ? { on: !lt, max: 3, min: 0.3, availH, noOverflowX: true }
-        : { on: !lt && (fill || size !== 1), max: (card ? CARD_MAX : SCRIP_MAX[look] || 1.8) * Math.max(1, size), min: 0.8 * size, availH, noOverflowX: size > 1 },
+        : { on: !lt && (fill || size !== 1 || balance !== 1), max: (card ? CARD_MAX : SCRIP_MAX[look] || 1.8) * Math.max(1, size), min: Math.min(0.8 * size, 0.5), availH, noOverflowX: size > 1 || balance !== 1 },
     [
     size,
+    balance,
     s && s.ref,
     s && s.primary,
     s && s.secondary,
@@ -747,7 +748,9 @@ export function Stage({ state, out = 'preview', layout = 'full', background = 'a
   // The illustration sits beside the words on the TV (never on the stream feed).
   const illus = out !== 'stream' && !lowerThird && st.illustration && (f.kind === 'song' || f.kind === 'scripture') ? st.illustration : null;
   const illusW = illus ? ILLUS_W[illus.size] || ILLUS_W.half : 0;
-  const textW = SAFE_W - (illus ? illusW + 48 : 0);
+  // Scripture edge to edge: a slim 40 px margin instead of the 96 px safe area.
+  const wide = Boolean(st.sWide) && (st.item && st.item.kind === 'scripture');
+  const textW = (wide ? W - 2 * 40 : SAFE_W) - (illus ? illusW + 48 : 0);
   const fill = st.fill !== false;
 
   // A look with its own environment brings it while the song is up (title card included).
@@ -775,6 +778,7 @@ export function Stage({ state, out = 'preview', layout = 'full', background = 'a
     illus ? 'with-illus' : '',
     safe ? 'show-safe' : '',
     `sl-${sLook}`,
+    wide ? 'swide' : '',
     `sfont-${st.sFont === 'sans' ? 'sans' : 'serif'}`,
     lowerThird ? '' : `smo-${motion}`,
     st.reveal !== false ? 'reveal-on' : '',
@@ -782,7 +786,7 @@ export function Stage({ state, out = 'preview', layout = 'full', background = 'a
     st.followDim !== false ? 'follow-dim' : '',
     keyed ? 'keyed' : '',
   ].join(' ');
-  return html`<div class=${cls} style=${`--illus-w:${illusW}px`}>
+  return html`<div class=${cls} style=${`--illus-w:${illusW}px;--sbal:${Number(st.sBalance) > 0.3 && Number(st.sBalance) < 2 ? st.sBalance : 1}`}>
     <${Background} bg=${bg} video=${st.bgVideo || video} />
     ${frames.map(({ key: k, data, leaving, outMs: o }) => {
       const kind = data.f.kind;
@@ -791,7 +795,7 @@ export function Stage({ state, out = 'preview', layout = 'full', background = 'a
         ${kind === 'song' &&
         html`<${SongFrame} item=${data.item} index=${data.index} lt=${lowerThird} fill=${fill} caps=${st.caps !== false} preset=${data.f.preset} textW=${textW} fontsReady=${fontsReady} marks=${marksFor(st, data.item, data.index)} hero=${Boolean(st.hero)} place=${st.place || 'center'} mix=${Boolean(st.mixFonts)} size=${sizeOf(st.lSize)} wc=${!leaving && data.index === (st.index || 0) && Array.isArray(st.wc) && (out !== 'stream' || st.followStream !== false) ? st.wc : null} />`}
         ${kind === 'scripture' &&
-        html`<${ScriptureFrame} item=${data.item} index=${data.index} lt=${lowerThird} fill=${fill} textW=${textW} fontsReady=${fontsReady} marks=${marksFor(st, data.item, data.index)} look=${sLook} sub=${data.index === (st.index || 0) ? st.sub || 0 : steps} reveal=${st.reveal !== false} quotes=${st.quotes !== false} size=${sizeOf(st.sSize)} />`}
+        html`<${ScriptureFrame} item=${data.item} index=${data.index} lt=${lowerThird} fill=${fill} textW=${textW} fontsReady=${fontsReady} marks=${marksFor(st, data.item, data.index)} look=${sLook} sub=${data.index === (st.index || 0) ? st.sub || 0 : steps} reveal=${st.reveal !== false} quotes=${st.quotes !== false} size=${sizeOf(st.sSize)} balance=${Number(st.sBalance) > 0.3 && Number(st.sBalance) < 2 ? Number(st.sBalance) : 1} />`}
         ${kind === 'media' && html`<${MediaFrame} item=${data.item} index=${data.index} live=${out !== 'preview' && !leaving} />`}
         ${kind === 'title' && html`<${TitleFrame} item=${data.item} />`}
         ${kind === 'logo' && html`<${LogoFrame} />`}

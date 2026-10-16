@@ -6,7 +6,7 @@ import { html, render, useState, useEffect, useRef, useMemo } from '../ui/h.js';
 import { Fit, Stage } from './stage.js';
 import { Link, normalizeCode } from './link.js';
 import { ROOM } from './config.js';
-import { emptyState, reduce, songItem, mediaItem, BACKGROUNDS, BACKGROUND_INFO, PRESETS, PRESET_INFO, STREAM_LAYOUTS, ILLUSTRATION_SIZES, MARK_COLORS, PLAY_LEVELS, PLACES, SCRIPTURE_LOOKS, SCRIPTURE_INFO, SCRIPTURE_GROUPS, SCRIPTURE_MOTIONS, TEXT_SIZES, TEXT_SIZE_NAMES, stepSize, scriptureLookOf, stepsOf, lookOf, slideWords, markKey } from './state.js';
+import { emptyState, reduce, songItem, mediaItem, BACKGROUNDS, BACKGROUND_INFO, PRESETS, PRESET_INFO, STREAM_LAYOUTS, ILLUSTRATION_SIZES, MARK_COLORS, PLAY_LEVELS, PLACES, SCRIPTURE_LOOKS, SCRIPTURE_INFO, SCRIPTURE_GROUPS, SCRIPTURE_MOTIONS, TEXT_SIZES, TEXT_SIZE_NAMES, stepSize, BALANCE_STEPS, BALANCE_NAMES, scriptureLookOf, stepsOf, lookOf, slideWords, markKey } from './state.js';
 import { loadSongs, saveSongs, visibleSongs, upsertSong, removeSong, searchSongs, mergeSongs, exportLibrary, importLibrary } from './library.js';
 import { parseRef, bookByCode, BOOKS, formatRef } from './books.js';
 import { VerseIndex, fillIndex, highlight } from './search.js';
@@ -633,6 +633,18 @@ function SizeControl({ value, onChange, label = 'Text size' }) {
   </span>`;
 }
 
+/** How big the language below is next to the one on top. */
+function BalanceControl({ value, onChange }) {
+  const v = BALANCE_STEPS.includes(Number(value)) ? Number(value) : 1;
+  const i = BALANCE_STEPS.indexOf(v);
+  const step = (d) => onChange(BALANCE_STEPS[Math.max(0, Math.min(BALANCE_STEPS.length - 1, i + d))]);
+  return html`<span class="seg size-ctl balance" role="group" aria-label="Size of the language below" title="How big the language below (usually English) is next to the one read aloud">
+    <button onClick=${() => step(-1)} disabled=${i === 0} aria-label="Language below smaller">a−</button>
+    <button class=${v !== 1 ? 'on' : ''} onClick=${() => onChange(1)} title="Back to the look's own balance">Below · ${BALANCE_NAMES[v]}</button>
+    <button onClick=${() => step(1)} disabled=${i === BALANCE_STEPS.length - 1} aria-label="Language below bigger">a+</button>
+  </span>`;
+}
+
 /** Every scripture look as a small live picture, in two groups: pages and cards. */
 function LookGallery({ state, setLook, onClose }) {
   const look = scriptureLookOf(state);
@@ -696,6 +708,8 @@ function ScriptureControls({ state, act, setLook, hints = false }) {
           <button class=${state.sFont === 'sans' ? 'on' : ''} onClick=${() => setLook({ sFont: 'sans' })} title="Montserrat, like the lyrics">Sans</button>
         </span>
         <${SizeControl} value=${state.sSize} onChange=${(v) => setLook({ sSize: v })} label="Scripture text size" />
+        <${BalanceControl} value=${state.sBalance} onChange=${(v) => setLook({ sBalance: v })} />
+        <button class=${`chip ${state.sWide ? 'on' : ''}`} onClick=${() => setLook({ sWide: !state.sWide })} title="Run the words edge to edge across the screen (a slim margin instead of the usual border)">⟷ Edge to edge</button>
         <span class="seg" role="group" aria-label="Reading">
           <button class=${state.reveal !== false ? 'on' : ''} onClick=${() => act({ type: 'set', patch: { reveal: state.reveal === false } })} title="Next brings the next verse; verses already read dim">Verse by verse</button>
           <button class=${state.progress !== false ? 'on' : ''} onClick=${() => act({ type: 'set', patch: { progress: state.progress === false } })} title="A thin bar along the bottom shows how far through the passage you are">Progress bar</button>
@@ -947,7 +961,8 @@ function Snippet({ text, query, lang, n = 120 }) {
 // How much scripture goes on one screen.
 const PER_SCREEN_LABELS = [
   ['auto', 'Same size', 'Verses continue across screens at the standard size'],
-  ['verse', '1 verse', 'One verse per screen at the standard size'],
+  ['verse', '1 verse', 'One verse per screen at the standard size (a long verse is split)'],
+  ['one', '1 verse, full', 'One whole verse per screen, never split, as large as the screen allows'],
   [2, '2'],
   [3, '3'],
   [4, '4'],
@@ -962,7 +977,7 @@ const perScreenOf = (prefs) => {
   return prefs.perVerse ? 'verse' : 'auto';
 };
 
-function Scripture({ prefs, setPrefs, onShow, look = 'ink', font = 'serif', size = 1, relayout = null, liveScripture = false }) {
+function Scripture({ prefs, setPrefs, onShow, look = 'ink', font = 'serif', size = 1, balance = 1, wide = false, relayout = null, liveScripture = false }) {
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
@@ -1000,7 +1015,7 @@ function Scripture({ prefs, setPrefs, onShow, look = 'ink', font = 'serif', size
     try {
       // Measured in the real font, so a slide holds exactly what fits at the fixed size.
       const ok = await Promise.race([fontsReady(), new Promise((res) => setTimeout(() => res(null), 3000))]);
-      const fit = ok !== null && document.fonts.check('600 92px Montserrat') ? scriptureFit(look, font, size) : undefined;
+      const fit = ok !== null && document.fonts.check('600 92px Montserrat') ? scriptureFit(look, font, size, { balance, wide }) : undefined;
       const item = await passageItem({ ref: r, primaryId: prefs.primary, secondaryId: prefs.secondary, perScreen: perScreenOf(prefs), fit });
       onShow(item);
       const next = [label, ...recent.filter((x) => x.toLowerCase() !== label.toLowerCase())].slice(0, 8);
@@ -1752,7 +1767,7 @@ function App() {
         secondaryId: it.secondaryId,
         flow: it.flow,
         perScreen: perScreen || it.perScreen || (it.flow === false ? 'verse' : 'auto'),
-        fit: scriptureFit(scriptureLookOf(next), next.sFont, next.sSize),
+        fit: scriptureFit(scriptureLookOf(next), next.sFont, next.sSize, { balance: next.sBalance, wide: Boolean(next.sWide) }),
       });
       let index = 0;
       let sub = 0;
@@ -1806,6 +1821,8 @@ function App() {
     look=${scriptureLookOf(state)}
     font=${state.sFont}
     size=${state.sSize}
+    balance=${state.sBalance}
+    wide=${Boolean(state.sWide)}
     liveScripture=${Boolean(state.item && state.item.kind === 'scripture' && state.item.book)}
     relayout=${(k) => setLook({}, k)}
   />`;

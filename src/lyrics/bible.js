@@ -325,9 +325,12 @@ export function paginate(verses, { book, chapter, fit = CHAR_FIT, flow = true, p
 // "Many verses" screens: how much text a whole-passage screen may hold before it is split into
 // several screens of about the same size (so the words stay big enough to read across the hall).
 export const WHOLE_BUDGET = 1100;
-export const PER_SCREEN = ['auto', 'verse', 2, 3, 4, 6, 8, 'all', 'scroll'];
-/** Is this a "many verses" choice (the text grows or shrinks to fill the screen)? */
-export const isMany = (perScreen) => perScreen === 'all' || (Number(perScreen) >= 2 && Number(perScreen) <= 50);
+export const PER_SCREEN = ['auto', 'verse', 'one', 2, 3, 4, 6, 8, 'all', 'scroll'];
+/**
+ * Is this a "fill" choice (whole verses, never split, the text grown or shrunk to fill the screen)?
+ * 'one' is one whole verse a screen; a number is that many; 'all' the whole passage.
+ */
+export const isMany = (perScreen) => perScreen === 'all' || perScreen === 'one' || (Number(perScreen) >= 2 && Number(perScreen) <= 50);
 
 /**
  * Verses -> screens of whole verses, never split: `perScreen` at a time, or 'all' (as many as fit
@@ -343,7 +346,7 @@ export function groupVerses(verses, perScreen, { book, chapter, primaryLang = 'l
     const screens = Math.min(verses.length, Math.max(1, Math.ceil(total / budget)));
     sizes = Array.from({ length: screens }, (_, i) => Math.floor(verses.length / screens) + (i < verses.length % screens ? 1 : 0));
   } else {
-    const n = Math.max(1, Math.floor(Number(perScreen)) || 1);
+    const n = perScreen === 'one' ? 1 : Math.max(1, Math.floor(Number(perScreen)) || 1);
     sizes = Array.from({ length: Math.ceil(verses.length / n) }, () => n);
   }
   const slides = [];

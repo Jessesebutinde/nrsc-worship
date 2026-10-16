@@ -170,3 +170,17 @@ test('scroll: the whole passage as one column that steps verse by verse, even wi
   for (let i = 0; i < 5; i++) s = reduce(s, { type: 'next' }, 'r');
   assert.deepEqual([s.index, s.sub], [0, 5]);
 });
+
+test('one whole verse a screen, never split, grown to fit', async () => {
+  assert.ok(isMany('one'));
+  const it = await passageItem({ ref: parseRef('Zabbuli 23'), primaryId: 'lug68', secondaryId: 'kjv', perScreen: 'one', fetchImpl: fetchBook });
+  assert.equal(it.many, true);
+  assert.equal(it.perScreen, 'one');
+  assert.deepEqual(it.slides.map((s) => s.verses.length), [1, 1, 1, 1, 1, 1]);
+  assert.ok(it.slides.every((s) => s.verses[0].part === ''), 'never split');
+  // Unlike "1 verse" at the standard size, which splits John 3:16 into a and b.
+  const std = await passageItem({ ref: parseRef('Yokaana 3:16'), primaryId: 'lug68', secondaryId: 'kjv', perScreen: 'verse', fetchImpl: fetchBook });
+  const one = await passageItem({ ref: parseRef('Yokaana 3:16'), primaryId: 'lug68', secondaryId: 'kjv', perScreen: 'one', fetchImpl: fetchBook });
+  assert.ok(std.slides.length >= 2, 'the standard size splits a long verse');
+  assert.equal(one.slides.length, 1, 'one whole verse');
+});
