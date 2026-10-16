@@ -91,3 +91,14 @@ test('text size steps: Smaller, Standard, Large, Larger, Huge, never past the en
   assert.equal(e.lSize, 1);
   assert.equal(e.sSize, 1);
 });
+
+test('the language below has five balance steps; edge to edge and balance change the layout measurements', async () => {
+  const { BALANCE_STEPS, BALANCE_NAMES } = await import('../src/lyrics/state.js');
+  assert.deepEqual(BALANCE_STEPS, [0.6, 0.8, 1, 1.15, 1.3]);
+  for (const b of BALANCE_STEPS) assert.ok(BALANCE_NAMES[b], String(b));
+  const e = emptyState();
+  assert.equal(e.sBalance, 1);
+  assert.equal(e.sWide, false);
+  const { SCRIP_FIT } = await import('../src/lyrics/measure.js');
+  assert.equal(SCRIP_FIT.ink.w, 1557);
+});

@@ -87,9 +87,14 @@ function textWidth(text, weight, size, family = 'Montserrat') {
   ctx.font = `${weight} ${size}px ${family}`;
   return ctx.measureText(text).width;
 }
-export function scriptureFit(look = 'ink', font = 'serif', size = 1) {
+// Edge to edge: the block spans 1840 px instead of the safe area's 1728; every look's own column
+// grows by the same share (1840 / 1728 of its own 1728-based width, capped at the full span).
+const WIDE = 1840 / 1728;
+export function scriptureFit(look = 'ink', font = 'serif', size = 1, { balance = 1, wide = false } = {}) {
   const k = Number(size) > 0.5 && Number(size) < 3 ? Number(size) : 1;
-  const f = SCRIP_FIT[look] || SCRIP_FIT.ink;
+  const b = Number(balance) > 0.3 && Number(balance) < 2 ? Number(balance) : 1;
+  const f0 = SCRIP_FIT[look] || SCRIP_FIT.ink;
+  const f = wide ? { ...f0, w: Math.min(1840, Math.round(f0.w * WIDE)), sw: f0.sw ? Math.min(1840, Math.round(f0.sw * WIDE)) : f0.sw } : f0;
   const fam = font === 'sans' ? 'Montserrat' : SERIF;
   const sFam = f.sSans ? 'Montserrat' : fam;
   // A drop cap takes the first letters' room on the first lines.
@@ -97,6 +102,6 @@ export function scriptureFit(look = 'ink', font = 'serif', size = 1) {
   // Room for the quotation marks and the dots of a verse that goes on.
   return {
     primary: { width: (t) => (textWidth(`“…${t}…”`, f.p[0], f.p[1], fam) * k) / pw, lines: f.p[2] },
-    secondary: { width: (t) => (textWidth(`“…${t}…”`, f.s[0], f.s[1], sFam) * k) / (f.sw || f.w), lines: f.s[2] },
+    secondary: { width: (t) => (textWidth(`“…${t}…”`, f.s[0], f.s[1], sFam) * k * b) / (f.sw || f.w), lines: b > 1 ? Math.max(2, Math.round(f.s[2] / b)) : f.s[2] },
   };
 }

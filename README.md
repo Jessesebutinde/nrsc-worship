@@ -200,6 +200,16 @@ the laptop. Everything stays on the screen, nothing is cut off:
   (John 3:16: 113 px at Standard, 142 Large, 154 Larger). In **Scroll** the column is simply scaled. **Many verses**
   is already as large as the screen allows, so it is unchanged; pick fewer verses per screen to go bigger.
 
+Beside it, **a− / a+** sets how big the language below (usually the English) is next to the one read aloud:
+Smallest, Smaller, Normal (the look's own), Bigger, Same size. The passage is laid out again for the balance, so the
+text always fits (Same size: Luganda 119 px and English 124 px on Psalm 23:1 instead of 142 and 114).
+
+**⟷ Edge to edge** runs scripture across nearly the whole screen: a 40 px margin instead of the 96 px safe area, and
+every look's own column widens by the same share (Psalm 23:1-4 on Ink & stone: the words run from 96 to 1925 px
+instead of 210 to 1681). It stays on until switched off and applies to every scripture look, Scroll and Many
+verses included; the stream's lower third and the title card are unchanged. Old TVs that cut off the edges of the
+picture (overscan) are why the margin exists, so switch it off if the hall's TV loses the first letters.
+
 ## Follow the singer: J and F
 
 While a song is up, tap **J** as each word is sung: that word swells a little and glows in the look's accent colour
@@ -257,6 +267,10 @@ reading evenly over a few screens (John 3:1-21 in two languages: 5 + 4 + 4 + 4 +
 readable across the hall. Changing the choice while a passage is up regroups it on the TV at once, on the verse being
 read. With **Verse by verse** on, Next lights each verse in turn while the others stay on screen a little dimmer, and
 the stream's lower third shows just the verse being read.
+
+**1 verse, full** (also under Verses on screen) shows one whole verse per screen, never split, as large as the
+screen allows for it: "Jesus wept" fills the screen at 219 px, John 3:16 comes down to 85 px to fit whole. **1
+verse** keeps the standard size and splits a long verse into a and b.
 
 **Scroll** (also under Verses on screen) puts the whole passage in one long column at the standard size, each verse
 with its translation right under it. **Next** glides the column up so the verse being read sits near the top of the

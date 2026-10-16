@@ -459,7 +459,7 @@
   line-height: 1.22;
 }
 .scrip .sec {
-  font-size: calc(var(--sss) * var(--fs, 1));
+  font-size: calc(var(--sss) * var(--fs, 1) * var(--sbal, 1));
   font-weight: var(--ssw);
   font-style: var(--ssi);
   line-height: 1.3;
@@ -468,6 +468,7 @@
 }
 .scrip .ref + .sec {
   font-size: calc(var(--sps) * var(--fs, 1));
+  --sbal: 1;
   font-weight: var(--spw);
   font-style: normal;
   color: var(--sfg);
@@ -3841,4 +3842,70 @@
 .frame.k-scripture.in .sview .w {
   animation: none !important;
   clip-path: none !important;
+}
+
+/* ------------------------------------------------------------ edge to edge */
+/* Scripture runs across nearly the whole screen: a 40 px margin instead of the safe area, and the
+   looks' own columns widen by the same share. The lower third and the title card are unchanged. */
+
+.swide .scrip {
+  --sl: 40px;
+  --sw: 1840px;
+}
+.swide .scrip.l-blueprint {
+  --sw: 1500px;
+}
+.swide .scrip.lc,
+.swide .scrip.lc2,
+.swide .scrip.l-parchment,
+.swide .scrip.l-twin,
+.swide .scrip.l-bible,
+.swide .scrip.l-stack,
+.swide .scrip.l-split {
+  --sl: 40px !important;
+  --sw: 1840px !important;
+}
+.swide .scrip.l-cathedral,
+.swide .scrip.l-tablet {
+  --sl: 160px !important;
+  --sw: 1600px !important;
+}
+.swide .scrip.l-gallery {
+  --sl: 200px !important;
+  --sw: 1520px !important;
+}
+.swide .scrip.l-epistle,
+.swide .scrip.l-bookmark,
+.swide .scrip.l-royal {
+  --sl: 60px !important;
+  --sw: 1800px !important;
+}
+.swide .scrip.l-candle,
+.swide .scrip.l-manuscript {
+  --sl: 80px !important;
+  --sw: 1760px !important;
+}
+.swide .sref {
+  left: 40px;
+}
+.swide.smany .scrip:not(.l-scroll),
+.swide .scrip.sview {
+  --sl: 40px !important;
+  --sw: 1840px !important;
+}
+.swide .l-stack .c1 {
+  width: 1640px;
+}
+.swide .l-stack .c2 {
+  margin-left: 480px;
+}
+.swide.with-illus .scrip,
+.swide.with-illus .scrip.lc,
+.swide.with-illus .scrip.lc2,
+.swide.with-illus .scrip.sview {
+  left: 40px !important;
+  width: calc(1840px - var(--illus-w) - 48px) !important;
+}
+.swide .smore {
+  right: 48px;
 }
