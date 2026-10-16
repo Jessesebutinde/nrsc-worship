@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Lyric Slides</title>
+    <meta name="description" content="Lyrics and scripture for the Namasuba Redeemed hall TV." />
+    <meta name="theme-color" content="#0e0b14" />
+    <script>
+      // This console's theme, layout and font (Settings → This console), set before the first paint.
+      (function () {
+        var u = null;
+        try {
+          u = JSON.parse(localStorage.getItem('ls-ui'));
+        } catch (e) {}
+        u = u || {};
+        var bar = { midnight: '#0e0b14', studio: '#111213', daylight: '#f3f1ec', kampala: '#16100b' };
+        var theme = bar.hasOwnProperty(u.theme) ? u.theme : 'midnight';
+        var d = document.documentElement;
+        d.setAttribute('data-theme', theme);
+        d.setAttribute('data-layout', u.layout === 'focus' || u.layout === 'compact' || u.layout === 'orbit' ? u.layout : 'console');
+        d.setAttribute('data-font', u.font === 'system' || u.font === 'serif' ? u.font : 'montserrat');
+        var m = document.querySelector('meta[name="theme-color"]');
+        if (m) m.setAttribute('content', bar[theme]);
+      })();
+    </script>
+    <link rel="icon" href="icon.svg" type="image/svg+xml" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="preload" href="fonts/montserrat-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="stage.css?v=beb189ad" />
+    <link rel="stylesheet" href="remote.css?v=beb189ad" />
+    <link rel="stylesheet" href="orbit.css?v=beb189ad" />
+  </head>
+  <body>
+    <div id="app"><noscript>Lyric Slides needs JavaScript.</noscript></div>
+    <script type="module" src="../src/lyrics/remote.js?v=beb189ad"></script>
+  </body>
+</html>
