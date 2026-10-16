@@ -3909,3 +3909,356 @@
 .swide .smore {
   right: 48px;
 }
+
+/* ------------------------------------------------------------ sermon board */
+/* One frame for the whole board (.k-board): the title above, the nodes popping in one by one on the
+   canvas, the arrows between them in an SVG layer underneath. The stage carries the theme
+   (.sb-<theme>), which sets the palette in variables; a node's colour (.c-<colour>) picks its card.
+   Every box is placed by its centre on the 1920x1080 canvas (left/top/width/height inline). */
+
+.stage {
+  --bb-card: #f5f3ee; /* the white card */
+  --bb-ink: #1a1620; /* words on light cards; the ink card */
+  --bb-ink-fg: #f5f3ee; /* words on the ink card */
+  --bb-edge: rgba(245, 243, 238, 0.85); /* arrows */
+  --bb-title: var(--gold);
+  --bb-border: transparent;
+  --bb-shadow: 0 14px 40px rgba(0, 0, 0, 0.45);
+  --bb-glow: rgba(255, 255, 255, 0.5); /* the newest node */
+}
+.sboard {
+  position: absolute;
+  inset: 0;
+}
+.sb-title {
+  position: absolute;
+  left: 96px;
+  right: 96px;
+  top: 54px;
+  font-size: 36px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--bb-title);
+  text-shadow: var(--shadow);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sb-canvas {
+  position: absolute;
+  inset: 0;
+}
+.sb-edges {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  color: var(--bb-edge);
+  pointer-events: none;
+}
+.be {
+  stroke: currentColor;
+  stroke-width: 6;
+  fill: none;
+  animation: ls-fade-in 300ms ease both;
+}
+.be-dash {
+  stroke-dasharray: 20 16;
+}
+.be-label {
+  position: absolute;
+  z-index: 2; /* above the nodes: a label must read even where two nodes sit close */
+  transform: translate(-50%, -50%);
+  padding: 6px 22px;
+  border-radius: 999px;
+  background: var(--bb-card);
+  color: var(--bb-ink);
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  animation: ls-fade-in 300ms ease both;
+}
+
+/* Nodes. */
+.bn {
+  --rot: 0deg;
+  --card: var(--bb-card);
+  --fg: var(--bb-ink);
+  position: absolute;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--py, 24px) var(--px, 36px);
+  text-align: center;
+  background: var(--card);
+  color: var(--fg);
+  border: 4px solid var(--bb-border);
+  box-shadow: var(--bb-shadow);
+  transform: rotate(var(--rot));
+  transition: box-shadow 400ms ease;
+}
+.bn-box {
+  border-radius: 24px;
+}
+.bn-pill {
+  border-radius: 999px;
+}
+.bn-circle {
+  border-radius: 50%;
+}
+.bn-verse {
+  border-radius: 16px;
+  font-family: var(--sfam);
+}
+.bn-picture {
+  border-radius: 18px;
+}
+/* A sticky note: a little askew, warm paper, a strip of tape at the top. */
+.bn-note {
+  --rot: -2deg;
+  --card: #f9e27e;
+  border-radius: 4px;
+  box-shadow: 0 18px 34px rgba(0, 0, 0, 0.4);
+}
+.bn-note::before {
+  content: '';
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  width: 130px;
+  height: 30px;
+  transform: translateX(-50%) rotate(1.5deg);
+  background: rgba(255, 255, 255, 0.55);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+.bn-picture .bp {
+  position: relative;
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.25);
+}
+.bn-picture .bp .mf {
+  background: transparent;
+}
+.bn-picture .bt {
+  flex: 0 0 auto;
+  padding-top: 10px;
+}
+/* The words: --fs is the font size in px, set by the fit (base size by .sz-<size>, down to 20).
+   Clipped here, not on the node, so a note's tape can stick out of it. */
+.bt {
+  width: 100%;
+  max-height: 100%;
+  overflow: hidden;
+  font-size: calc(var(--fs, 44) * 1px);
+  font-weight: 600;
+  line-height: 1.18;
+  text-wrap: balance;
+}
+.bt .bsub {
+  font-size: 0.6em;
+  font-weight: 500;
+  opacity: 0.75;
+  margin-top: 0.25em;
+}
+.bn-verse .bt {
+  font-weight: 500;
+  line-height: 1.25;
+}
+.bn-verse .btx {
+  font-size: 0.85em;
+}
+.bn-verse .bt .bsub {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 0.5em;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  opacity: 0.8;
+  margin: 0 0 0.4em;
+}
+
+/* Colours: white = a light card with dark words, ink = a dark card with light words, the rest
+   = that colour as the card. On a note the colour tints the paper. */
+.bn.c-ink {
+  --card: var(--bb-ink);
+  --fg: var(--bb-ink-fg);
+}
+.bn.c-gold { --card: #e3b75a; --fg: #1a1620; }
+.bn.c-coral { --card: #ff6b5e; --fg: #1a1620; }
+.bn.c-teal { --card: #35e0d0; --fg: #1a1620; }
+.bn.c-sky { --card: #7fb8ff; --fg: #1a1620; }
+.bn-note.c-white { --card: #f9e27e; --fg: #1a1620; }
+.bn-note.c-gold { --card: #f3c65a; --fg: #1a1620; }
+.bn-note.c-coral { --card: #ffb5ad; --fg: #1a1620; }
+.bn-note.c-teal { --card: #aaf0e8; --fg: #1a1620; }
+.bn-note.c-sky { --card: #bcd8ff; --fg: #1a1620; }
+.bn-note.c-ink { --card: #2a2433; --fg: #f5f3ee; }
+
+/* The newest node glows a little. */
+.bn.now {
+  box-shadow: var(--bb-shadow), 0 0 0 4px var(--bb-glow), 0 0 44px var(--bb-glow);
+}
+
+/* A node pops in: from six tenths of its size, fading up. Calm mode and reduced motion fade only;
+   the console's still previews do not move. */
+.bn.pop {
+  animation: ls-pop 420ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+@keyframes ls-pop {
+  from {
+    opacity: 0;
+    transform: rotate(var(--rot)) scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: rotate(var(--rot)) scale(1);
+  }
+}
+.calm .bn.pop {
+  animation: ls-fade-in 400ms ease both;
+}
+.still .bn.pop,
+.still .be,
+.still .be-label,
+.still .bn {
+  animation: none;
+  transition: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bn.pop {
+    animation: ls-fade-in 400ms ease both;
+  }
+}
+
+/* The stream's lower third: the newest node's words, in the scripture band. */
+.lt-board .pri {
+  text-wrap: balance;
+}
+.lt-board.lt-verse .pri {
+  font-family: var(--sfam);
+}
+
+/* Themes. The progress bar takes the theme's accent (--sa) too. */
+/* Slate: light cards on dark stone (the defaults above). */
+.stage.sb-slate {
+  --sa: var(--gold);
+  --strack: rgba(255, 255, 255, 0.12);
+}
+/* Paper: cards drawn in dark ink on parchment; the arrows in dark brown. */
+.stage.sb-paper {
+  --bb-card: #f8f0dc;
+  --bb-ink: #2b1d10;
+  --bb-ink-fg: #f8f0dc;
+  --bb-edge: #4a3318;
+  --bb-title: #6b4a1e;
+  --bb-border: #3b2a14;
+  --bb-shadow: 0 10px 28px rgba(70, 45, 15, 0.25);
+  --bb-glow: rgba(120, 80, 30, 0.45);
+  --sa: #8a6a1e;
+  --strack: rgba(0, 0, 0, 0.1);
+}
+.stage.sb-paper .sb-title {
+  text-shadow: none;
+}
+.stage.sb-paper .be-label {
+  border: 3px solid var(--bb-border);
+  box-shadow: none;
+}
+.stage.sb-paper .bn-note::before {
+  background: rgba(255, 255, 255, 0.7);
+}
+/* Night: cards that glow on the night sky, each in its own colour. */
+.stage.sb-night {
+  --bb-card: #f1f0ff;
+  --bb-ink: #14122a;
+  --bb-ink-fg: #e8e6ff;
+  --bb-edge: #9fd8ff;
+  --bb-title: #bfe3ff;
+  --bb-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  --bb-glow: rgba(160, 210, 255, 0.75);
+  --sa: #9fd8ff;
+  --strack: rgba(255, 255, 255, 0.12);
+}
+.stage.sb-night .bn {
+  box-shadow: 0 0 36px var(--card), var(--bb-shadow);
+}
+.stage.sb-night .bn.now {
+  box-shadow: 0 0 36px var(--card), var(--bb-shadow), 0 0 0 4px var(--bb-glow), 0 0 60px var(--bb-glow);
+}
+.stage.sb-night .bn.c-ink {
+  --card: #1c1a36;
+  border-color: rgba(170, 200, 255, 0.6);
+}
+.stage.sb-night .sb-edges {
+  filter: drop-shadow(0 0 6px rgba(159, 216, 255, 0.7));
+}
+.stage.sb-night .be-label {
+  box-shadow: 0 0 20px rgba(159, 216, 255, 0.5);
+}
+/* Chalkboard: everything drawn in chalk on the green slate: outlines, no fill, chalk lines. */
+.stage.sb-chalk {
+  --bb-card: transparent;
+  --bb-ink: #f6f2e6;
+  --bb-ink-fg: #2c3a33;
+  --bb-edge: #f0e6b0;
+  --bb-title: #f0e6b0;
+  --bb-border: #f6f2e6;
+  --bb-shadow: none;
+  --bb-glow: rgba(246, 242, 230, 0.5);
+  --sa: #f0e6b0;
+  --strack: rgba(255, 255, 255, 0.12);
+}
+.stage.sb-chalk .sb-title,
+.stage.sb-chalk .bn {
+  text-shadow: 0 0 2px rgba(255, 255, 255, 0.55);
+}
+.stage.sb-chalk .sb-title {
+  font-weight: 500;
+}
+.stage.sb-chalk .bn {
+  --card: transparent;
+  --fg: var(--bb-ink);
+  border-width: 5px;
+  border-color: var(--bb-border);
+}
+/* A colour is the chalk the outline and the words are drawn in; ink is the one filled-in card. */
+.stage.sb-chalk .bn.c-gold { --fg: #f3d98a; border-color: #e3b75a; }
+.stage.sb-chalk .bn.c-coral { --fg: #ffb0a6; border-color: #ff8a7e; }
+.stage.sb-chalk .bn.c-teal { --fg: #a8f0e8; border-color: #5ee6d8; }
+.stage.sb-chalk .bn.c-sky { --fg: #bcd8ff; border-color: #8fc0ff; }
+.stage.sb-chalk .bn.c-ink {
+  --card: #f6f2e6;
+  --fg: #2c3a33;
+  text-shadow: none;
+}
+.stage.sb-chalk .bn-note {
+  border-style: dashed;
+  background: rgba(246, 242, 230, 0.08);
+}
+.stage.sb-chalk .bn-note::before {
+  display: none;
+}
+.stage.sb-chalk .bn-picture .bp {
+  background: rgba(0, 0, 0, 0.2);
+}
+.stage.sb-chalk .be {
+  stroke-width: 5;
+  stroke-linecap: round;
+  opacity: 0.92;
+}
+.stage.sb-chalk .be-label {
+  background: #2c3a33;
+  color: #f6f2e6;
+  border: 3px solid #f6f2e6;
+  box-shadow: none;
+}

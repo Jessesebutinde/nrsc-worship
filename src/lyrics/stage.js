@@ -4,6 +4,7 @@
 import { html, useState, useEffect, useRef, useLayoutEffect } from '../ui/h.js';
 import { CHURCH_NAME } from './config.js';
 import { shownOn, lookOf, PRESET_INFO, SCRIPTURE_INFO, SCRIPTURE_MOTIONS, scriptureLookOf, stepsOf } from './state.js';
+import { BOARD_ENV, NODE_COLORS, TEXT_SIZES as BOARD_TEXT, edgePoints, visibleCount } from './board.js';
 import { idbGet } from './idb.js';
 import { splitAtPauses } from './split.js';
 import { lineWidth, fontsReady as loadFonts } from './measure.js';
@@ -20,7 +21,7 @@ const ILLUS_W = { small: 560, half: 760, large: 960 };
 const OUT_MS = {
   worship: 400, praise: 200, classic: 250, poster: 200, sunshine: 300, lines: 400, beams: 500,
   banner: 200, midnight: 300, pixel: 150, neon: 350, grateful: 200, film: 300,
-  scripture: 250, title: 300, logo: 400, media: 600, none: 400,
+  scripture: 250, title: 300, logo: 400, media: 600, board: 300, none: 400,
 };
 
 /** Keeps the outgoing frame mounted (with .out) while it fades, so changes cross over smoothly. */
@@ -689,6 +690,96 @@ const LogoFrame = () => html`<div class="logo">
   <div class="ln logo-sub" style="--i:2">Society Church · Kampala</div>
 </div>`;
 
+// ------------------------------------------------------------------ sermon board
+
+// Room between a node's edge and its text, [x, y] (a circle's text keeps inside the round).
+const NODE_PAD = { box: [36, 24], pill: [48, 20], circle: [46, 46], note: [36, 32], picture: [16, 16], verse: [44, 32] };
+// The thickest outline a theme draws (chalk), inside the node's box.
+const NODE_BORDER = 5;
+// A picture's caption band, under the picture.
+const CAPTION_H = 84;
+// Each board frame gets its own arrowhead marker: the console shows several stages at once, and
+// a marker is found by id across the whole page.
+let boardSeq = 0;
+
+/** A node's words, shrunk until they fit its box (so nothing is ever cut off). */
+function NodeText({ node, availH, max, fontsReady, theme }) {
+  const box = useRef(null);
+  // `lines`: a long single word cannot wrap, so the width is measured too. The theme is a dep
+  // because its outline changes the room inside.
+  useFill(box, { on: true, max, min: 20, availH, lines: true }, [node.text, node.sub, node.size, node.kind, node.w, node.h, fontsReady, theme]);
+  const sub = node.sub && html`<div class="bsub">${node.sub}</div>`;
+  const text = node.text && html`<div class="btx">${node.text}</div>`;
+  // A verse card carries its reference above the words; elsewhere `sub` is a small line below.
+  return html`<div class="bt" ref=${box}>${node.kind === 'verse' ? html`${sub}${text}` : html`${text}${sub}`}</div>`;
+}
+
+function BoardNode({ node, now, pop, fontsReady, theme }) {
+  const [px, py] = NODE_PAD[node.kind] || NODE_PAD.box;
+  const pic = node.kind === 'picture';
+  const base = BOARD_TEXT[node.size] || BOARD_TEXT.m;
+  const hasText = Boolean(node.text || node.sub);
+  const cls = `bn bn-${NODE_PAD[node.kind] ? node.kind : 'box'} c-${NODE_COLORS[node.color] ? node.color : 'white'} sz-${node.size || 'm'}${now ? ' now' : ''}${pop ? ' pop' : ''}`;
+  const style = `left:${node.x - node.w / 2}px;top:${node.y - node.h / 2}px;width:${node.w}px;height:${node.h}px;--px:${px}px;--py:${py}px`;
+  return html`<div class=${cls} style=${style}>
+    ${pic && html`<div class="bp"><${MediaView} src=${node.src || ''} type=${node.type || 'image'} title=${node.text} live=${false} blur=${false} /></div>`}
+    ${hasText &&
+    html`<${NodeText} node=${node} availH=${pic ? CAPTION_H - py : node.h - 2 * (py + NODE_BORDER)} max=${pic ? Math.min(base, 34) : base} fontsReady=${fontsReady} theme=${theme} />`}
+  </div>`;
+}
+
+/** The arrows between the nodes that are up, under them; a label sits on a pill at the midpoint. */
+function BoardEdges({ item, shown, uid }) {
+  const byId = new Map(item.nodes.map((n) => [n.id, n]));
+  const segs = (item.edges || [])
+    .filter((e) => e.from !== e.to && shown.has(e.from) && shown.has(e.to))
+    .map((e) => ({ e, ...edgePoints(byId.get(e.from), byId.get(e.to)) }));
+  return html`<svg class="sb-edges" viewBox="0 0 1920 1080" aria-hidden="true">
+      <defs>
+        <marker id=${uid} viewBox="0 0 12 12" refX="11" refY="6" markerWidth="5" markerHeight="5" orient="auto">
+          <path d="M0 0 L12 6 L0 12 z" fill="currentColor" />
+        </marker>
+      </defs>
+      ${segs.map(
+        ({ e, x1, y1, x2, y2 }) =>
+          html`<line key=${`${e.from}>${e.to}`} class=${`be be-${e.style || 'arrow'}`} x1=${x1} y1=${y1} x2=${x2} y2=${y2} marker-end=${!e.style || e.style === 'arrow' ? `url(#${uid})` : null} />`,
+      )}
+    </svg>
+    ${segs
+      .filter(({ e }) => e.label)
+      .map(({ e, x1, y1, x2, y2 }) => html`<div key=${`${e.from}>${e.to}`} class="be-label" style=${`left:${(x1 + x2) / 2}px;top:${(y1 + y2) / 2}px`}>${e.label}</div>`)}`;
+}
+
+/**
+ * The sermon board: the title above, the nodes built so far on the canvas, the arrows between
+ * them. With reveal, `sub` is the last node up (Next brings the next one, which pops in); with it
+ * off, everything is up. The lower third shows the latest node's words only.
+ */
+function BoardFrame({ item, sub = 0, reveal = true, lt = false, still = false }) {
+  const fontsReady = useFontsReady();
+  const uid = useRef(null);
+  if (!uid.current) uid.current = `sb-arrow-${++boardSeq}`;
+  const nodes = item.nodes || [];
+  const n = visibleCount(item, sub, reveal);
+  const shown = nodes.slice(0, n);
+  const last = shown[shown.length - 1];
+  if (lt) {
+    if (!last || last.kind === 'picture' || !(last.text || last.sub)) return null;
+    return html`<div class=${`lt-band lt-scrip lt-board${last.kind === 'verse' ? ' lt-verse' : ''}`} key=${last.id}>
+      ${last.sub && html`<div class="ln ref" style="--i:0"><span class="tab">${last.sub}</span></div>`}
+      ${last.text && html`<div class="ln pri" style="--i:1">${last.text}</div>`}
+    </div>`;
+  }
+  const ids = new Set(shown.map((m) => m.id));
+  return html`<div class="sboard">
+    <div class="ln sb-title" style="--i:0">${item.title}</div>
+    <div class="sb-canvas">
+      <${BoardEdges} item=${item} shown=${ids} uid=${uid.current} />
+      ${shown.map((m, i) => html`<${BoardNode} key=${m.id} node=${m} now=${i === n - 1} pop=${!still} fontsReady=${fontsReady} theme=${item.theme} />`)}
+    </div>
+  </div>`;
+}
+
 // How long a scripture frame takes to leave, by motion (the page turn and the slide travel further).
 const SMO_OUT = { gentle: 250, page: 760, type: 300, reveal: 420, slide: 520 };
 
@@ -705,6 +796,8 @@ export function frameOf(state, { titleFor = null, out = 'preview' } = {}) {
   if (!shownOn(item, out)) return { key: 'none', kind: 'none' };
   if ((item.kind === 'song' || item.kind === 'scripture') && titleFor === item.id && index === 0 && !state.sub)
     return { key: `title:${item.id}`, kind: 'title' };
+  // One frame for the whole board: editing its nodes never swaps the frame, the nodes move within it.
+  if (item.kind === 'board') return { key: `${item.id}:board`, kind: 'board', preset: 'board' };
   const kind = item.kind === 'scripture' ? 'scripture' : item.kind === 'media' ? 'media' : 'song';
   // A scripture look change crosses over like a slide change.
   const key = kind === 'scripture' ? `${item.id}:${index}:${scriptureLookOf(state)}` : `${item.id}:${index}`;
@@ -758,12 +851,19 @@ export function Stage({ state, out = 'preview', layout = 'full', background = 'a
   const songLook = up === 'song' ? lookOf(st, st.item) : null;
   // Scripture looks always bring theirs: a light page is the look.
   const sLook = scriptureLookOf(st);
-  const env = songLook && st.lookBg !== 'mine' ? PRESET_INFO[songLook].env : up === 'scripture' ? SCRIPTURE_INFO[sLook].env : null;
+  // A sermon board's theme brings its own environment too.
+  const boardTheme = up === 'board' ? (BOARD_ENV[st.item.theme] ? st.item.theme : 'slate') : null;
+  const env = songLook && st.lookBg !== 'mine' ? PRESET_INFO[songLook].env : up === 'scripture' ? SCRIPTURE_INFO[sLook].env : boardTheme ? BOARD_ENV[boardTheme] : null;
   const bg = background === 'none' ? 'none' : background === 'key' ? (lowerThird ? 'black' : 'key') : env || st.bg;
   const keyed = bg === 'none' || bg === 'key' || bg === 'black';
-  // The thin bar through the passage.
+  // The thin bar through the passage (or through the board's nodes as they come up).
   const steps = stepsOf(st);
-  const prog = up === 'scripture' && st.progress !== false && !lowerThird && st.item.slides.length ? ((st.index || 0) + Math.min(steps, (st.sub || 0) + 1) / steps) / st.item.slides.length : null;
+  const prog =
+    up === 'scripture' && st.progress !== false && !lowerThird && st.item.slides.length
+      ? ((st.index || 0) + Math.min(steps, (st.sub || 0) + 1) / steps) / st.item.slides.length
+      : up === 'board' && st.progress !== false && st.reveal !== false && !lowerThird && st.item.nodes && st.item.nodes.length
+        ? visibleCount(st.item, st.sub || 0, true) / st.item.nodes.length
+        : null;
   const cls = [
     'stage',
     lowerThird ? 'is-lt' : '',
@@ -785,6 +885,7 @@ export function Stage({ state, out = 'preview', layout = 'full', background = 'a
     up === 'scripture' && st.item.many ? 'smany' : '',
     st.followDim !== false ? 'follow-dim' : '',
     keyed ? 'keyed' : '',
+    boardTheme ? `sb-${boardTheme}` : '',
   ].join(' ');
   return html`<div class=${cls} style=${`--illus-w:${illusW}px;--sbal:${Number(st.sBalance) > 0.3 && Number(st.sBalance) < 2 ? st.sBalance : 1}`}>
     <${Background} bg=${bg} video=${st.bgVideo || video} />
@@ -797,6 +898,7 @@ export function Stage({ state, out = 'preview', layout = 'full', background = 'a
         ${kind === 'scripture' &&
         html`<${ScriptureFrame} item=${data.item} index=${data.index} lt=${lowerThird} fill=${fill} textW=${textW} fontsReady=${fontsReady} marks=${marksFor(st, data.item, data.index)} look=${sLook} sub=${data.index === (st.index || 0) ? st.sub || 0 : steps} reveal=${st.reveal !== false} quotes=${st.quotes !== false} size=${sizeOf(st.sSize)} balance=${Number(st.sBalance) > 0.3 && Number(st.sBalance) < 2 ? Number(st.sBalance) : 1} />`}
         ${kind === 'media' && html`<${MediaFrame} item=${data.item} index=${data.index} live=${out !== 'preview' && !leaving} />`}
+        ${kind === 'board' && html`<${BoardFrame} item=${data.item} sub=${st.sub || 0} reveal=${st.reveal !== false} lt=${lowerThird} still=${still === true} />`}
         ${kind === 'title' && html`<${TitleFrame} item=${data.item} />`}
         ${kind === 'logo' && html`<${LogoFrame} />`}
       </div>`;
