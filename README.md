@@ -380,6 +380,25 @@ node scripts/build-bible.mjs eng-web_vpl.txt lyrics/bibles/web --kjv     # from 
 a `>` inside a word). The 1968 text is © United Bible Societies 1968, British and Foreign Bible Society, and The
 Bible Society of Uganda.
 
+### NIV, Amplified and other licensed Bibles (online)
+
+The NIV (Biblica), the Amplified Bible (Lockman Foundation), the NLT and the like are copyrighted, so they cannot be
+built into a public site like the KJV and WEB. They can still be read through **API.Bible**, the American Bible
+Society's service, under the church's own key:
+
+1. Sign up free at [api.bible](https://api.bible) and create an app there. The free plan is for non-commercial use
+   (a church is) and allows up to 3 licensed Bibles; add the ones you want (NIV, Amplified…) to the app on their
+   site. A few publishers ask API.Bible for their own permission first; the site says so when you add one.
+2. In the console, **Settings → Online Bibles**, paste the key and press **Connect**. The Bibles the key may use are
+   listed; **Add** the ones to read, and they appear with the built-in versions in the Scripture tab.
+
+Chapters are fetched the first time they are read and then kept on that laptop (in the browser, with the imported
+versions), so a passage shown once again is instant and a sermon's readings can be opened beforehand. The TV only ever
+receives the slides, never the key. The key is kept in that browser only, never in the app or the repository; the
+service's fair-use tracker is told what is shown, as its terms require, and the publisher's copyright line is kept
+with the version (Settings → About). Online Bibles are not searched by words (the text is not downloaded), so word
+and voice search still runs on the built-in versions, and the passage found can be shown in any version.
+
 ## Pictures and video
 
 The **Media** tab shows two sets:
