@@ -15,6 +15,7 @@ import { Listener, canListen, SPEECH_LANGS } from './voice.js';
 import { readFollowKeys, saveFollowKeys, followCommand, validKey, FOLLOW_KEYS, FOLLOW_KEY_NAMES } from './keys.js';
 import { allVersions, importVersion, removeVersion, passageItem, BUILTIN_VERSIONS, loadBook, versionById, isMany } from './bible.js';
 import { onlineConfig, saveOnlineConfig, listBibles } from './online.js';
+import { shareConfig, saveShareConfig, isSharing, syncSongs, connectShare, setupLink, readSetupLink, TOKEN_URL } from './share.js';
 import { relayConfig, cloudConfigured, loadSession, captureSession, sendMagicLink, signOut, pullSongs, pushSongs } from './cloud.js';
 import { canCast, castTo, displayPermission, extraDisplays, openOn, displayOf, platform } from './cast.js';
 import { fontsReady, scriptureFit } from './measure.js';
@@ -849,7 +850,22 @@ function Live({ state, act, info, goTab, onOutputs, wide, setLook }) {
 
 // ------------------------------------------------------------------ songs
 
-function Songs({ songs, onShow, onEdit, onNew, liveId }) {
+const clock = (t) => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+/** One line under the song search while the library is shared with the other laptops. */
+function ShareLine({ share, onSync, onSetup }) {
+  if (!share.on)
+    return html`<p class="share-line small muted">
+      These songs are only on this laptop. <button class="link" onClick=${onSetup}>Share them with your other laptops</button>
+    </p>`;
+  const bad = share.status === 'error';
+  return html`<p class=${`share-line small ${bad ? 'error' : 'muted'}`}>
+    ${bad ? html`<b>Not shared right now:</b> ${share.msg}` : share.status === 'syncing' ? 'Sharing songs with your other laptops…' : share.at ? `Shared with your other laptops · up to date at ${clock(share.at)}` : 'Shared with your other laptops'}
+    ${!(share.status === 'syncing') && html` <button class="link" onClick=${onSync}>${bad ? 'Try again' : 'Sync now'}</button>`}
+  </p>`;
+}
+
+function Songs({ songs, onShow, onEdit, onNew, liveId, share, onSync, onSetup }) {
   const [q, setQ] = useState('');
   const list = useMemo(() => searchSongs(songs, q), [songs, q]);
   return html`<div class="songs">
@@ -857,6 +873,7 @@ function Songs({ songs, onShow, onEdit, onNew, liveId }) {
       <input class="grow" type="search" value=${q} onInput=${(e) => setQ(e.target.value)} placeholder="Search songs, words, tags" />
       <button class="primary" onClick=${onNew}>+ New</button>
     </div>
+    <${ShareLine} share=${share} onSync=${onSync} onSetup=${onSetup} />
     <ul class="song-list">
       ${list.map(
         (s) => html`<li class=${`song-row ${s.id === liveId ? 'on' : ''}`}>
@@ -1373,6 +1390,70 @@ function FollowSettings({ state, act }) {
   </div>`;
 }
 
+/** Songs shared between laptops through one private gist on the church's GitHub account (src/lyrics/share.js). */
+function ShareSongs({ songs, share, onConnect, onSync, onLeave }) {
+  const [token, setToken] = useState('');
+  const [show, setShow] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const [link, setLink] = useState('');
+  const connect = async () => {
+    setBusy(true);
+    setErr('');
+    try {
+      await onConnect(token.trim());
+      setToken('');
+    } catch (e) {
+      setErr(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const copyLink = async () => {
+    const url = setupLink(shareConfig(), location.href);
+    try {
+      await navigator.clipboard.writeText(url);
+      showToast('Link copied. Open it on the other laptop.');
+      setLink('');
+    } catch {
+      setLink(url);
+    }
+  };
+  return html`<section class="card share-songs">
+    <h2>Share songs between laptops</h2>
+    ${share.on
+      ? html`<p class="small">
+            <span class=${`pill ${share.status === 'error' ? 'warn' : 'ok'}`}>${share.status === 'error' ? 'Not up to date' : 'Sharing'}</span>${' '}
+            ${visibleSongs(songs).length} songs · a song saved on any laptop appears on the others within a minute${share.at ? ` · last checked ${clock(share.at)}` : ''}.
+          </p>
+          ${share.status === 'error' && html`<p class="error small">${share.msg}</p>`}
+          <div class="row wrap">
+            <button onClick=${onSync} disabled=${share.status === 'syncing'}>${share.status === 'syncing' ? 'Syncing…' : 'Sync now'}</button>
+            <button onClick=${copyLink}>Copy setup link for another laptop</button>
+            <button class="ghost" onClick=${onLeave}>Stop sharing on this laptop</button>
+          </div>
+          ${link && html`<input class="grow" readonly value=${link} onFocus=${(e) => e.target.select()} aria-label="Setup link" />`}
+          <p class="muted small">
+            The setup link carries the key to the shared songs: send it only to your own team. Stopping here keeps this laptop's songs and leaves the shared copy as it is.
+          </p>`
+      : html`<p class="muted small">
+            Songs saved on one laptop appear on your other laptops by themselves. They are kept in one private file (a <i>gist</i>) on the church's GitHub account; nothing else is shared and the lyrics are never public. One-time setup:
+          </p>
+          <ol class="small steps">
+            <li><a href=${TOKEN_URL} target="_blank" rel="noopener">Make the key on GitHub</a>: sign in, press <b>Generate token</b> at the bottom (only the <i>gist</i> box is ticked) and copy it.</li>
+            <li>Paste it here and press <b>Connect</b>. The first laptop starts the shared file from its songs.</li>
+            <li>On each other laptop do the same, or use <b>Copy setup link</b> here and open that link there.</li>
+          </ol>
+          <form class="row" onSubmit=${(e) => { e.preventDefault(); connect(); }}>
+            <input class="grow" type=${show ? 'text' : 'password'} value=${token} onInput=${(e) => setToken(e.target.value)} placeholder="GitHub token (ghp_…)" autocomplete="off" aria-label="GitHub token" />
+            <button type="button" class="ghost" onClick=${() => setShow(!show)}>${show ? 'Hide' : 'Show'}</button>
+            <button class="primary" disabled=${busy || !token.trim()}>${busy ? 'Connecting…' : 'Connect'}</button>
+          </form>
+          ${err && html`<p class="error small">${err}</p>`}
+          <p class="muted small">The key stays in this browser only, never in the app. It can only read and write gists.</p>`}
+  </section>`;
+}
+
 /** Licensed Bibles online (NIV, Amplified, ...) through API.Bible with the church's own key. */
 function OnlineBibles({ prefs, setPrefs, onChange }) {
   const [cfg, setCfg] = useState(onlineConfig);
@@ -1475,7 +1556,7 @@ function OnlineBibles({ prefs, setPrefs, onChange }) {
   </section>`;
 }
 
-function Settings({ state, act, info, prefs, setPrefs, songs, setSongs, session, setSession, onOutputs, setLook, ui, setUi, wide }) {
+function Settings({ state, act, info, prefs, setPrefs, songs, setSongs, session, setSession, onOutputs, setLook, ui, setUi, wide, share, onConnectShare, onSync, onLeaveShare }) {
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState('');
@@ -1689,6 +1770,8 @@ function Settings({ state, act, info, prefs, setPrefs, songs, setSongs, session,
       </details>
     </section>
 
+    <${ShareSongs} songs=${songs} share=${share} onConnect=${onConnectShare} onSync=${onSync} onLeave=${onLeaveShare} />
+
     <section class="card">
       <h2>Song library</h2>
       <p class="muted small">${visibleSongs(songs).length} songs on this device.</p>
@@ -1739,6 +1822,13 @@ function App() {
   const [tab, setTab] = useState('live');
   const [libTab, setLibTab] = useState('songs');
   const [songs, setSongsRaw] = useState(() => loadSongs());
+  // Sharing songs with the other laptops (src/lyrics/share.js).
+  const [share, setShareRaw] = useState(() => ({ on: isSharing(), status: 'idle', at: 0, msg: '' }));
+  const songsRef = useRef(songs);
+  songsRef.current = songs;
+  const syncing = useRef(false);
+  const syncAgain = useRef(false);
+  const syncTimer = useRef(null);
   const [editing, setEditing] = useState(null);
   const [outputs, setOutputs] = useState(false);
   const [ui, setUi] = useUi();
@@ -1750,9 +1840,62 @@ function App() {
   const stateRef = useRef(state);
   stateRef.current = state;
 
-  const setSongs = (list) => {
+  const applySongs = (list) => {
+    songsRef.current = list;
     setSongsRaw(list);
     saveSongs(list);
+  };
+  // Any change to the library (a save, a delete, an import) is shared a moment later.
+  const setSongs = (list) => {
+    applySongs(list);
+    syncSoon();
+  };
+  const setShare = (patch) => setShareRaw((c) => ({ ...c, ...patch }));
+  // Brings this laptop's songs and the shared copy level; one at a time, once more if something changed meanwhile.
+  const runSync = async () => {
+    const cfg = shareConfig();
+    if (!isSharing(cfg)) return;
+    if (syncing.current) {
+      syncAgain.current = true;
+      return;
+    }
+    syncing.current = true;
+    setShare({ on: true, status: 'syncing' });
+    try {
+      const r = await syncSongs(songsRef.current, cfg);
+      if (r.pulled) {
+        // Edits made here while it was away are kept if newer.
+        applySongs(mergeSongs(songsRef.current, r.songs).songs);
+        showToast(`${r.pulled} song${r.pulled === 1 ? '' : 's'} updated from another laptop`);
+      }
+      setShare({ status: 'ok', at: Date.now(), msg: '' });
+    } catch (e) {
+      setShare({ status: 'error', msg: e.message });
+    } finally {
+      syncing.current = false;
+      if (syncAgain.current) {
+        syncAgain.current = false;
+        syncSoon(0);
+      }
+    }
+  };
+  const runSyncRef = useRef(runSync);
+  runSyncRef.current = runSync;
+  function syncSoon(ms = 900) {
+    clearTimeout(syncTimer.current);
+    if (isSharing()) syncTimer.current = setTimeout(() => runSyncRef.current(), ms);
+  }
+  const connectShared = async (token) => {
+    const r = await connectShare(token, songsRef.current);
+    saveShareConfig(r.cfg);
+    if (r.pulled) applySongs(mergeSongs(songsRef.current, r.songs).songs);
+    setShare({ on: true, status: 'ok', at: Date.now(), msg: '' });
+    showToast(r.created ? 'Sharing started with this laptop\'s songs' : `Sharing on: ${r.pulled} song${r.pulled === 1 ? '' : 's'} received`);
+  };
+  const leaveShare = () => {
+    saveShareConfig(null);
+    setShare({ on: false, status: 'idle', msg: '' });
+    showToast('This laptop no longer shares songs');
   };
   const setPrefs = (p) => {
     setPrefsRaw(p);
@@ -1775,6 +1918,34 @@ function App() {
     link.current = l;
     return () => l.close();
   }, [room]);
+
+  // A setup link opened on this laptop (#share=…): keep it, tidy the address, and start sharing.
+  useEffect(() => {
+    const takeSetup = () => {
+      const setup = readSetupLink(location.hash);
+      if (!setup) return;
+      saveShareConfig(setup);
+      history.replaceState(null, '', location.pathname + location.search);
+      setShare({ on: true, status: 'idle' });
+      showToast('Sharing songs with your other laptops');
+      runSyncRef.current();
+    };
+    takeSetup();
+    // A link pasted into the address bar of a console that is already open only changes the #.
+    addEventListener('hashchange', takeSetup);
+    runSyncRef.current();
+    // Again whenever the page comes back into view or the internet returns, and every minute while it is open.
+    const again = () => document.visibilityState !== 'hidden' && runSyncRef.current();
+    const tick = setInterval(again, 60000);
+    addEventListener('online', again);
+    document.addEventListener('visibilitychange', again);
+    return () => {
+      clearInterval(tick);
+      removeEventListener('hashchange', takeSetup);
+      removeEventListener('online', again);
+      document.removeEventListener('visibilitychange', again);
+    };
+  }, []);
 
   // Magic-link sign-in lands here.
   useEffect(() => {
@@ -1901,6 +2072,14 @@ function App() {
   const connected = info.peers.screen > 0 || info.ports > 0;
   const songsPane = html`<${Songs}
     songs=${songs}
+    share=${share}
+    onSync=${() => runSync()}
+    onSetup=${() => {
+      // To Settings, where the sharing card is: Orbit opens its Settings orb, the classic console its tab.
+      if (wide && ui.layout === 'orbit') dispatchEvent(new Event('ls-open-settings'));
+      else if (wide) openLib('settings');
+      else setTab('settings');
+    }}
     liveId=${state.item && state.item.id}
     onShow=${(s) => showSong(s)}
     onEdit=${(s) => setEditing(s)}
@@ -1944,6 +2123,10 @@ function App() {
     ui=${ui}
     setUi=${setUi}
     wide=${wide}
+    share=${share}
+    onConnectShare=${connectShared}
+    onSync=${() => runSync()}
+    onLeaveShare=${leaveShare}
   />`;
   // A library tab; in Focus it opens the library drawer (again on the open tab: closes it).
   const openLib = (k) => {

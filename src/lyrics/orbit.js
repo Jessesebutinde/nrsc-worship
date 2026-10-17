@@ -121,6 +121,12 @@ export function Orbit({ state, act, info, prefs, setPrefs, setUi, showItem, setL
     addEventListener('keydown', k);
     return () => removeEventListener('keydown', k);
   }, [open]);
+  // The Songs panel's "Share them with your other laptops" opens Settings, where the sharing card is.
+  useEffect(() => {
+    const go = () => setOpen({ id: 'settings', x: innerWidth * 0.41, y: innerHeight * 0.9 });
+    addEventListener('ls-open-settings', go);
+    return () => removeEventListener('ls-open-settings', go);
+  }, []);
   // Something picked from a library orb goes to the TV: the orb's job is done, it pops back.
   const itemId = item && item.id;
   useEffect(() => {

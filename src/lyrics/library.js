@@ -23,7 +23,8 @@ export function loadSongs(storage = globalThis.localStorage) {
     songs = [];
   }
   if (!songs.length && !storage.getItem(LS_SEEDED)) {
-    songs = SEED_SONGS.map((s) => makeSong(s));
+    // The starter songs count as the oldest edit, so a laptop opened for the first time never overwrites a song that was edited on another one.
+    songs = SEED_SONGS.map((s) => ({ ...makeSong(s), updatedAt: 0 }));
     storage.setItem(LS_SEEDED, '1');
     saveSongs(songs, storage);
   }
