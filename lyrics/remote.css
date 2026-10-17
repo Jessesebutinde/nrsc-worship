@@ -2005,3 +2005,37 @@ kbd {
   border-color: var(--card);
   box-shadow: 0 0 0 2px var(--c), 0 0 0 3px var(--ring);
 }
+
+/* Sharing songs between laptops */
+.share-line {
+  margin: 8px 2px 0;
+}
+.share-line .link,
+button.link {
+  background: none;
+  border: 0;
+  padding: 0;
+  min-height: 0;
+  height: auto;
+  color: var(--gold);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.share-line.error {
+  color: var(--danger);
+}
+.share-songs .steps {
+  margin: 8px 0 12px;
+  padding-left: 20px;
+  display: grid;
+  gap: 6px;
+}
+.share-songs .steps a {
+  color: var(--gold);
+}
+.share-songs input[readonly] {
+  margin-top: 8px;
+  width: 100%;
+  font-size: 12px;
+}

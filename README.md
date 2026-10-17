@@ -478,9 +478,40 @@ A new song opens with a 2-second title card. TV backgrounds: **Glow** (slow purp
 leaks**, **Video loop** (a link, or press V on the screen PC) and **Key** (black, for keying the TV picture itself).
 **Calm mode** and the system's reduced-motion setting turn everything into plain crossfades.
 
-Songs are kept on each device and move between devices with **Export songs** / **Import songs**. With a Supabase
-project in `src/lyrics/config.js` (run `supabase/lyric_slides.sql`), the media team signs in with an emailed link
-and shares one library, and the project's Realtime replaces the public relay.
+Songs are kept on each device, and **Settings → Share songs between laptops** keeps them level across two or three
+laptops (below). They also move by hand with **Export songs** / **Import songs**. With a Supabase project in
+`src/lyrics/config.js` (run `supabase/lyric_slides.sql`), the media team can instead sign in with an emailed link and
+share one library, and the project's Realtime replaces the public relay.
+
+### Sharing songs between laptops
+
+A song entered and saved on one laptop appears on the others by itself, within a minute. The shared copy is one
+**private gist** (a small file GitHub keeps) on the church's own GitHub account, so nothing needs a new account,
+a database or any setup in the code. One-time setup:
+
+1. On the first laptop open **Settings → Share songs between laptops** and press **Make the key on GitHub**. It opens
+   GitHub's new-token page with only the **gist** box ticked and a name filled in; press *Generate token* at the
+   bottom and copy the token (`ghp_…`). It can read and write gists and nothing else, so it cannot touch this app's
+   code or any repository.
+2. Paste it and press **Connect**. The shared file is started from that laptop's songs.
+3. On each other laptop paste the same token and press **Connect**, or press **Copy setup link for another laptop**
+   on the first one and open that link on the other (it sets the laptop up and clears itself from the address). The
+   other laptop receives every song and from then on shares its own.
+
+After that, every save, delete or import is sent a moment later; each laptop also checks again whenever the page
+comes back into view, when the internet returns, and every minute while it is open. The Songs tab says when it last
+checked and a toast says when songs arrived from another laptop. If two laptops edit the same song, the one saved
+last wins; a deleted song stays deleted everywhere; nothing is ever removed because a laptop was behind, and the
+starter songs never overwrite an edit made elsewhere. Only the lyrics travel (slides are cut again on each laptop).
+A laptop with no internet keeps working and catches up when it is back. **Stop sharing on this laptop** forgets the
+token there and leaves its songs and the shared copy as they are.
+
+The token is kept in that laptop's browser only, never in the app or the repository; treat the setup link like the
+token, since it carries it. The shared file is a *secret* gist: not listed, but anyone who has its address can read
+it, so use the church's own account and do not post the address. The GitHub account's rate limit (5,000 requests an
+hour) is far above what three laptops use. The sharing logic is in `src/lyrics/share.js` and is tested against a
+fake GitHub (`tests/share.test.mjs`); the live GitHub could not be reached from the build sandbox, so the first
+real connection is yours.
 
 ## How the relay works
 
