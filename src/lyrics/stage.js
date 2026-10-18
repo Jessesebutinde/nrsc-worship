@@ -3,7 +3,7 @@
 
 import { html, useState, useEffect, useRef, useLayoutEffect } from '../ui/h.js';
 import { CHURCH_NAME } from './config.js';
-import { shownOn, lookOf, PRESET_INFO, SCRIPTURE_INFO, SCRIPTURE_MOTIONS, scriptureLookOf, stepsOf } from './state.js';
+import { shownOn, lookOf, PRESET_INFO, SCRIPTURE_INFO, SCRIPTURE_MOTIONS, scriptureLookOf, stepsOf, marginOf } from './state.js';
 import { BOARD_ENV, NODE_COLORS, TEXT_SIZES as BOARD_TEXT, edgePoints, visibleCount } from './board.js';
 import { idbGet } from './idb.js';
 import { splitAtPauses } from './split.js';
@@ -418,6 +418,8 @@ function ScriptureFrame({ item, index, lt, fill, textW, fontsReady, marks, look 
   // Beside an illustration the Scroll's ribbon leaves room for its reference underneath.
   const many = Boolean(item.many);
   const scroll = Boolean(item.scroll);
+  // Laid out with more (or no) breaking up of long verses: the words shrink as far as they need.
+  const loose = !many && !scroll && Boolean(item.split) && item.split !== 'standard';
   const col = useRef(null);
   const placed = useRef(false);
   const availH = (many ? MANY_LOOK_H[look] || MANY_H : SCRIP_H[look] || SAFE_H * 0.92) * (look === 'scroll' && textW < SAFE_W - 200 ? 0.8 : 1);
@@ -430,10 +432,11 @@ function ScriptureFrame({ item, index, lt, fill, textW, fontsReady, marks, look 
       ? { on: false, availH, boost: size }
       : many
         ? { on: !lt, max: 3, min: 0.3, availH, noOverflowX: true }
-        : { on: !lt && (fill || size !== 1 || balance !== 1), max: (card ? CARD_MAX : SCRIP_MAX[look] || 1.8) * Math.max(1, size), min: Math.min(0.8 * size, 0.5), availH, noOverflowX: size > 1 || balance !== 1 },
+        : { on: !lt && (fill || size !== 1 || balance !== 1 || loose), max: (card ? CARD_MAX : SCRIP_MAX[look] || 1.8) * Math.max(1, size), min: loose ? 0.35 : Math.min(0.8 * size, 0.5), availH, noOverflowX: size > 1 || balance !== 1 || loose },
     [
     size,
     balance,
+    loose,
     s && s.ref,
     s && s.primary,
     s && s.secondary,
@@ -845,9 +848,11 @@ export function Stage({ state, out = 'preview', layout = 'full', background = 'a
   // The illustration sits beside the words on the TV (never on the stream feed).
   const illus = out !== 'stream' && !lowerThird && st.illustration && (f.kind === 'song' || f.kind === 'scripture') ? st.illustration : null;
   const illusW = illus ? ILLUS_W[illus.size] || ILLUS_W.half : 0;
-  // Scripture edge to edge: a slim 40 px margin instead of the 96 px safe area.
-  const wide = Boolean(st.sWide) && (st.item && st.item.kind === 'scripture');
-  const textW = (wide ? W - 2 * 40 : SAFE_W) - (illus ? illusW + 48 : 0);
+  // Scripture's margin: the look's own (the 96 px safe area), slim (40 px) or none (12 px).
+  const margin = st.item && st.item.kind === 'scripture' ? marginOf(st) : 'look';
+  const wide = margin === 'slim';
+  const edge = margin === 'none';
+  const textW = (edge ? W - 2 * 12 : wide ? W - 2 * 40 : SAFE_W) - (illus ? illusW + 48 : 0);
   const fill = st.fill !== false;
 
   // A look with its own environment brings it while the song is up (title card included).
@@ -883,6 +888,7 @@ export function Stage({ state, out = 'preview', layout = 'full', background = 'a
     safe ? 'show-safe' : '',
     `sl-${sLook}`,
     wide ? 'swide' : '',
+    edge ? 'sedge' : '',
     `sfont-${st.sFont === 'sans' ? 'sans' : 'serif'}`,
     lowerThird ? '' : `smo-${motion}`,
     st.reveal !== false ? 'reveal-on' : '',

@@ -202,3 +202,37 @@ test('one language at a time: each verse is two screens, the other language name
   const one = await passageItem({ ref: parseRef('Yokaana 3:16'), primaryId: 'lug68', secondaryId: '', perScreen: 'solo', fetchImpl: fetchBook });
   assert.equal(one.slides.length, 1, 'one language only: one screen');
 });
+
+test('how much a long verse is broken up: more, the standard, less, or never', async () => {
+  const { scaleFit, CHAR_FIT } = await import('../src/lyrics/bible.js');
+  assert.equal(scaleFit(CHAR_FIT, 1), CHAR_FIT);
+  assert.equal(scaleFit(CHAR_FIT, 1.5).primary.lines, CHAR_FIT.primary.lines * 1.5);
+  assert.equal(scaleFit(CHAR_FIT, Infinity).secondary.lines, Infinity);
+  const jn = (split) => passageItem({ ref: parseRef('Yokaana 3:16-17'), primaryId: 'lug68', secondaryId: 'kjv', perScreen: 'verse', split, fetchImpl: fetchBook });
+  const std = await jn('standard');
+  const more = await jn('more');
+  const less = await jn('less');
+  const never = await jn('never');
+  assert.ok(std.slides.length >= 3, 'the standard splits John 3:16');
+  assert.ok(more.slides.length >= std.slides.length);
+  assert.ok(less.slides.length <= std.slides.length);
+  assert.equal(never.slides.length, 2, 'never: one screen per verse');
+  assert.ok(never.slides.every((s) => s.verses[0].part === ''));
+  assert.equal(never.split, 'never');
+  assert.equal(std.split, 'standard');
+  assert.notEqual(never.id, std.id);
+  assert.equal((await jn('nonsense')).split, 'standard');
+  // With verses flowing on, whole verses still share a screen at the standard budget.
+  const flow = await passageItem({ ref: parseRef('Zabbuli 23'), primaryId: 'lug68', secondaryId: 'kjv', perScreen: 'auto', split: 'never', fetchImpl: fetchBook });
+  assert.ok(flow.slides.every((s) => s.verses.every((v) => v.part === '')), 'never split');
+  const flowStd = await passageItem({ ref: parseRef('Zabbuli 23'), primaryId: 'lug68', secondaryId: 'kjv', perScreen: 'auto', fetchImpl: fetchBook });
+  assert.ok(flow.slides.length <= flowStd.slides.length, 'no more screens than the standard');
+  const short = await passageItem({ ref: parseRef('Yokaana 11:33-36'), primaryId: '', secondaryId: 'kjv', perScreen: 'auto', split: 'never', fetchImpl: fetchBook });
+  assert.ok(short.slides.length < 4, 'short verses still share a screen');
+  const { emptyState, marginOf, splitOf } = await import('../src/lyrics/state.js');
+  assert.equal(marginOf(emptyState()), 'look');
+  assert.equal(marginOf({ sWide: true }), 'slim', 'the older edge-to-edge switch');
+  assert.equal(marginOf({ sMargin: 'none', sWide: true }), 'none');
+  assert.equal(splitOf({ sSplit: 'less' }), 'less');
+  assert.equal(splitOf({}), 'standard');
+});

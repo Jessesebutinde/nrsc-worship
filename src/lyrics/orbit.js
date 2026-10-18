@@ -8,7 +8,7 @@
 
 import { html, useState, useEffect, useRef, useLayoutEffect } from '../ui/h.js';
 import { Fit, Stage } from './stage.js';
-import { stepsOf, mediaItem, SCRIPTURE_INFO, scriptureLookOf, PRESET_INFO, lookOf } from './state.js';
+import { stepsOf, mediaItem, SCRIPTURE_INFO, scriptureLookOf, PRESET_INFO, lookOf, MARGINS, marginOf, SPLITS, splitOf } from './state.js';
 import { BOOKS, parseRef, formatRef, bookByCode } from './books.js';
 import { loadChapter, loadBook, passageItem, versionById } from './bible.js';
 import { locateVerse, verseAt, peekOf, matchBooks, BOOK_GROUPS, perScreenOf } from './calendar.js';
@@ -140,9 +140,9 @@ export function Orbit({ state, act, info, prefs, setPrefs, setUi, showItem, setL
       const ok = await Promise.race([fontsReady(), new Promise((res) => setTimeout(() => res(null), 3000))]);
       const fit =
         ok !== null && document.fonts && document.fonts.check('600 92px Montserrat')
-          ? scriptureFit(scriptureLookOf(state), state.sFont, state.sSize, { balance: state.sBalance, wide: Boolean(state.sWide) })
+          ? scriptureFit(scriptureLookOf(state), state.sFont, state.sSize, { balance: state.sBalance, margin: marginOf(state) })
           : undefined;
-      const it = await passageItem({ ref, primaryId: prefs.primary, secondaryId: prefs.secondary, perScreen: perScreenOf(prefs), fit });
+      const it = await passageItem({ ref, primaryId: prefs.primary, secondaryId: prefs.secondary, perScreen: perScreenOf(prefs), fit, split: splitOf(state) });
       showItem(it);
       const label = refLabel(ref);
       write(LS_RECENT_REFS, [label, ...read(LS_RECENT_REFS, []).filter((x) => x.toLowerCase() !== label.toLowerCase())].slice(0, 8));
@@ -369,6 +369,16 @@ function ReadingPanel({ state, act, prefs, setPrefs, showRef, jumpTo, setLook, r
             ${l}
           </button>`,
         )}
+      </span>
+    </div>
+    <div class="orbit-read-row">
+      <span class="muted small">Margin</span>
+      <span class="seg">
+        ${Object.entries(MARGINS).map(([k, l]) => html`<button class=${marginOf(state) === k ? 'on' : ''} onClick=${() => setLook({ sMargin: k, sWide: k === 'slim' })}>${l}</button>`)}
+      </span>
+      <span class="muted small">Break up</span>
+      <span class="seg">
+        ${Object.entries(SPLITS).map(([k, l]) => html`<button class=${splitOf(state) === k ? 'on' : ''} onClick=${() => setLook({ sSplit: k })}>${l}</button>`)}
       </span>
     </div>
     <div class="orbit-read-row">

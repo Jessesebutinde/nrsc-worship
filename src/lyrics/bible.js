@@ -7,6 +7,7 @@
 import { bookByCode, bookByNumber, findBook, formatRef } from './books.js';
 import { idbGet, idbSet } from './idb.js';
 import { onlineConfig, saveOnlineConfig, isOnlineId, fetchChapter } from './online.js';
+import { SPLIT_SCALE } from './state.js';
 import { splitAtPauses } from './split.js';
 
 export const BUILTIN_VERSIONS = [
@@ -306,6 +307,13 @@ export function wrapCount(text, width) {
   return lines;
 }
 
+/** The split budget scaled: k times the standard lines (Infinity: a verse is never split). */
+export function scaleFit(fit, k) {
+  if (!k || k === 1) return fit;
+  const n = (lines) => (k === Infinity ? Infinity : Math.max(1, lines * k));
+  return { primary: { width: fit.primary.width, lines: n(fit.primary.lines) }, secondary: { width: fit.secondary.width, lines: n(fit.secondary.lines) } };
+}
+
 const fitsBoth = (p, s, fit) =>
   wrapCount(p, fit.primary.width) <= fit.primary.lines && wrapCount(s, fit.secondary.width) <= fit.secondary.lines;
 
@@ -351,16 +359,20 @@ function slideOf(segs, book, chapter, { lg, en }) {
  * continues at the same size until the passage ends; otherwise it is one verse per slide.
  * verses = [{ verse, primary, secondary }].
  */
-export function paginate(verses, { book, chapter, fit = CHAR_FIT, flow = true, primaryLang = 'lg', secondaryLang = 'en' }) {
+export function paginate(verses, { book, chapter, fit = CHAR_FIT, flow = true, primaryLang = 'lg', secondaryLang = 'en', split = 1 }) {
   const lg = primaryLang === 'lg' || secondaryLang === 'lg';
   const en = primaryLang === 'en' || secondaryLang === 'en' || !lg;
   const langs = { lg, en };
+  // `split` scales how much a screen may hold before a verse is broken up (the screen shrinks the
+  // words to fit); 'never' (Infinity) keeps every verse whole while screens still share at the standard budget.
+  const fitSplit = scaleFit(fit, split);
+  const fitFlow = split === Infinity ? fit : fitSplit;
   const slides = [];
   let cur = [];
   for (const v of verses) {
-    for (const part of splitVerse(v.primary, v.secondary, fit)) {
+    for (const part of splitVerse(v.primary, v.secondary, fitSplit)) {
       const seg = { verse: v.verse, ...part };
-      if (flow && cur.length && fitsBoth(joinSegs([...cur, seg], 'primary'), joinSegs([...cur, seg], 'secondary'), fit)) {
+      if (flow && cur.length && fitsBoth(joinSegs([...cur, seg], 'primary'), joinSegs([...cur, seg], 'secondary'), fitFlow)) {
         cur.push(seg);
         continue;
       }
@@ -429,7 +441,7 @@ export function groupVerses(verses, perScreen, { book, chapter, primaryLang = 'l
  * size), 'verse' (one verse per slide at the fixed size), a number of verses or 'all' ("many verses":
  * whole verses together, the text as large as the screen allows).
  */
-export async function passageItem({ ref, primaryId, secondaryId, flow = true, perScreen = 'auto', fit = CHAR_FIT, base, fetchImpl, config, store }) {
+export async function passageItem({ ref, primaryId, secondaryId, flow = true, perScreen = 'auto', fit = CHAR_FIT, split = 'standard', base, fetchImpl, config, store }) {
   const { book, chapter } = ref;
   const pv = versionById(primaryId, config);
   const sv = secondaryId ? versionById(secondaryId, config) : null;
@@ -454,11 +466,13 @@ export async function passageItem({ ref, primaryId, secondaryId, flow = true, pe
     ? groupVerses(verses, verses.length, { book, chapter, ...langs })
     : many
       ? groupVerses(verses, perScreen, { book, chapter, ...langs })
-      : paginate(verses, { book, chapter, fit, flow, ...langs });
+      : paginate(verses, { book, chapter, fit, flow, split: SPLIT_SCALE[split] || 1, ...langs });
   const range = from === to ? `${from}` : `${from}-${to}`;
+  const splitKey = SPLIT_SCALE[split] ? split : 'standard';
   return {
     kind: 'scripture',
-    id: `${book.code}.${chapter}.${range}.${primaryId}.${secondaryId || ''}.${scroll ? 'scroll' : many ? `m${perScreen}` : flow ? 'f' : 'v'}`,
+    id: `${book.code}.${chapter}.${range}.${primaryId}.${secondaryId || ''}.${scroll ? 'scroll' : many ? `m${perScreen}` : flow ? 'f' : 'v'}${!many && !scroll && splitKey !== 'standard' ? `-${splitKey}` : ''}`,
+    split: splitKey,
     many,
     scroll,
     perScreen: scroll ? 'scroll' : many ? perScreen : flow ? 'auto' : 'verse',

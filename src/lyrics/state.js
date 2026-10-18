@@ -146,6 +146,8 @@ export function emptyState() {
     // whether the words run edge to edge (a slim margin) instead of inside the safe area.
     sBalance: 1,
     sWide: false,
+    sMargin: 'look',
+    sSplit: 'standard',
     followDim: true,
     followStream: true,
   };
@@ -191,6 +193,17 @@ export function stepSize(v, dir) {
 // The language below, as a share of the look's own size for it.
 export const BALANCE_STEPS = [0.6, 0.8, 1, 1.15, 1.3];
 export const BALANCE_NAMES = { 0.6: 'Smallest', 0.8: 'Smaller', 1: 'Normal', 1.15: 'Bigger', 1.3: 'Same size' };
+
+// The border round scripture: the look's own, a slim 40 px, or none (12 px: the words run to the
+// edge of the picture and a card fills the screen). sWide (the older edge-to-edge switch) = slim.
+export const MARGINS = { look: "Look's own", slim: 'Slim', none: 'None' };
+export const marginOf = (state) => (state && MARGINS[state.sMargin] ? state.sMargin : state && state.sWide ? 'slim' : 'look');
+// How much a long verse is broken up across screens in the standard layouts: more than the
+// standard, the standard, less (the words shrink a little to fit), or never (a whole verse on one
+// screen, shrunk as far as it needs).
+export const SPLITS = { more: 'More', standard: 'Standard', less: 'Less', never: 'Never' };
+export const SPLIT_SCALE = { more: 0.75, standard: 1, less: 1.5, never: Infinity };
+export const splitOf = (state) => (state && SPLITS[state.sSplit] ? state.sSplit : 'standard');
 
 export const PLAY_LEVELS = { low: 'Gentle', mid: 'Lively', high: 'Playful', wild: 'Wild' };
 export const PLACES = { center: 'Centre', alternate: 'Alternate', lines: 'Left / right', random: 'Random' };
