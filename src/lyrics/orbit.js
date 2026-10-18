@@ -41,6 +41,7 @@ const PER_SCREEN_LABELS = [
   ['auto', 'Same size'],
   ['verse', '1 verse'],
   ['one', '1 verse, full'],
+  ['solo', '1 language at a time'],
   [2, '2'],
   [3, '3'],
   [4, '4'],

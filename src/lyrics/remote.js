@@ -989,6 +989,7 @@ const PER_SCREEN_LABELS = [
   ['auto', 'Same size', 'Verses continue across screens at the standard size'],
   ['verse', '1 verse', 'One verse per screen at the standard size (a long verse is split)'],
   ['one', '1 verse, full', 'One whole verse per screen, never split, as large as the screen allows'],
+  ['solo', '1 language at a time', 'Each verse twice: the language on top alone, then the other alone, each as large as the screen allows'],
   [2, '2'],
   [3, '3'],
   [4, '4'],

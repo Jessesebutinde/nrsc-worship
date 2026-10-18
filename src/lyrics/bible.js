@@ -375,20 +375,35 @@ export function paginate(verses, { book, chapter, fit = CHAR_FIT, flow = true, p
 // "Many verses" screens: how much text a whole-passage screen may hold before it is split into
 // several screens of about the same size (so the words stay big enough to read across the hall).
 export const WHOLE_BUDGET = 1100;
-export const PER_SCREEN = ['auto', 'verse', 'one', 2, 3, 4, 6, 8, 'all', 'scroll'];
+export const PER_SCREEN = ['auto', 'verse', 'one', 'solo', 2, 3, 4, 6, 8, 'all', 'scroll'];
 /**
  * Is this a "fill" choice (whole verses, never split, the text grown or shrunk to fill the screen)?
  * 'one' is one whole verse a screen; a number is that many; 'all' the whole passage.
  */
-export const isMany = (perScreen) => perScreen === 'all' || perScreen === 'one' || (Number(perScreen) >= 2 && Number(perScreen) <= 50);
+export const isMany = (perScreen) => perScreen === 'all' || perScreen === 'one' || perScreen === 'solo' || (Number(perScreen) >= 2 && Number(perScreen) <= 50);
 
 /**
  * Verses -> screens of whole verses, never split: `perScreen` at a time, or 'all' (as many as fit
  * the budget, spread evenly: 14 verses that need two screens become 7 + 7).
  */
-export function groupVerses(verses, perScreen, { book, chapter, primaryLang = 'lg', secondaryLang = 'en', budget = WHOLE_BUDGET } = {}) {
+export function groupVerses(verses, perScreen, { book, chapter, primaryLang = 'lg', secondaryLang = 'en', budget = WHOLE_BUDGET, secondaryLabel = '' } = {}) {
   const lg = primaryLang === 'lg' || secondaryLang === 'lg';
   const en = primaryLang === 'en' || secondaryLang === 'en' || !lg;
+  // One language at a time: each verse is two screens, the language on top alone and then the
+  // other alone (shown as the main text, its version named in the reference), each as large as
+  // the screen allows. A verse that has only one language is one screen.
+  if (perScreen === 'solo') {
+    const out = [];
+    for (const v of verses) {
+      const seg = { verse: v.verse, part: '', primary: v.primary || '', secondary: '' };
+      if (v.primary) out.push(slideOf([seg], book, chapter, { lg, en }));
+      if (v.secondary) {
+        const other = slideOf([{ ...seg, primary: v.secondary }], book, chapter, { lg, en });
+        out.push({ ...other, ref: secondaryLabel ? `${other.ref} · ${secondaryLabel}` : other.ref, solo: 's' });
+      }
+    }
+    return out;
+  }
   // Screen sizes: perScreen each, or (whole passage) as few screens as the budget allows, evenly.
   let sizes;
   if (perScreen === 'all') {
@@ -434,7 +449,7 @@ export async function passageItem({ ref, primaryId, secondaryId, flow = true, pe
   // Scroll: the whole passage as one long column that glides from verse to verse.
   const scroll = perScreen === 'scroll';
   if (perScreen === 'verse') flow = false;
-  const langs = { primaryLang: pv ? pv.lang : 'lg', secondaryLang: sv ? sv.lang : '' };
+  const langs = { primaryLang: pv ? pv.lang : 'lg', secondaryLang: sv ? sv.lang : '', secondaryLabel: sv ? sv.label : '' };
   const slides = scroll
     ? groupVerses(verses, verses.length, { book, chapter, ...langs })
     : many

@@ -3701,22 +3701,53 @@
    verse every verse stays on screen: the one being read is full, the others a little dimmer. */
 
 .smany .scrip:not(.l-scroll) {
-  --sl: 96px !important;
-  --sw: 1728px !important;
+  /* a slimmer border than the safe area: the words are the point here (Edge to edge: 40 px) */
+  --sl: 64px !important;
+  --sw: 1792px !important;
 }
 .smany .scrip .ref,
 .smany .sref {
-  font-size: calc(44px * clamp(0.75, var(--fs, 1), 1.15));
-  margin-bottom: calc(30px * clamp(0.5, var(--fs, 1), 1));
+  font-size: calc(36px * clamp(0.75, var(--fs, 1), 1.15));
+  margin-bottom: calc(16px * clamp(0.5, var(--fs, 1), 1));
 }
 .smany .scrip .pri {
-  line-height: 1.18;
+  line-height: 1.12;
 }
 .smany .scrip .sec {
-  margin-top: calc(30px * clamp(0.4, var(--fs, 1), 1));
+  line-height: 1.2;
+  margin-top: calc(18px * clamp(0.4, var(--fs, 1), 1));
 }
 .smany .scrip .ver {
-  font-size: calc(28px * clamp(0.8, var(--fs, 1), 1));
+  font-size: calc(26px * clamp(0.8, var(--fs, 1), 1));
+  margin-bottom: 2px;
+}
+.smany .sorn {
+  display: none;
+}
+/* Cards lose their deep padding and fixed heights: the card hugs the words. */
+.smany .lc .card,
+.smany .lc2 .card {
+  --cpy: 44px !important;
+  --cpx: 60px !important;
+  min-height: 0 !important;
+}
+.smany .l-royal .card {
+  --cpy: 64px !important;
+  --cpx: 80px !important;
+}
+.smany .l-cathedral .card {
+  --cpy: 72px !important;
+  --cpx: 88px !important;
+}
+.smany .l-bookmark .card {
+  --cpx: 120px !important;
+}
+.smany .lc .ref,
+.smany .lc2 .ref {
+  margin-bottom: calc(16px * clamp(0.5, var(--fs, 1), 1));
+}
+.smany .lc2 .ver2 {
+  margin-bottom: calc(12px * clamp(0.5, var(--fs, 1), 1));
 }
 .smany.reveal-on .vs.next {
   opacity: 0.5;
@@ -3733,8 +3764,8 @@
 .smany .scrip.l-stack,
 .smany .scrip.l-twin,
 .smany .scrip.l-bible {
-  --sl: 96px !important;
-  --sw: 1728px !important;
+  --sl: 64px !important;
+  --sw: 1792px !important;
 }
 .smany .l-stack .c1,
 .smany .l-stack .c2 {
