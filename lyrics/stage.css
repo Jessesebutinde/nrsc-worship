@@ -3701,9 +3701,10 @@
    verse every verse stays on screen: the one being read is full, the others a little dimmer. */
 
 .smany .scrip:not(.l-scroll) {
-  /* a slimmer border than the safe area: the words are the point here (Edge to edge: 40 px) */
+  /* a slimmer border than the safe area: the words are the point here (Slim: 40 px, None: 12 px).
+     --sp (the bar's room) is padding outside --sw, so it comes off the span. */
   --sl: 64px !important;
-  --sw: 1792px !important;
+  --sw: calc(1792px - var(--sp, 0px)) !important;
 }
 .smany .scrip .ref,
 .smany .sref {
@@ -3881,7 +3882,7 @@
 
 .swide .scrip {
   --sl: 40px;
-  --sw: 1840px;
+  --sw: calc(1840px - var(--sp, 0px));
 }
 .swide .scrip.l-blueprint {
   --sw: 1500px;
@@ -3922,7 +3923,7 @@
 .swide.smany .scrip:not(.l-scroll),
 .swide .scrip.sview {
   --sl: 40px !important;
-  --sw: 1840px !important;
+  --sw: calc(1840px - var(--sp, 0px)) !important;
 }
 .swide .l-stack .c1 {
   width: 1640px;
@@ -3939,6 +3940,87 @@
 }
 .swide .smore {
   right: 48px;
+}
+
+/* ------------------------------------------------------------ no margin */
+/* The words run to within 12 px of the picture's edge; a card fills the screen with hardly a frame
+   (no shadow, a small corner, thin padding). Overscan TVs may lose the first letters: that is what
+   the look's own margin is for. */
+
+.sedge .scrip {
+  --sl: 12px;
+  --sw: calc(1896px - var(--sp, 0px));
+}
+.sedge .scrip.l-blueprint {
+  --sw: 1560px;
+}
+.sedge .scrip.lc,
+.sedge .scrip.lc2,
+.sedge .scrip.l-parchment,
+.sedge .scrip.l-twin,
+.sedge .scrip.l-bible,
+.sedge .scrip.l-stack,
+.sedge .scrip.l-split,
+.sedge .scrip.l-epistle,
+.sedge .scrip.l-bookmark,
+.sedge .scrip.l-royal,
+.sedge .scrip.l-candle,
+.sedge .scrip.l-manuscript {
+  --sl: 12px !important;
+  --sw: 1896px !important;
+}
+.sedge .scrip.l-cathedral,
+.sedge .scrip.l-tablet {
+  --sl: 40px !important;
+  --sw: 1840px !important;
+}
+.sedge .scrip.l-gallery {
+  --sl: 60px !important;
+  --sw: 1800px !important;
+}
+.sedge .lc .card,
+.sedge .lc2 .card {
+  --cpy: 36px !important;
+  --cpx: 40px !important;
+  --crad: 10px;
+  border-radius: 10px !important;
+  box-shadow: none !important;
+  min-height: 0 !important;
+}
+.sedge .l-royal .card {
+  --cpy: 56px !important;
+  --cpx: 64px !important;
+}
+.sedge .l-cathedral .card {
+  --cpy: 64px !important;
+  --cpx: 72px !important;
+}
+.sedge .l-bookmark .card {
+  --cpx: 110px !important;
+}
+.sedge .sref {
+  left: 12px;
+}
+.sedge.smany .scrip:not(.l-scroll),
+.sedge .scrip.sview {
+  --sl: 12px !important;
+  --sw: calc(1896px - var(--sp, 0px)) !important;
+}
+.sedge .l-stack .c1 {
+  width: 1740px;
+}
+.sedge .l-stack .c2 {
+  margin-left: 440px;
+}
+.sedge.with-illus .scrip,
+.sedge.with-illus .scrip.lc,
+.sedge.with-illus .scrip.lc2,
+.sedge.with-illus .scrip.sview {
+  left: 12px !important;
+  width: calc(1896px - var(--illus-w) - 48px) !important;
+}
+.sedge .smore {
+  right: 20px;
 }
 
 /* ------------------------------------------------------------ sermon board */

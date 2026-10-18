@@ -6,7 +6,7 @@ import { html, render, useState, useEffect, useRef, useMemo } from '../ui/h.js';
 import { Fit, Stage } from './stage.js';
 import { Link, normalizeCode } from './link.js';
 import { ROOM } from './config.js';
-import { emptyState, reduce, songItem, mediaItem, BACKGROUNDS, BACKGROUND_INFO, PRESETS, PRESET_INFO, STREAM_LAYOUTS, ILLUSTRATION_SIZES, MARK_COLORS, PLAY_LEVELS, PLACES, SCRIPTURE_LOOKS, SCRIPTURE_INFO, SCRIPTURE_GROUPS, SCRIPTURE_MOTIONS, TEXT_SIZES, TEXT_SIZE_NAMES, stepSize, BALANCE_STEPS, BALANCE_NAMES, scriptureLookOf, stepsOf, lookOf, slideWords, markKey } from './state.js';
+import { emptyState, reduce, songItem, mediaItem, BACKGROUNDS, BACKGROUND_INFO, PRESETS, PRESET_INFO, STREAM_LAYOUTS, ILLUSTRATION_SIZES, MARK_COLORS, PLAY_LEVELS, PLACES, SCRIPTURE_LOOKS, SCRIPTURE_INFO, SCRIPTURE_GROUPS, SCRIPTURE_MOTIONS, TEXT_SIZES, TEXT_SIZE_NAMES, stepSize, BALANCE_STEPS, BALANCE_NAMES, scriptureLookOf, stepsOf, lookOf, slideWords, markKey, MARGINS, marginOf, SPLITS, splitOf } from './state.js';
 import { loadSongs, saveSongs, visibleSongs, upsertSong, removeSong, searchSongs, mergeSongs, exportLibrary, importLibrary } from './library.js';
 import { parseRef, bookByCode, BOOKS, formatRef } from './books.js';
 import { VerseIndex, fillIndex, highlight } from './search.js';
@@ -715,7 +715,18 @@ function ScriptureControls({ state, act, setLook, hints = false }) {
         </span>
         <${SizeControl} value=${state.sSize} onChange=${(v) => setLook({ sSize: v })} label="Scripture text size" />
         <${BalanceControl} value=${state.sBalance} onChange=${(v) => setLook({ sBalance: v })} />
-        <button class=${`chip ${state.sWide ? 'on' : ''}`} onClick=${() => setLook({ sWide: !state.sWide })} title="Run the words edge to edge across the screen (a slim margin instead of the usual border)">⟷ Edge to edge</button>
+        <span class="labelled" title="The border round the words: the look's own, a slim 40 px, or none (12 px: the words run to the edge of the picture and a card fills the screen)">
+          <span class="muted small">Margin</span>
+          <span class="seg" role="group" aria-label="Margin">
+            ${Object.entries(MARGINS).map(([k, l]) => html`<button class=${marginOf(state) === k ? 'on' : ''} onClick=${() => setLook({ sMargin: k, sWide: k === 'slim' })}>${l}</button>`)}
+          </span>
+        </span>
+        <span class="labelled" title="How much a long verse is broken up across screens: more than the standard, the standard, less (the words shrink a little to fit), or never (a whole verse on one screen, shrunk as far as it needs)">
+          <span class="muted small">Break up a verse</span>
+          <span class="seg" role="group" aria-label="Break up a verse">
+            ${Object.entries(SPLITS).map(([k, l]) => html`<button class=${splitOf(state) === k ? 'on' : ''} onClick=${() => setLook({ sSplit: k })}>${l}</button>`)}
+          </span>
+        </span>
         <span class="seg" role="group" aria-label="Reading">
           <button class=${state.reveal !== false ? 'on' : ''} onClick=${() => act({ type: 'set', patch: { reveal: state.reveal === false } })} title="Next brings the next verse; verses already read dim">Verse by verse</button>
           <button class=${state.progress !== false ? 'on' : ''} onClick=${() => act({ type: 'set', patch: { progress: state.progress === false } })} title="A thin bar along the bottom shows how far through the passage you are">Progress bar</button>
@@ -1004,7 +1015,7 @@ const perScreenOf = (prefs) => {
   return prefs.perVerse ? 'verse' : 'auto';
 };
 
-function Scripture({ prefs, setPrefs, onShow, look = 'ink', font = 'serif', size = 1, balance = 1, wide = false, relayout = null, liveScripture = false }) {
+function Scripture({ prefs, setPrefs, onShow, look = 'ink', font = 'serif', size = 1, balance = 1, margin = 'look', split = 'standard', relayout = null, liveScripture = false }) {
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
@@ -1042,8 +1053,8 @@ function Scripture({ prefs, setPrefs, onShow, look = 'ink', font = 'serif', size
     try {
       // Measured in the real font, so a slide holds exactly what fits at the fixed size.
       const ok = await Promise.race([fontsReady(), new Promise((res) => setTimeout(() => res(null), 3000))]);
-      const fit = ok !== null && document.fonts.check('600 92px Montserrat') ? scriptureFit(look, font, size, { balance, wide }) : undefined;
-      const item = await passageItem({ ref: r, primaryId: prefs.primary, secondaryId: prefs.secondary, perScreen: perScreenOf(prefs), fit });
+      const fit = ok !== null && document.fonts.check('600 92px Montserrat') ? scriptureFit(look, font, size, { balance, margin }) : undefined;
+      const item = await passageItem({ ref: r, primaryId: prefs.primary, secondaryId: prefs.secondary, perScreen: perScreenOf(prefs), fit, split });
       onShow(item);
       const next = [label, ...recent.filter((x) => x.toLowerCase() !== label.toLowerCase())].slice(0, 8);
       setRecent(next);
@@ -2031,7 +2042,8 @@ function App() {
         secondaryId: it.secondaryId,
         flow: it.flow,
         perScreen: perScreen || it.perScreen || (it.flow === false ? 'verse' : 'auto'),
-        fit: scriptureFit(scriptureLookOf(next), next.sFont, next.sSize, { balance: next.sBalance, wide: Boolean(next.sWide) }),
+        fit: scriptureFit(scriptureLookOf(next), next.sFont, next.sSize, { balance: next.sBalance, margin: marginOf(next) }),
+        split: splitOf(next),
       });
       let index = 0;
       let sub = 0;
@@ -2094,7 +2106,8 @@ function App() {
     font=${state.sFont}
     size=${state.sSize}
     balance=${state.sBalance}
-    wide=${Boolean(state.sWide)}
+    margin=${marginOf(state)}
+    split=${splitOf(state)}
     liveScripture=${Boolean(state.item && state.item.kind === 'scripture' && state.item.book)}
     relayout=${(k) => setLook({}, k)}
   />`;

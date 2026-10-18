@@ -87,14 +87,16 @@ function textWidth(text, weight, size, family = 'Montserrat') {
   ctx.font = `${weight} ${size}px ${family}`;
   return ctx.measureText(text).width;
 }
-// Edge to edge: the block spans 1840 px instead of the safe area's 1728; every look's own column
-// grows by the same share (1840 / 1728 of its own 1728-based width, capped at the full span).
-const WIDE = 1840 / 1728;
-export function scriptureFit(look = 'ink', font = 'serif', size = 1, { balance = 1, wide = false } = {}) {
+// A slimmer margin: the block spans 1840 px (slim) or 1896 px (none) instead of the safe area's
+// 1728; every look's own column grows by the same share (capped at the full span).
+const SPANS = { look: 1728, slim: 1840, none: 1896 };
+export function scriptureFit(look = 'ink', font = 'serif', size = 1, { balance = 1, wide = false, margin = null } = {}) {
   const k = Number(size) > 0.5 && Number(size) < 3 ? Number(size) : 1;
   const b = Number(balance) > 0.3 && Number(balance) < 2 ? Number(balance) : 1;
   const f0 = SCRIP_FIT[look] || SCRIP_FIT.ink;
-  const f = wide ? { ...f0, w: Math.min(1840, Math.round(f0.w * WIDE)), sw: f0.sw ? Math.min(1840, Math.round(f0.sw * WIDE)) : f0.sw } : f0;
+  const span = SPANS[margin] || (wide ? SPANS.slim : SPANS.look);
+  const grow = span / SPANS.look;
+  const f = span === SPANS.look ? f0 : { ...f0, w: Math.min(span, Math.round(f0.w * grow)), sw: f0.sw ? Math.min(span, Math.round(f0.sw * grow)) : f0.sw };
   const fam = font === 'sans' ? 'Montserrat' : SERIF;
   const sFam = f.sSans ? 'Montserrat' : fam;
   // A drop cap takes the first letters' room on the first lines.

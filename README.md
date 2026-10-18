@@ -244,11 +244,18 @@ Beside it, **a− / a+** sets how big the language below (usually the English) i
 Smallest, Smaller, Normal (the look's own), Bigger, Same size. The passage is laid out again for the balance, so the
 text always fits (Same size: Luganda 119 px and English 124 px on Psalm 23:1 instead of 142 and 114).
 
-**⟷ Edge to edge** runs scripture across nearly the whole screen: a 40 px margin instead of the 96 px safe area, and
-every look's own column widens by the same share (Psalm 23:1-4 on Ink & stone: the words run from 96 to 1925 px
-instead of 210 to 1681). It stays on until switched off and applies to every scripture look, Scroll and Many
-verses included; the stream's lower third and the title card are unchanged. Old TVs that cut off the edges of the
-picture (overscan) are why the margin exists, so switch it off if the hall's TV loses the first letters.
+**Margin** (under the live slide, and in Orbit's reading panel) is the border round the words: **Look's own** (the
+96 px safe area), **Slim** (40 px: the words run across nearly the whole screen, every look's own column widening by
+the same share) or **None** (12 px: the words run to the edge of the picture, and a card fills the screen with hardly a
+frame: no shadow, a small corner, thin padding). It stays as set and applies to every scripture look, Scroll and the
+whole-verse layouts included; the stream's lower third and the title card are unchanged. Old TVs that cut off the
+edges of the picture (overscan) are why the margin exists, so go back to the look's own if the hall's TV loses the
+first letters.
+
+**Break up a verse** (beside it) is how much a long verse is broken up across screens in the standard layouts
+(Same size and 1 verse): **More**, **Standard**, **Less** (a screen may hold half as much again, and the words shrink
+a little when they must) or **Never** (every verse stays whole on one screen, shrunk as far as it needs; short verses
+still share a screen). The passage is laid out again at once, staying on the verse being read.
 
 ## Follow the singer: J and F
 

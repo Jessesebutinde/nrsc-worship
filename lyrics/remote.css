@@ -2039,3 +2039,10 @@ button.link {
   width: 100%;
   font-size: 12px;
 }
+
+/* A small label beside a segmented control (Margin, Break up a verse) */
+.labelled {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
