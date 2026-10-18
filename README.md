@@ -309,8 +309,19 @@ read. With **Verse by verse** on, Next lights each verse in turn while the other
 the stream's lower third shows just the verse being read.
 
 **1 verse, full** (also under Verses on screen) shows one whole verse per screen, never split, as large as the
-screen allows for it: "Jesus wept" fills the screen at 219 px, John 3:16 comes down to 85 px to fit whole. **1
-verse** keeps the standard size and splits a long verse into a and b.
+screen allows for it: "Jesus wept" fills the screen at over 200 px, John 3:16 in two languages comes down to about
+100 px to fit whole. **1 verse** keeps the standard size and splits a long verse into a and b.
+
+**1 language at a time** shows each verse twice: the language on top alone, then the other alone (as the main
+text, its version named in the reference line), each as large as the screen allows, so a long verse in two
+languages reads at 125 to 145 px instead of 100. Next moves from one to the other and on to the next verse. With
+only one version chosen it is the same as 1 verse, full.
+
+Whenever whole verses fill the screen (1 verse full, 1 language at a time, a number of verses, the whole passage),
+the words get the room: a slim 64 px border instead of the usual safe area (Edge to edge takes it to 40 px), the
+cards lose their deep padding and fixed heights and hug the words, the reference line and the gaps between the
+languages tighten, and the text may run from 48 px below the top to 48 px above the bottom. In two languages the
+Ink & stone look went from 85 px to 101 px for John 3:16, the cards from about 72 px to 88–97 px.
 
 **Scroll** (also under Verses on screen) puts the whole passage in one long column at the standard size, each verse
 with its translation right under it. **Next** glides the column up so the verse being read sits near the top of the

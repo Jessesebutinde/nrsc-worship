@@ -397,6 +397,10 @@ function Verses({ slide, field, marks, cur = 0, reveal = false, dropCap = false,
 // Room for the text in each scripture look (the environment's frame or heading takes the rest),
 // and how far fill mode may grow it (narrow columns and cards grow less, so they stay elegant).
 const SCRIP_H = { kitenge: 760, manuscript: 640, scroll: 700, parchment: 760 };
+// Many verses (or one whole verse) fill the screen: a slim 48 px top and bottom, and the looks with
+// bands, headings or a ribbon keep only what those need.
+const MANY_H = H - 2 * 48;
+const MANY_LOOK_H = { kitenge: 820, manuscript: 780, scroll: 780, parchment: 880 };
 const SCRIP_MAX = { parchment: 1.4, blueprint: 1.3, scroll: 1.4 };
 const CARD_MAX = 1.3;
 // Card looks with one card per language, and the cards with their own way of showing the reference.
@@ -416,7 +420,7 @@ function ScriptureFrame({ item, index, lt, fill, textW, fontsReady, marks, look 
   const scroll = Boolean(item.scroll);
   const col = useRef(null);
   const placed = useRef(false);
-  const availH = (SCRIP_H[look] || SAFE_H * (many ? 0.95 : 0.92)) * (look === 'scroll' && textW < SAFE_W - 200 ? 0.8 : 1);
+  const availH = (many ? MANY_LOOK_H[look] || MANY_H : SCRIP_H[look] || SAFE_H * 0.92) * (look === 'scroll' && textW < SAFE_W - 200 ? 0.8 : 1);
   // Many verses: as large as the screen allows for this much text, smaller or bigger than standard.
   // Text size: a scrolling column is simply scaled; standard slides (laid out for this size) grow
   // within a range scaled with it; many verses are already as large as they can be.

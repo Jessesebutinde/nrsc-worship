@@ -184,3 +184,21 @@ test('one whole verse a screen, never split, grown to fit', async () => {
   assert.ok(std.slides.length >= 2, 'the standard size splits a long verse');
   assert.equal(one.slides.length, 1, 'one whole verse');
 });
+
+test('one language at a time: each verse is two screens, the other language named in its reference', async () => {
+  assert.ok(isMany('solo'));
+  const it = await passageItem({ ref: parseRef('Yokaana 3:16-17'), primaryId: 'lug68', secondaryId: 'kjv', perScreen: 'solo', fetchImpl: fetchBook });
+  assert.equal(it.many, true);
+  assert.equal(it.perScreen, 'solo');
+  assert.equal(it.slides.length, 4);
+  assert.match(it.slides[0].verses[0].primary, /^Kubanga Katonda/);
+  assert.equal(it.slides[0].secondary, '');
+  assert.match(it.slides[1].verses[0].primary, /^For God so loved/, 'the other language as the main text');
+  assert.equal(it.slides[1].secondary, '');
+  assert.equal(it.slides[1].ref, 'Yokaana 3 : 16 · John 3 : 16 · KJV');
+  assert.equal(it.slides[1].solo, 's');
+  assert.equal(it.slides[0].solo, undefined);
+  assert.ok(it.slides.every((s) => s.verses.length === 1 && s.verses[0].part === ''), 'never split');
+  const one = await passageItem({ ref: parseRef('Yokaana 3:16'), primaryId: 'lug68', secondaryId: '', perScreen: 'solo', fetchImpl: fetchBook });
+  assert.equal(one.slides.length, 1, 'one language only: one screen');
+});
