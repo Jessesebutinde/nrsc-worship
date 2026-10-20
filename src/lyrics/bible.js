@@ -324,15 +324,18 @@ const fitsBoth = (p, s, fit) =>
 export function splitVerse(primary, secondary, fit = CHAR_FIT) {
   const p = primary || '';
   const s = secondary || '';
-  for (let k = 1; k <= 12; k++) {
+  // Very big text may want a verse in many small parts; past 26 the parts run out of letters, so
+  // the last try is kept as it is rather than giving the whole verse back.
+  let last = null;
+  for (let k = 1; k <= 26; k++) {
     const ps = p ? splitAtPauses(p, k) : [];
     const ss = s ? splitAtPauses(s, k) : [];
     const n = Math.max(ps.length, ss.length, 1);
     const ok = Array.from({ length: n }, (_, i) => fitsBoth(ps[i] || '', ss[i] || '', fit)).every(Boolean);
-    if (ok || n < k)
-      return Array.from({ length: n }, (_, i) => ({ part: n > 1 ? String.fromCharCode(97 + i) : '', primary: ps[i] || '', secondary: ss[i] || '' }));
+    last = Array.from({ length: n }, (_, i) => ({ part: n > 1 ? String.fromCharCode(97 + i) : '', primary: ps[i] || '', secondary: ss[i] || '' }));
+    if (ok || n < k) return last;
   }
-  return [{ part: '', primary: p, secondary: s }];
+  return last || [{ part: '', primary: p, secondary: s }];
 }
 
 const wordCount = (t) => String(t || '').split(/\s+/).filter(Boolean).length;

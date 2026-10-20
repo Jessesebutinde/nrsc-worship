@@ -181,8 +181,8 @@ export function slideWords(item, slide) {
 }
 
 // Text size steps (the operator's "Larger" / "Smaller").
-export const TEXT_SIZES = [0.85, 1, 1.2, 1.4, 1.7];
-export const TEXT_SIZE_NAMES = { 0.85: 'Smaller', 1: 'Standard', 1.2: 'Large', 1.4: 'Larger', 1.7: 'Huge' };
+export const TEXT_SIZES = [0.85, 1, 1.2, 1.4, 1.7, 2, 2.4, 2.8];
+export const TEXT_SIZE_NAMES = { 0.85: 'Smaller', 1: 'Standard', 1.2: 'Large', 1.4: 'Larger', 1.7: 'Huge', 2: 'Giant', 2.4: 'Massive', 2.8: 'Max' };
 /** The next size step up (dir 1) or down (dir -1) from `v`. */
 export function stepSize(v, dir) {
   const cur = TEXT_SIZES.reduce((best, x) => (Math.abs(x - (Number(v) || 1)) < Math.abs(best - (Number(v) || 1)) ? x : best), 1);
