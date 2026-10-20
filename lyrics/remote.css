@@ -2046,3 +2046,25 @@ button.link {
   align-items: center;
   gap: 8px;
 }
+.seg.count input[type='number'] {
+  width: 64px;
+  min-height: 0;
+  height: var(--ctl-h);
+  padding: 0 6px;
+  text-align: center;
+  border: 0;
+  border-left: 1px solid var(--btn-line);
+  border-right: 1px solid var(--btn-line);
+  border-radius: 0;
+  background: var(--field);
+  color: var(--text);
+  font: inherit;
+}
+.seg.count > .muted {
+  padding: 0 10px 0 8px;
+  align-self: center;
+}
+.orbit-read .labelled {
+  flex-wrap: wrap;
+  gap: 6px;
+}

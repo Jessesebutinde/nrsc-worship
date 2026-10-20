@@ -203,7 +203,16 @@ export const marginOf = (state) => (state && MARGINS[state.sMargin] ? state.sMar
 // screen, shrunk as far as it needs).
 export const SPLITS = { more: 'More', standard: 'Standard', less: 'Less', never: 'Never' };
 export const SPLIT_SCALE = { more: 0.75, standard: 1, less: 1.5, never: Infinity };
-export const splitOf = (state) => (state && SPLITS[state.sSplit] ? state.sSplit : 'standard');
+// Or a limit of the operator's own: 'w20' = at most 20 words a screen, 'l3' = at most 3 lines.
+const SPLIT_LIMIT = /^([wl])([1-9]\d{0,2})$/;
+export const validSplit = (k) => (SPLITS[k] || SPLIT_LIMIT.test(String(k || '')) ? String(k) : 'standard');
+export const splitOf = (state) => validSplit(state && state.sSplit);
+/** { mode: 'more' | 'standard' | 'less' | 'never' | 'words' | 'lines', n } */
+export function parseSplit(k) {
+  const m = SPLIT_LIMIT.exec(String(k || ''));
+  if (m) return { mode: m[1] === 'w' ? 'words' : 'lines', n: Number(m[2]) };
+  return { mode: SPLITS[k] ? k : 'standard', n: 0 };
+}
 
 export const PLAY_LEVELS = { low: 'Gentle', mid: 'Lively', high: 'Playful', wild: 'Wild' };
 export const PLACES = { center: 'Centre', alternate: 'Alternate', lines: 'Left / right', random: 'Random' };

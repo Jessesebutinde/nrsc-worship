@@ -3980,7 +3980,7 @@
 }
 .sedge .lc .card,
 .sedge .lc2 .card {
-  --cpy: 36px !important;
+  --cpy: 14px !important;
   --cpx: 40px !important;
   --crad: 10px;
   border-radius: 10px !important;
@@ -3988,12 +3988,19 @@
   min-height: 0 !important;
 }
 .sedge .l-royal .card {
-  --cpy: 56px !important;
+  --cpy: 40px !important;
   --cpx: 64px !important;
 }
 .sedge .l-cathedral .card {
-  --cpy: 64px !important;
+  --cpy: 56px !important;
   --cpx: 72px !important;
+}
+.sedge .scrip .ref,
+.sedge .sref {
+  margin-bottom: calc(10px * clamp(0.5, var(--fs, 1), 1));
+}
+.sedge .scrip .sec {
+  margin-top: calc(14px * clamp(0.4, var(--fs, 1), 1));
 }
 .sedge .l-bookmark .card {
   --cpx: 110px !important;

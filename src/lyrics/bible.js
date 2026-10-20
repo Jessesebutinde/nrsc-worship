@@ -7,7 +7,7 @@
 import { bookByCode, bookByNumber, findBook, formatRef } from './books.js';
 import { idbGet, idbSet } from './idb.js';
 import { onlineConfig, saveOnlineConfig, isOnlineId, fetchChapter } from './online.js';
-import { SPLIT_SCALE } from './state.js';
+import { SPLIT_SCALE, validSplit, parseSplit } from './state.js';
 import { splitAtPauses } from './split.js';
 
 export const BUILTIN_VERSIONS = [
@@ -335,6 +335,26 @@ export function splitVerse(primary, secondary, fit = CHAR_FIT) {
   return [{ part: '', primary: p, secondary: s }];
 }
 
+const wordCount = (t) => String(t || '').split(/\s+/).filter(Boolean).length;
+
+/**
+ * Splits one verse at natural pauses into the fewest parts of at most `n` words each (counted in
+ * the language on top; the other follows the same number of parts).
+ */
+export function splitByWords(primary, secondary, n) {
+  const p = primary || '';
+  const s = secondary || '';
+  const lead = p ? 'p' : 's';
+  for (let k = 1; k <= 24; k++) {
+    const ps = p ? splitAtPauses(p, k) : [];
+    const ss = s ? splitAtPauses(s, k) : [];
+    const m = Math.max(ps.length, ss.length, 1);
+    const ok = (lead === 'p' ? ps : ss).every((t) => wordCount(t) <= n);
+    if (ok || m < k) return Array.from({ length: m }, (_, i) => ({ part: m > 1 ? String.fromCharCode(97 + i) : '', primary: ps[i] || '', secondary: ss[i] || '' }));
+  }
+  return [{ part: '', primary: p, secondary: s }];
+}
+
 const joinSegs = (segs, key) =>
   segs
     .filter((g) => g[key])
@@ -363,16 +383,21 @@ export function paginate(verses, { book, chapter, fit = CHAR_FIT, flow = true, p
   const lg = primaryLang === 'lg' || secondaryLang === 'lg';
   const en = primaryLang === 'en' || secondaryLang === 'en' || !lg;
   const langs = { lg, en };
-  // `split` scales how much a screen may hold before a verse is broken up (the screen shrinks the
-  // words to fit); 'never' (Infinity) keeps every verse whole while screens still share at the standard budget.
-  const fitSplit = scaleFit(fit, split);
+  // `split` is how much a screen may hold before a verse is broken up (the screen shrinks or grows
+  // the words to fit): a scale of the standard budget, 'never' (Infinity: every verse whole while
+  // screens still share at the standard budget), { words: n } or { lines: n }.
+  const words = split && typeof split === 'object' && split.words > 0 ? split.words : 0;
+  const lines = split && typeof split === 'object' && split.lines > 0 ? split.lines : 0;
+  const fitSplit = lines ? { primary: { width: fit.primary.width, lines }, secondary: { width: fit.secondary.width, lines } } : scaleFit(fit, words ? 1 : split);
   const fitFlow = split === Infinity ? fit : fitSplit;
+  const parts = (v) => (words ? splitByWords(v.primary, v.secondary, words) : splitVerse(v.primary, v.secondary, fitSplit));
+  const fitsOn = (segs) => (words ? wordCount(joinSegs(segs, 'primary') || joinSegs(segs, 'secondary')) <= words : fitsBoth(joinSegs(segs, 'primary'), joinSegs(segs, 'secondary'), fitFlow));
   const slides = [];
   let cur = [];
   for (const v of verses) {
-    for (const part of splitVerse(v.primary, v.secondary, fitSplit)) {
+    for (const part of parts(v)) {
       const seg = { verse: v.verse, ...part };
-      if (flow && cur.length && fitsBoth(joinSegs([...cur, seg], 'primary'), joinSegs([...cur, seg], 'secondary'), fitFlow)) {
+      if (flow && cur.length && fitsOn([...cur, seg])) {
         cur.push(seg);
         continue;
       }
@@ -441,6 +466,14 @@ export function groupVerses(verses, perScreen, { book, chapter, primaryLang = 'l
  * size), 'verse' (one verse per slide at the fixed size), a number of verses or 'all' ("many verses":
  * whole verses together, the text as large as the screen allows).
  */
+/** The split key as paginate takes it: a scale, Infinity, { words } or { lines }. */
+export function splitArg(key) {
+  const k = validSplit(key);
+  if (SPLIT_SCALE[k] != null) return SPLIT_SCALE[k];
+  const { mode, n } = parseSplit(k);
+  return mode === 'words' ? { words: n } : { lines: n };
+}
+
 export async function passageItem({ ref, primaryId, secondaryId, flow = true, perScreen = 'auto', fit = CHAR_FIT, split = 'standard', base, fetchImpl, config, store }) {
   const { book, chapter } = ref;
   const pv = versionById(primaryId, config);
@@ -466,9 +499,9 @@ export async function passageItem({ ref, primaryId, secondaryId, flow = true, pe
     ? groupVerses(verses, verses.length, { book, chapter, ...langs })
     : many
       ? groupVerses(verses, perScreen, { book, chapter, ...langs })
-      : paginate(verses, { book, chapter, fit, flow, split: SPLIT_SCALE[split] || 1, ...langs });
+      : paginate(verses, { book, chapter, fit, flow, split: splitArg(split), ...langs });
   const range = from === to ? `${from}` : `${from}-${to}`;
-  const splitKey = SPLIT_SCALE[split] ? split : 'standard';
+  const splitKey = validSplit(split);
   return {
     kind: 'scripture',
     id: `${book.code}.${chapter}.${range}.${primaryId}.${secondaryId || ''}.${scroll ? 'scroll' : many ? `m${perScreen}` : flow ? 'f' : 'v'}${!many && !scroll && splitKey !== 'standard' ? `-${splitKey}` : ''}`,

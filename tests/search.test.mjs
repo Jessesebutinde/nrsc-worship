@@ -236,3 +236,34 @@ test('how much a long verse is broken up: more, the standard, less, or never', a
   assert.equal(splitOf({ sSplit: 'less' }), 'less');
   assert.equal(splitOf({}), 'standard');
 });
+
+test('a limit of so many words or lines a screen, beyond which the verse breaks up', async () => {
+  const { splitByWords, splitArg } = await import('../src/lyrics/bible.js');
+  const { parseSplit, validSplit } = await import('../src/lyrics/state.js');
+  assert.deepEqual(parseSplit('w20'), { mode: 'words', n: 20 });
+  assert.deepEqual(parseSplit('l3'), { mode: 'lines', n: 3 });
+  assert.deepEqual(parseSplit('less'), { mode: 'less', n: 0 });
+  assert.equal(validSplit('w0'), 'standard');
+  assert.equal(validSplit('w1000'), 'standard');
+  assert.deepEqual(splitArg('w12'), { words: 12 });
+  assert.deepEqual(splitArg('l2'), { lines: 2 });
+  assert.equal(splitArg('never'), Infinity);
+  const words = (t) => t.split(/\s+/).filter(Boolean).length;
+  const parts = splitByWords('one two three, four five six. seven eight nine, ten eleven twelve', 'a b c, d e f. g h i, j k l', 6);
+  assert.ok(parts.length >= 2 && parts.every((x) => words(x.primary) <= 6), JSON.stringify(parts));
+  assert.equal(parts.length, new Set(parts.map((x) => x.part)).size, 'parts a, b, c…');
+  assert.deepEqual(splitByWords('short verse', 'kurz', 20), [{ part: '', primary: 'short verse', secondary: 'kurz' }]);
+  const jn = (split) => passageItem({ ref: parseRef('Yokaana 3:16'), primaryId: 'lug68', secondaryId: 'kjv', perScreen: 'verse', split, fetchImpl: fetchBook });
+  const w12 = await jn('w12');
+  assert.ok(w12.slides.length >= 2);
+  assert.ok(w12.slides.every((s) => words(s.verses[0].primary) <= 12), 'at most 12 words of the language on top');
+  assert.equal(w12.split, 'w12');
+  assert.equal((await jn('w500')).slides.length, 1, 'a limit beyond the verse: whole');
+  const std = await jn('standard');
+  assert.ok((await jn('l1')).slides.length > std.slides.length, 'one line a screen breaks it up more');
+  assert.equal((await jn('l12')).slides.length, 1, 'twelve lines a screen: whole');
+  // Flowing on: screens hold at most the limit of words.
+  const flow = await passageItem({ ref: parseRef('Zabbuli 23'), primaryId: 'lug68', secondaryId: 'kjv', perScreen: 'auto', split: 'w30', fetchImpl: fetchBook });
+  assert.ok(flow.slides.every((s) => words(s.primary) <= 30), 'at most 30 words a screen');
+  assert.ok(flow.slides.some((s) => s.verses.length > 1), 'short verses still share a screen');
+});

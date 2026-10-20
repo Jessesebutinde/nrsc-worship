@@ -252,10 +252,18 @@ whole-verse layouts included; the stream's lower third and the title card are un
 edges of the picture (overscan) are why the margin exists, so go back to the look's own if the hall's TV loses the
 first letters.
 
+With Slim or None the room top to bottom follows too: the words may run from 40 px (Slim) or 12 px (None) below the
+top to the same above the bottom, and with None a card keeps only a thin 14 px of padding above and below the words
+(looks with bands, a heading or a ribbon keep what those need).
+
 **Break up a verse** (beside it) is how much a long verse is broken up across screens in the standard layouts
 (Same size and 1 verse): **More**, **Standard**, **Less** (a screen may hold half as much again, and the words shrink
-a little when they must) or **Never** (every verse stays whole on one screen, shrunk as far as it needs; short verses
-still share a screen). The passage is laid out again at once, staying on the verse being read.
+a little when they must), **Never** (every verse stays whole on one screen, shrunk as far as it needs; short verses
+still share a screen), or a limit of your own: **Words** (at most so many words of the language on top a screen,
+3 to 400, in steps of 5) or **Lines** (at most so many lines, 1 to 12). A verse longer than the limit is broken at
+its natural pauses into the fewest parts that keep under it, the other language following the same parts, and
+with Same size the screens fill up to the limit. The passage is laid out again at once, staying on the verse being
+read, and the TV grows or shrinks the words to fit.
 
 ## Follow the singer: J and F
 
