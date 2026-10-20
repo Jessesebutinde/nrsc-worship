@@ -230,9 +230,10 @@ song or passage is shown.
 
 ## Text size
 
-Under the live slide, **A− / A+** sets the text size for what is up, lyrics and scripture separately: **Smaller,
-Standard, Large, Larger, Huge** (tap the size name to go back to Standard). The **+** and **−** keys do the same on
-the laptop. Everything stays on the screen, nothing is cut off:
+Under the live slide (and in Orbit's reading panel), **A− / A+** sets the text size for what is up, lyrics and
+scripture separately: **Smaller, Standard, Large, Larger, Huge, Giant, Massive, Max** (0.85 to 2.8 times the
+standard; tap the size name to go back to Standard). The **+** and **−** keys do the same on the laptop. Everything
+stays on the screen, nothing is cut off:
 
 - **Lyrics** already grow to the width of the screen, so Large and up let a long line wrap onto another line at a
   bigger size (Amazing Grace: 127 px at Standard, 153 Large, 178 Larger, 185 Huge), as far as the height allows.

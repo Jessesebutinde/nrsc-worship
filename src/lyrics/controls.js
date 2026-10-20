@@ -2,7 +2,17 @@
 // much a long verse is broken up (a level, or a limit of so many words or lines a screen).
 
 import { html, useState } from '../ui/h.js';
-import { MARGINS, marginOf, SPLITS, splitOf, parseSplit } from './state.js';
+import { MARGINS, marginOf, SPLITS, splitOf, parseSplit, TEXT_SIZES, TEXT_SIZE_NAMES, stepSize } from './state.js';
+
+/** A− / A+ through the text sizes, the size's name between them (tap it to go back to Standard). */
+export function SizeControl({ value, onChange, label = 'Text size' }) {
+  const v = TEXT_SIZES.includes(Number(value)) ? Number(value) : 1;
+  return html`<span class="seg size-ctl" role="group" aria-label=${label}>
+    <button onClick=${() => onChange(stepSize(v, -1))} disabled=${v === TEXT_SIZES[0]} title="Smaller (−)" aria-label="Smaller">A−</button>
+    <button class=${v !== 1 ? 'on' : ''} onClick=${() => onChange(1)} title="Back to the standard size">${TEXT_SIZE_NAMES[v]}</button>
+    <button onClick=${() => onChange(stepSize(v, 1))} disabled=${v === TEXT_SIZES[TEXT_SIZES.length - 1]} title="Larger (+)" aria-label="Larger">A+</button>
+  </span>`;
+}
 
 export function MarginControl({ state, setLook }) {
   return html`<span class="labelled" title="The border round the words: the look's own, a slim 40 px, or none (12 px all round: the words run to the edge of the picture and a card fills the screen)">

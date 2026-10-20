@@ -9,7 +9,7 @@
 import { html, useState, useEffect, useRef, useLayoutEffect } from '../ui/h.js';
 import { Fit, Stage } from './stage.js';
 import { stepsOf, mediaItem, SCRIPTURE_INFO, scriptureLookOf, PRESET_INFO, lookOf, marginOf, splitOf } from './state.js';
-import { MarginControl, SplitControl } from './controls.js';
+import { MarginControl, SplitControl, SizeControl } from './controls.js';
 import { BOOKS, parseRef, formatRef, bookByCode } from './books.js';
 import { loadChapter, loadBook, passageItem, versionById } from './bible.js';
 import { locateVerse, verseAt, peekOf, matchBooks, BOOK_GROUPS, perScreenOf } from './calendar.js';
@@ -373,6 +373,7 @@ function ReadingPanel({ state, act, prefs, setPrefs, showRef, jumpTo, setLook, r
       </span>
     </div>
     <div class="orbit-read-row">
+      <span class="labelled"><span class="muted small">Text size</span><${SizeControl} value=${state.sSize} onChange=${(v) => setLook({ sSize: v })} label="Scripture text size" /></span>
       <${MarginControl} state=${state} setLook=${setLook} />
     </div>
     <div class="orbit-read-row">

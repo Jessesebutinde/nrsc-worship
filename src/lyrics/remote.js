@@ -6,7 +6,7 @@ import { html, render, useState, useEffect, useRef, useMemo } from '../ui/h.js';
 import { Fit, Stage } from './stage.js';
 import { Link, normalizeCode } from './link.js';
 import { ROOM } from './config.js';
-import { emptyState, reduce, songItem, mediaItem, BACKGROUNDS, BACKGROUND_INFO, PRESETS, PRESET_INFO, STREAM_LAYOUTS, ILLUSTRATION_SIZES, MARK_COLORS, PLAY_LEVELS, PLACES, SCRIPTURE_LOOKS, SCRIPTURE_INFO, SCRIPTURE_GROUPS, SCRIPTURE_MOTIONS, TEXT_SIZES, TEXT_SIZE_NAMES, stepSize, BALANCE_STEPS, BALANCE_NAMES, scriptureLookOf, stepsOf, lookOf, slideWords, markKey, marginOf, splitOf } from './state.js';
+import { emptyState, reduce, songItem, mediaItem, BACKGROUNDS, BACKGROUND_INFO, PRESETS, PRESET_INFO, STREAM_LAYOUTS, ILLUSTRATION_SIZES, MARK_COLORS, PLAY_LEVELS, PLACES, SCRIPTURE_LOOKS, SCRIPTURE_INFO, SCRIPTURE_GROUPS, SCRIPTURE_MOTIONS, stepSize, BALANCE_STEPS, BALANCE_NAMES, scriptureLookOf, stepsOf, lookOf, slideWords, markKey, marginOf, splitOf } from './state.js';
 import { loadSongs, saveSongs, visibleSongs, upsertSong, removeSong, searchSongs, mergeSongs, exportLibrary, importLibrary } from './library.js';
 import { parseRef, bookByCode, BOOKS, formatRef } from './books.js';
 import { VerseIndex, fillIndex, highlight } from './search.js';
@@ -15,7 +15,7 @@ import { Listener, canListen, SPEECH_LANGS } from './voice.js';
 import { readFollowKeys, saveFollowKeys, followCommand, validKey, FOLLOW_KEYS, FOLLOW_KEY_NAMES } from './keys.js';
 import { allVersions, importVersion, removeVersion, passageItem, BUILTIN_VERSIONS, loadBook, versionById, isMany } from './bible.js';
 import { onlineConfig, saveOnlineConfig, listBibles } from './online.js';
-import { MarginControl, SplitControl } from './controls.js';
+import { MarginControl, SplitControl, SizeControl } from './controls.js';
 import { shareConfig, saveShareConfig, isSharing, syncSongs, connectShare, setupLink, readSetupLink, TOKEN_URL } from './share.js';
 import { relayConfig, cloudConfigured, loadSession, captureSession, sendMagicLink, signOut, pullSongs, pushSongs } from './cloud.js';
 import { canCast, castTo, displayPermission, extraDisplays, openOn, displayOf, platform } from './cast.js';
@@ -631,15 +631,6 @@ function Lazy({ children, class: cls }) {
 }
 
 /** Text size: smaller / the size name / larger. */
-function SizeControl({ value, onChange, label = 'Text size' }) {
-  const v = TEXT_SIZES.includes(Number(value)) ? Number(value) : 1;
-  return html`<span class="seg size-ctl" role="group" aria-label=${label}>
-    <button onClick=${() => onChange(stepSize(v, -1))} disabled=${v === TEXT_SIZES[0]} title="Smaller (−)" aria-label="Smaller">A−</button>
-    <button class=${v !== 1 ? 'on' : ''} onClick=${() => onChange(1)} title="Back to the standard size">${TEXT_SIZE_NAMES[v]}</button>
-    <button onClick=${() => onChange(stepSize(v, 1))} disabled=${v === TEXT_SIZES[TEXT_SIZES.length - 1]} title="Larger (+)" aria-label="Larger">A+</button>
-  </span>`;
-}
-
 /** How big the language below is next to the one on top. */
 function BalanceControl({ value, onChange }) {
   const v = BALANCE_STEPS.includes(Number(value)) ? Number(value) : 1;
