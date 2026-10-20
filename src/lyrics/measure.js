@@ -101,9 +101,13 @@ export function scriptureFit(look = 'ink', font = 'serif', size = 1, { balance =
   const sFam = f.sSans ? 'Montserrat' : fam;
   // A drop cap takes the first letters' room on the first lines.
   const pw = f.w - (f.cap || 0);
-  // Room for the quotation marks and the dots of a verse that goes on.
+  // Room for the quotation marks and the dots of a verse that goes on. Bigger text: each line is
+  // k times taller, so a screen holds that many fewer lines (else the screen only shrinks it back).
+  // The language below gives up a line first (floor), the one on top last (round), so the steps
+  // between the sizes stay distinct.
+  const lk = (n, round) => (k > 1 ? Math.max(1, round ? Math.round(n / k) : Math.floor(n / k)) : n);
   return {
-    primary: { width: (t) => (textWidth(`“…${t}…”`, f.p[0], f.p[1], fam) * k) / pw, lines: f.p[2] },
-    secondary: { width: (t) => (textWidth(`“…${t}…”`, f.s[0], f.s[1], sFam) * k * b) / (f.sw || f.w), lines: b > 1 ? Math.max(2, Math.round(f.s[2] / b)) : f.s[2] },
+    primary: { width: (t) => (textWidth(`“…${t}…”`, f.p[0], f.p[1], fam) * k) / pw, lines: lk(f.p[2], true) },
+    secondary: { width: (t) => (textWidth(`“…${t}…”`, f.s[0], f.s[1], sFam) * k * b) / (f.sw || f.w), lines: b > 1 ? Math.max(k > 1 ? 1 : 2, Math.round(lk(f.s[2], false) / b)) : lk(f.s[2], false) },
   };
 }
