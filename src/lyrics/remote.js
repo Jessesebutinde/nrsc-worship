@@ -6,7 +6,7 @@ import { html, render, useState, useEffect, useRef, useMemo } from '../ui/h.js';
 import { Fit, Stage } from './stage.js';
 import { Link, normalizeCode } from './link.js';
 import { ROOM } from './config.js';
-import { emptyState, reduce, songItem, mediaItem, BACKGROUNDS, BACKGROUND_INFO, PRESETS, PRESET_INFO, STREAM_LAYOUTS, ILLUSTRATION_SIZES, MARK_COLORS, PLAY_LEVELS, PLACES, SCRIPTURE_LOOKS, SCRIPTURE_INFO, SCRIPTURE_GROUPS, SCRIPTURE_MOTIONS, TEXT_SIZES, TEXT_SIZE_NAMES, stepSize, BALANCE_STEPS, BALANCE_NAMES, scriptureLookOf, stepsOf, lookOf, slideWords, markKey, MARGINS, marginOf, SPLITS, splitOf } from './state.js';
+import { emptyState, reduce, songItem, mediaItem, BACKGROUNDS, BACKGROUND_INFO, PRESETS, PRESET_INFO, STREAM_LAYOUTS, ILLUSTRATION_SIZES, MARK_COLORS, PLAY_LEVELS, PLACES, SCRIPTURE_LOOKS, SCRIPTURE_INFO, SCRIPTURE_GROUPS, SCRIPTURE_MOTIONS, TEXT_SIZES, TEXT_SIZE_NAMES, stepSize, BALANCE_STEPS, BALANCE_NAMES, scriptureLookOf, stepsOf, lookOf, slideWords, markKey, marginOf, splitOf } from './state.js';
 import { loadSongs, saveSongs, visibleSongs, upsertSong, removeSong, searchSongs, mergeSongs, exportLibrary, importLibrary } from './library.js';
 import { parseRef, bookByCode, BOOKS, formatRef } from './books.js';
 import { VerseIndex, fillIndex, highlight } from './search.js';
@@ -15,6 +15,7 @@ import { Listener, canListen, SPEECH_LANGS } from './voice.js';
 import { readFollowKeys, saveFollowKeys, followCommand, validKey, FOLLOW_KEYS, FOLLOW_KEY_NAMES } from './keys.js';
 import { allVersions, importVersion, removeVersion, passageItem, BUILTIN_VERSIONS, loadBook, versionById, isMany } from './bible.js';
 import { onlineConfig, saveOnlineConfig, listBibles } from './online.js';
+import { MarginControl, SplitControl } from './controls.js';
 import { shareConfig, saveShareConfig, isSharing, syncSongs, connectShare, setupLink, readSetupLink, TOKEN_URL } from './share.js';
 import { relayConfig, cloudConfigured, loadSession, captureSession, sendMagicLink, signOut, pullSongs, pushSongs } from './cloud.js';
 import { canCast, castTo, displayPermission, extraDisplays, openOn, displayOf, platform } from './cast.js';
@@ -715,18 +716,8 @@ function ScriptureControls({ state, act, setLook, hints = false }) {
         </span>
         <${SizeControl} value=${state.sSize} onChange=${(v) => setLook({ sSize: v })} label="Scripture text size" />
         <${BalanceControl} value=${state.sBalance} onChange=${(v) => setLook({ sBalance: v })} />
-        <span class="labelled" title="The border round the words: the look's own, a slim 40 px, or none (12 px: the words run to the edge of the picture and a card fills the screen)">
-          <span class="muted small">Margin</span>
-          <span class="seg" role="group" aria-label="Margin">
-            ${Object.entries(MARGINS).map(([k, l]) => html`<button class=${marginOf(state) === k ? 'on' : ''} onClick=${() => setLook({ sMargin: k, sWide: k === 'slim' })}>${l}</button>`)}
-          </span>
-        </span>
-        <span class="labelled" title="How much a long verse is broken up across screens: more than the standard, the standard, less (the words shrink a little to fit), or never (a whole verse on one screen, shrunk as far as it needs)">
-          <span class="muted small">Break up a verse</span>
-          <span class="seg" role="group" aria-label="Break up a verse">
-            ${Object.entries(SPLITS).map(([k, l]) => html`<button class=${splitOf(state) === k ? 'on' : ''} onClick=${() => setLook({ sSplit: k })}>${l}</button>`)}
-          </span>
-        </span>
+        <${MarginControl} state=${state} setLook=${setLook} />
+        <${SplitControl} state=${state} setLook=${setLook} />
         <span class="seg" role="group" aria-label="Reading">
           <button class=${state.reveal !== false ? 'on' : ''} onClick=${() => act({ type: 'set', patch: { reveal: state.reveal === false } })} title="Next brings the next verse; verses already read dim">Verse by verse</button>
           <button class=${state.progress !== false ? 'on' : ''} onClick=${() => act({ type: 'set', patch: { progress: state.progress === false } })} title="A thin bar along the bottom shows how far through the passage you are">Progress bar</button>

@@ -409,7 +409,7 @@ const TWO_CARDS = new Set(['twin', 'stack', 'bible']);
 /** The three dots that say the passage goes on. */
 const Dots = ({ cls = 'smore' }) => html`<div class=${cls} aria-label="continues"><i></i><i></i><i></i></div>`;
 
-function ScriptureFrame({ item, index, lt, fill, textW, fontsReady, marks, look = 'ink', sub = 0, reveal = false, quotes = true, size = 1, balance = 1 }) {
+function ScriptureFrame({ item, index, lt, fill, textW, fontsReady, marks, look = 'ink', sub = 0, reveal = false, quotes = true, size = 1, balance = 1, margin = 'look' }) {
   const s = item.slides[index];
   const box = useRef(null);
   const steps = s && s.verses ? s.verses.length : 1;
@@ -422,7 +422,11 @@ function ScriptureFrame({ item, index, lt, fill, textW, fontsReady, marks, look 
   const loose = !many && !scroll && Boolean(item.split) && item.split !== 'standard';
   const col = useRef(null);
   const placed = useRef(false);
-  const availH = (many ? MANY_LOOK_H[look] || MANY_H : SCRIP_H[look] || SAFE_H * 0.92) * (look === 'scroll' && textW < SAFE_W - 200 ? 0.8 : 1);
+  // The room top to bottom: the look's own, or, with a slim or no margin, the same slim border all
+  // round (looks with bands, a heading or a ribbon keep what those need).
+  const vpad = margin === 'none' ? 12 : margin === 'slim' ? 40 : 0;
+  const own = many ? MANY_LOOK_H[look] || MANY_H : SCRIP_H[look] || SAFE_H * 0.92;
+  const availH = (vpad ? Math.min(H - 2 * vpad, MANY_LOOK_H[look] ? MANY_LOOK_H[look] + 60 : Infinity) : own) * (look === 'scroll' && textW < SAFE_W - 200 ? 0.8 : 1);
   // Many verses: as large as the screen allows for this much text, smaller or bigger than standard.
   // Text size: a scrolling column is simply scaled; standard slides (laid out for this size) grow
   // within a range scaled with it; many verses are already as large as they can be.
@@ -437,6 +441,7 @@ function ScriptureFrame({ item, index, lt, fill, textW, fontsReady, marks, look 
     size,
     balance,
     loose,
+    margin,
     s && s.ref,
     s && s.primary,
     s && s.secondary,
@@ -906,7 +911,7 @@ export function Stage({ state, out = 'preview', layout = 'full', background = 'a
         ${kind === 'song' &&
         html`<${SongFrame} item=${data.item} index=${data.index} lt=${lowerThird} fill=${fill} caps=${st.caps !== false} preset=${data.f.preset} textW=${textW} fontsReady=${fontsReady} marks=${marksFor(st, data.item, data.index)} hero=${Boolean(st.hero)} place=${st.place || 'center'} mix=${Boolean(st.mixFonts)} size=${sizeOf(st.lSize)} wc=${!leaving && data.index === (st.index || 0) && Array.isArray(st.wc) && (out !== 'stream' || st.followStream !== false) ? st.wc : null} />`}
         ${kind === 'scripture' &&
-        html`<${ScriptureFrame} item=${data.item} index=${data.index} lt=${lowerThird} fill=${fill} textW=${textW} fontsReady=${fontsReady} marks=${marksFor(st, data.item, data.index)} look=${sLook} sub=${data.index === (st.index || 0) ? st.sub || 0 : steps} reveal=${st.reveal !== false} quotes=${st.quotes !== false} size=${sizeOf(st.sSize)} balance=${Number(st.sBalance) > 0.3 && Number(st.sBalance) < 2 ? Number(st.sBalance) : 1} />`}
+        html`<${ScriptureFrame} item=${data.item} index=${data.index} lt=${lowerThird} fill=${fill} textW=${textW} fontsReady=${fontsReady} marks=${marksFor(st, data.item, data.index)} look=${sLook} margin=${margin} sub=${data.index === (st.index || 0) ? st.sub || 0 : steps} reveal=${st.reveal !== false} quotes=${st.quotes !== false} size=${sizeOf(st.sSize)} balance=${Number(st.sBalance) > 0.3 && Number(st.sBalance) < 2 ? Number(st.sBalance) : 1} />`}
         ${kind === 'media' && html`<${MediaFrame} item=${data.item} index=${data.index} live=${out !== 'preview' && !leaving} />`}
         ${kind === 'board' && html`<${BoardFrame} item=${data.item} sub=${st.sub || 0} reveal=${st.reveal !== false} lt=${lowerThird} still=${still === true} />`}
         ${kind === 'title' && html`<${TitleFrame} item=${data.item} />`}

@@ -8,7 +8,8 @@
 
 import { html, useState, useEffect, useRef, useLayoutEffect } from '../ui/h.js';
 import { Fit, Stage } from './stage.js';
-import { stepsOf, mediaItem, SCRIPTURE_INFO, scriptureLookOf, PRESET_INFO, lookOf, MARGINS, marginOf, SPLITS, splitOf } from './state.js';
+import { stepsOf, mediaItem, SCRIPTURE_INFO, scriptureLookOf, PRESET_INFO, lookOf, marginOf, splitOf } from './state.js';
+import { MarginControl, SplitControl } from './controls.js';
 import { BOOKS, parseRef, formatRef, bookByCode } from './books.js';
 import { loadChapter, loadBook, passageItem, versionById } from './bible.js';
 import { locateVerse, verseAt, peekOf, matchBooks, BOOK_GROUPS, perScreenOf } from './calendar.js';
@@ -372,14 +373,10 @@ function ReadingPanel({ state, act, prefs, setPrefs, showRef, jumpTo, setLook, r
       </span>
     </div>
     <div class="orbit-read-row">
-      <span class="muted small">Margin</span>
-      <span class="seg">
-        ${Object.entries(MARGINS).map(([k, l]) => html`<button class=${marginOf(state) === k ? 'on' : ''} onClick=${() => setLook({ sMargin: k, sWide: k === 'slim' })}>${l}</button>`)}
-      </span>
-      <span class="muted small">Break up</span>
-      <span class="seg">
-        ${Object.entries(SPLITS).map(([k, l]) => html`<button class=${splitOf(state) === k ? 'on' : ''} onClick=${() => setLook({ sSplit: k })}>${l}</button>`)}
-      </span>
+      <${MarginControl} state=${state} setLook=${setLook} />
+    </div>
+    <div class="orbit-read-row">
+      <${SplitControl} state=${state} setLook=${setLook} />
     </div>
     <div class="orbit-read-row">
       <span class="muted small">Look</span>
