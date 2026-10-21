@@ -6,7 +6,7 @@ import { html, render, useState, useEffect, useRef, useMemo } from '../ui/h.js';
 import { Fit, Stage } from './stage.js';
 import { Link, normalizeCode } from './link.js';
 import { ROOM } from './config.js';
-import { emptyState, reduce, songItem, mediaItem, BACKGROUNDS, BACKGROUND_INFO, PRESETS, PRESET_INFO, STREAM_LAYOUTS, ILLUSTRATION_SIZES, MARK_COLORS, PLAY_LEVELS, PLACES, SCRIPTURE_LOOKS, SCRIPTURE_INFO, SCRIPTURE_GROUPS, SCRIPTURE_MOTIONS, stepSize, BALANCE_STEPS, BALANCE_NAMES, scriptureLookOf, stepsOf, lookOf, slideWords, markKey, marginOf, splitOf, WELCOME_IDS, WELCOME_PICKS, welcomeCardOf } from './state.js';
+import { emptyState, reduce, songItem, mediaItem, BACKGROUNDS, BACKGROUND_INFO, PRESETS, PRESET_INFO, STREAM_LAYOUTS, ILLUSTRATION_SIZES, MARK_COLORS, PLAY_LEVELS, PLACES, SCRIPTURE_LOOKS, SCRIPTURE_INFO, SCRIPTURE_GROUPS, SCRIPTURE_MOTIONS, stepSize, BALANCE_STEPS, BALANCE_NAMES, scriptureLookOf, stepsOf, lookOf, slideWords, markKey, marginOf, splitOf, WELCOME_IDS, WELCOME_MOTIONS, welcomeMotionOf, WELCOME_PICKS, welcomeCardOf } from './state.js';
 import { loadSongs, saveSongs, visibleSongs, upsertSong, removeSong, searchSongs, mergeSongs, exportLibrary, importLibrary } from './library.js';
 import { parseRef, bookByCode, BOOKS, formatRef } from './books.js';
 import { VerseIndex, fillIndex, highlight } from './search.js';
@@ -1416,6 +1416,14 @@ function WelcomeSettings({ state, act }) {
       When nothing is up (Logo mode) the TV shows a card for the gathering: by the day, Sunday service, Wednesday Bible study and Friday prayer altar, otherwise a general welcome. Reword any line here; the time goes on the bottom line.
     </p>
     <${WelcomeControl} state=${state} act=${act} />
+    <span class="labelled welcome-motion" title="How much the card moves. Lively: light through the glass, dust in the lamplight, embers, falling stars, a page that turns, a verse that turns. Gentle: the glow and the flame only. Still: nothing moves.">
+      <span class="muted small">Motion</span>
+      <span class="seg" role="group" aria-label="Card motion">
+        ${Object.entries(WELCOME_MOTIONS).map(
+          ([k, l]) => html`<button class=${welcomeMotionOf(state) === k ? 'on' : ''} onClick=${() => act({ type: 'set', patch: { welcome: { ...w, motion: k } } })}>${l}</button>`,
+        )}
+      </span>
+    </span>
     <nav class="seg welcome-tabs" role="tablist">
       ${WELCOME_IDS.map((id) => html`<button class=${open === id ? 'on' : ''} onClick=${() => setOpen(id)}>${WELCOME_PICKS[id]}</button>`)}
     </nav>

@@ -98,6 +98,36 @@ export const scriptureLookOf = (state) => (state && SCRIPTURE_INFO[state.sLook] 
 // general welcome) or by hand; every line can be reworded in Settings.
 export const WELCOME_PICKS = { auto: 'By the day', sun: 'Sunday service', wed: 'Bible study', fri: 'Prayer altar', any: 'Welcome', off: 'Plain logo' };
 export const WELCOME_IDS = ['sun', 'wed', 'fri', 'any'];
+/** How much the card moves: everything (light, motes, a turning page, embers), the glow only, or nothing. */
+export const WELCOME_MOTIONS = { lively: 'Lively', gentle: 'Gentle', still: 'Still' };
+export const welcomeMotionOf = (state) => (state && state.welcome && WELCOME_MOTIONS[state.welcome.motion] ? state.welcome.motion : 'lively');
+// The verses a card turns through (the first is its standard one). KJV: public domain.
+export const WELCOME_VERSES = {
+  sun: [
+    { verse: 'Enter into his gates with thanksgiving, and into his courts with praise: be thankful unto him, and bless his name.', ref: 'Psalm 100 : 4' },
+    { verse: 'I was glad when they said unto me, Let us go into the house of the Lord.', ref: 'Psalm 122 : 1' },
+    { verse: 'O come, let us worship and bow down: let us kneel before the Lord our maker.', ref: 'Psalm 95 : 6' },
+    { verse: 'Let every thing that hath breath praise the Lord. Praise ye the Lord.', ref: 'Psalm 150 : 6' },
+  ],
+  wed: [
+    { verse: 'Thy word is a lamp unto my feet, and a light unto my path.', ref: 'Psalm 119 : 105' },
+    { verse: 'Thy word have I hid in mine heart, that I might not sin against thee.', ref: 'Psalm 119 : 11' },
+    { verse: 'Man shall not live by bread alone, but by every word that proceedeth out of the mouth of God.', ref: 'Matthew 4 : 4' },
+    { verse: 'All scripture is given by inspiration of God, and is profitable for doctrine, for reproof, for correction, for instruction in righteousness.', ref: '2 Timothy 3 : 16' },
+  ],
+  fri: [
+    { verse: 'Call unto me, and I will answer thee, and shew thee great and mighty things, which thou knowest not.', ref: 'Jeremiah 33 : 3' },
+    { verse: 'Ask, and it shall be given you; seek, and ye shall find; knock, and it shall be opened unto you.', ref: 'Matthew 7 : 7' },
+    { verse: 'Be careful for nothing; but in every thing by prayer and supplication with thanksgiving let your requests be made known unto God.', ref: 'Philippians 4 : 6' },
+    { verse: 'The effectual fervent prayer of a righteous man availeth much.', ref: 'James 5 : 16' },
+  ],
+  any: [
+    { verse: 'This is the day which the Lord hath made; we will rejoice and be glad in it.', ref: 'Psalm 118 : 24' },
+    { verse: 'Come unto me, all ye that labour and are heavy laden, and I will give you rest.', ref: 'Matthew 11 : 28' },
+    { verse: 'Behold, how good and how pleasant it is for brethren to dwell together in unity!', ref: 'Psalm 133 : 1' },
+    { verse: 'Wherefore receive ye one another, as Christ also received us to the glory of God.', ref: 'Romans 15 : 7' },
+  ],
+};
 export const WELCOME_DEFAULTS = {
   sun: {
     kicker: 'Sunday Service',
@@ -144,6 +174,8 @@ export function welcomeCardOf(state, date = new Date()) {
   const own = (w.cards && w.cards[id]) || {};
   const card = { id, ...WELCOME_DEFAULTS[id] };
   for (const k of Object.keys(WELCOME_DEFAULTS[id])) if (typeof own[k] === 'string') card[k] = own[k];
+  // The verses the card turns through: the operator's own verse stays put; else the card's set.
+  card.verses = typeof own.verse === 'string' || typeof own.ref === 'string' ? [{ verse: card.verse, ref: card.ref }] : WELCOME_VERSES[id];
   return card;
 }
 
@@ -205,7 +237,7 @@ export function emptyState() {
     followDim: true,
     followStream: true,
     // The idle screen's welcome card: which one ('auto' by the day, an id, or 'off'), and reworded lines per card.
-    welcome: { pick: 'auto', cards: {} },
+    welcome: { pick: 'auto', cards: {}, motion: 'lively' },
   };
 }
 
