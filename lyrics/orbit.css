@@ -1095,3 +1095,9 @@
     animation-duration: 0.01s;
   }
 }
+
+.orbit-idle {
+  display: flex;
+  justify-content: center;
+  margin-top: 10px;
+}

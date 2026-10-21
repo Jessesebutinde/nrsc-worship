@@ -93,6 +93,60 @@ export const SCRIPTURE_MOTIONS = { gentle: 'Gentle', page: 'Page turn', type: 'T
 /** The look scripture shows with. */
 export const scriptureLookOf = (state) => (state && SCRIPTURE_INFO[state.sLook] ? state.sLook : 'ink');
 
+// The idle screen: a welcoming card for the gathering, shown in Logo mode instead of the plain
+// logo. Picked by the day (Sunday service, Wednesday Bible study, Friday prayer altar, else the
+// general welcome) or by hand; every line can be reworded in Settings.
+export const WELCOME_PICKS = { auto: 'By the day', sun: 'Sunday service', wed: 'Bible study', fri: 'Prayer altar', any: 'Welcome', off: 'Plain logo' };
+export const WELCOME_IDS = ['sun', 'wed', 'fri', 'any'];
+export const WELCOME_DEFAULTS = {
+  sun: {
+    kicker: 'Sunday Service',
+    title: 'Welcome',
+    sub: 'Tukwanirizza mu kusinza',
+    verse: 'Enter into his gates with thanksgiving, and into his courts with praise: be thankful unto him, and bless his name.',
+    ref: 'Psalm 100 : 4',
+    when: 'Every Sunday',
+  },
+  wed: {
+    kicker: 'Wednesday Bible Study',
+    title: 'Bible Study',
+    sub: 'Okusoma Ekigambo kya Katonda',
+    verse: 'Thy word is a lamp unto my feet, and a light unto my path.',
+    ref: 'Psalm 119 : 105',
+    when: 'Every Wednesday',
+  },
+  fri: {
+    kicker: 'Friday Prayer Altar',
+    title: 'Prayer Altar',
+    sub: "Ekyoto ky'okusaba",
+    verse: 'Call unto me, and I will answer thee, and shew thee great and mighty things, which thou knowest not.',
+    ref: 'Jeremiah 33 : 3',
+    when: 'Every Friday',
+  },
+  any: {
+    kicker: 'Namasuba Redeemed Society Church',
+    title: 'Welcome',
+    sub: 'Tukwanirizza',
+    verse: 'This is the day which the Lord hath made; we will rejoice and be glad in it.',
+    ref: 'Psalm 118 : 24',
+    when: 'You are welcome here',
+  },
+};
+// The TV environment behind each card (backgrounds in stage.js).
+export const WELCOME_ENV = { sun: 'nave', wed: 'vellum', fri: 'candle', any: 'stars' };
+const WELCOME_BY_DAY = { 0: 'sun', 3: 'wed', 5: 'fri' };
+/** The card to show now (its id and lines, the operator's wording over the defaults), or null for the plain logo. */
+export function welcomeCardOf(state, date = new Date()) {
+  const w = (state && state.welcome) || {};
+  const pick = WELCOME_PICKS[w.pick] ? w.pick : 'auto';
+  if (pick === 'off') return null;
+  const id = pick === 'auto' ? WELCOME_BY_DAY[date.getDay()] || 'any' : pick;
+  const own = (w.cards && w.cards[id]) || {};
+  const card = { id, ...WELCOME_DEFAULTS[id] };
+  for (const k of Object.keys(WELCOME_DEFAULTS[id])) if (typeof own[k] === 'string') card[k] = own[k];
+  return card;
+}
+
 export function emptyState() {
   return {
     rev: 0,
@@ -150,6 +204,8 @@ export function emptyState() {
     sSplit: 'standard',
     followDim: true,
     followStream: true,
+    // The idle screen's welcome card: which one ('auto' by the day, an id, or 'off'), and reworded lines per card.
+    welcome: { pick: 'auto', cards: {} },
   };
 }
 

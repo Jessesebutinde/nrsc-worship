@@ -6,7 +6,7 @@ import { html, render, useState, useEffect, useRef, useMemo } from '../ui/h.js';
 import { Fit, Stage } from './stage.js';
 import { Link, normalizeCode } from './link.js';
 import { ROOM } from './config.js';
-import { emptyState, reduce, songItem, mediaItem, BACKGROUNDS, BACKGROUND_INFO, PRESETS, PRESET_INFO, STREAM_LAYOUTS, ILLUSTRATION_SIZES, MARK_COLORS, PLAY_LEVELS, PLACES, SCRIPTURE_LOOKS, SCRIPTURE_INFO, SCRIPTURE_GROUPS, SCRIPTURE_MOTIONS, stepSize, BALANCE_STEPS, BALANCE_NAMES, scriptureLookOf, stepsOf, lookOf, slideWords, markKey, marginOf, splitOf } from './state.js';
+import { emptyState, reduce, songItem, mediaItem, BACKGROUNDS, BACKGROUND_INFO, PRESETS, PRESET_INFO, STREAM_LAYOUTS, ILLUSTRATION_SIZES, MARK_COLORS, PLAY_LEVELS, PLACES, SCRIPTURE_LOOKS, SCRIPTURE_INFO, SCRIPTURE_GROUPS, SCRIPTURE_MOTIONS, stepSize, BALANCE_STEPS, BALANCE_NAMES, scriptureLookOf, stepsOf, lookOf, slideWords, markKey, marginOf, splitOf, WELCOME_IDS, WELCOME_PICKS, welcomeCardOf } from './state.js';
 import { loadSongs, saveSongs, visibleSongs, upsertSong, removeSong, searchSongs, mergeSongs, exportLibrary, importLibrary } from './library.js';
 import { parseRef, bookByCode, BOOKS, formatRef } from './books.js';
 import { VerseIndex, fillIndex, highlight } from './search.js';
@@ -15,7 +15,7 @@ import { Listener, canListen, SPEECH_LANGS } from './voice.js';
 import { readFollowKeys, saveFollowKeys, followCommand, validKey, FOLLOW_KEYS, FOLLOW_KEY_NAMES } from './keys.js';
 import { allVersions, importVersion, removeVersion, passageItem, BUILTIN_VERSIONS, loadBook, versionById, isMany } from './bible.js';
 import { onlineConfig, saveOnlineConfig, listBibles } from './online.js';
-import { MarginControl, SplitControl, SizeControl } from './controls.js';
+import { MarginControl, SplitControl, SizeControl, WelcomeControl } from './controls.js';
 import { shareConfig, saveShareConfig, isSharing, syncSongs, connectShare, setupLink, readSetupLink, TOKEN_URL } from './share.js';
 import { relayConfig, cloudConfigured, loadSession, captureSession, sendMagicLink, signOut, pullSongs, pushSongs } from './cloud.js';
 import { canCast, castTo, displayPermission, extraDisplays, openOn, displayOf, platform } from './cast.js';
@@ -784,6 +784,7 @@ function Live({ state, act, info, goTab, onOutputs, wide, setLook }) {
       <button class="big primary" onClick=${() => act({ type: 'next' })} aria-label="Next slide">Next ›</button>
     </div>
     <div class="modes">${modeBtn('clear', 'Clear')}${modeBtn('black', 'Black')}${modeBtn('logo', 'Logo')}</div>
+    ${(!item || state.mode === 'logo') && html`<div class="idle-row"><${WelcomeControl} state=${state} act=${act} /></div>`}
     </div>
     <div class="live-rest">
     ${item && item.kind === 'song' && html`<${SongLooks} state=${state} act=${act} />`}
@@ -830,7 +831,7 @@ function Live({ state, act, info, goTab, onOutputs, wide, setLook }) {
             )}
           </ol>`
       : html`<div class="empty">
-          <p>Nothing on the screen yet.</p>
+          <p>Nothing on the screen yet. The TV shows the welcome card.</p>
           <div class="row center wrap">
             <button onClick=${() => goTab('songs')}>Pick a song</button>
             <button onClick=${() => goTab('scripture')}>Scripture</button>
@@ -1384,6 +1385,57 @@ function FollowSettings({ state, act }) {
   </div>`;
 }
 
+const WELCOME_FIELDS = [
+  ['kicker', 'Gathering', 'Sunday Service'],
+  ['title', 'Big word', 'Welcome'],
+  ['sub', 'Under it (Luganda)', 'Tukwanirizza'],
+  ['verse', 'Verse', ''],
+  ['ref', 'Reference', 'Psalm 100 : 4'],
+  ['when', 'Bottom line (the time)', 'Every Sunday, 9:00 am'],
+];
+
+/** The wording of each welcome card; a blank line leaves that line out. */
+function WelcomeSettings({ state, act }) {
+  const w = state.welcome || { pick: 'auto', cards: {} };
+  const [open, setOpen] = useState('sun');
+  const card = welcomeCardOf({ welcome: { ...w, pick: open } });
+  const set = (field, value) => act({ type: 'set', patch: { welcome: { ...w, cards: { ...(w.cards || {}), [open]: { ...((w.cards || {})[open] || {}), [field]: value } } } } });
+  const reset = () => {
+    const cards = { ...(w.cards || {}) };
+    delete cards[open];
+    act({ type: 'set', patch: { welcome: { ...w, cards } } });
+  };
+  const show = () => {
+    act({ type: 'set', patch: { welcome: { ...w, pick: open } } });
+    act({ type: 'mode', mode: 'logo' });
+  };
+  const changed = Boolean((w.cards || {})[open] && Object.keys(w.cards[open]).length);
+  return html`<section class="card welcome-settings">
+    <h2>Welcome cards <span class="muted small">· the idle screen</span></h2>
+    <p class="muted small">
+      When nothing is up (Logo mode) the TV shows a card for the gathering: by the day, Sunday service, Wednesday Bible study and Friday prayer altar, otherwise a general welcome. Reword any line here; the time goes on the bottom line.
+    </p>
+    <${WelcomeControl} state=${state} act=${act} />
+    <nav class="seg welcome-tabs" role="tablist">
+      ${WELCOME_IDS.map((id) => html`<button class=${open === id ? 'on' : ''} onClick=${() => setOpen(id)}>${WELCOME_PICKS[id]}</button>`)}
+    </nav>
+    <div class="welcome-fields">
+      ${WELCOME_FIELDS.map(
+        ([field, label, hint]) => html`<label class="field">
+          <span>${label}</span>
+          ${field === 'verse'
+            ? html`<textarea rows="2" value=${card[field]} onInput=${(e) => set(field, e.target.value)}></textarea>`
+            : html`<input value=${card[field]} onInput=${(e) => set(field, e.target.value)} placeholder=${hint} />`}
+        </label>`,
+      )}
+    </div>
+    <div class="row wrap">
+      <button onClick=${show}>Show this card now</button>
+      <button class="ghost" onClick=${reset} disabled=${!changed}>Back to the standard wording</button>
+    </div>
+  </section>`;
+}
+
 /** Songs shared between laptops through one private gist on the church's GitHub account (src/lyrics/share.js). */
 function ShareSongs({ songs, share, onConnect, onSync, onLeave }) {
   const [token, setToken] = useState('');
@@ -1765,6 +1817,8 @@ function Settings({ state, act, info, prefs, setPrefs, songs, setSongs, session,
     </section>
 
     <${ShareSongs} songs=${songs} share=${share} onConnect=${onConnectShare} onSync=${onSync} onLeave=${onLeaveShare} />
+
+    <${WelcomeSettings} state=${state} act=${act} />
 
     <section class="card">
       <h2>Song library</h2>
