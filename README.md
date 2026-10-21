@@ -177,6 +177,9 @@ the bottom line; a blank line is left out), shows a card at once, and goes back 
 wording travels with the state, so every TV shows the same card. The stream feed and the OBS link never show
 it, nor the plain logo: while the TV is idle they show nothing.
 
+Pictures of the four cards are in `lyrics/designs/` (`welcome-card-sunday-service.jpg`,
+`welcome-card-wednesday-bible-study.jpg`, `welcome-card-friday-prayer-altar.jpg`, `welcome-card-general-welcome.jpg`).
+
 The card is alive, quietly. On Sunday the light through the glass sways and its colour pools drift while specks of
 light rise; on Wednesday dust floats in a lamplight that breathes and the book's page lifts and turns over; on
 Friday embers rise from the altar's glow and the flame flickers; on other days the stars twinkle and now and then
