@@ -2,7 +2,30 @@
 // much a long verse is broken up (a level, or a limit of so many words or lines a screen).
 
 import { html, useState } from '../ui/h.js';
-import { MARGINS, marginOf, SPLITS, splitOf, parseSplit, TEXT_SIZES, TEXT_SIZE_NAMES, stepSize } from './state.js';
+import { MARGINS, marginOf, SPLITS, splitOf, parseSplit, TEXT_SIZES, TEXT_SIZE_NAMES, stepSize, WELCOME_PICKS, welcomeCardOf } from './state.js';
+
+/** The idle screen: which welcome card Logo mode shows (by the day, one of them, or the plain logo). */
+export function WelcomeControl({ state, act }) {
+  const w = state.welcome || { pick: 'auto', cards: {} };
+  const pick = WELCOME_PICKS[w.pick] ? w.pick : 'auto';
+  const now = welcomeCardOf(state);
+  return html`<span class="labelled welcome-ctl" title="What the TV shows when nothing is up (Logo mode): a welcoming card for the gathering, picked by the day or by hand, or the plain logo. Reword the cards in Settings.">
+    <span class="muted small">Idle screen</span>
+    <span class="seg" role="group" aria-label="Idle screen">
+      ${Object.entries(WELCOME_PICKS).map(
+        ([k, l]) => html`<button
+          class=${pick === k ? 'on' : ''}
+          onClick=${() => {
+            act({ type: 'set', patch: { welcome: { ...w, pick: k } } });
+            if (!state.item || state.mode === 'logo') act({ type: 'mode', mode: 'logo' });
+          }}
+        >
+          ${k === 'auto' && now ? `${l} · ${WELCOME_PICKS[now.id]}` : l}
+        </button>`,
+      )}
+    </span>
+  </span>`;
+}
 
 /** A− / A+ through the text sizes, the size's name between them (tap it to go back to Standard). */
 export function SizeControl({ value, onChange, label = 'Text size' }) {

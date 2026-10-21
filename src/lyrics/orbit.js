@@ -9,7 +9,7 @@
 import { html, useState, useEffect, useRef, useLayoutEffect } from '../ui/h.js';
 import { Fit, Stage } from './stage.js';
 import { stepsOf, mediaItem, SCRIPTURE_INFO, scriptureLookOf, PRESET_INFO, lookOf, marginOf, splitOf } from './state.js';
-import { MarginControl, SplitControl, SizeControl } from './controls.js';
+import { MarginControl, SplitControl, SizeControl, WelcomeControl } from './controls.js';
 import { BOOKS, parseRef, formatRef, bookByCode } from './books.js';
 import { loadChapter, loadBook, passageItem, versionById } from './bible.js';
 import { locateVerse, verseAt, peekOf, matchBooks, BOOK_GROUPS, perScreenOf } from './calendar.js';
@@ -236,7 +236,11 @@ function OrbPanel({ orb, from, closing, onClose, children }) {
 /** What is up: its title, where we are in it, and (songs, pictures) its slides to jump to. */
 function LiveHead({ state, act }) {
   const it = state.item;
-  if (!it) return html`<p class="orbit-empty">Nothing on the screen yet. Touch an orb.</p>`;
+  if (!it)
+    return html`<div class="orbit-head">
+      <p class="orbit-empty">Nothing on the screen yet: the TV shows the welcome card. Touch an orb.</p>
+      <div class="orbit-idle"><${WelcomeControl} state=${state} act=${act} /></div>
+    </div>`;
   const steps = stepsOf(state);
   const kindLabel = it.kind === 'scripture' ? it.versions.join(' + ') : it.kind === 'song' ? PRESET_INFO[lookOf(state, it)].name : it.kind === 'board' ? 'Sermon board' : it.kind === 'media' ? 'Pictures' : '';
   const status = `${(state.index || 0) + 1}/${it.slides.length}${steps > 1 ? ` · ${it.kind === 'board' ? 'point' : 'verse'} ${(state.sub || 0) + 1} of ${steps}` : ''}`;
@@ -251,6 +255,7 @@ function LiveHead({ state, act }) {
         </li>`,
       )}
     </ol>`}
+    ${state.mode === 'logo' && html`<div class="orbit-idle"><${WelcomeControl} state=${state} act=${act} /></div>`}
   </div>`;
 }
 

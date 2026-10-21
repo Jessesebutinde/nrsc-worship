@@ -3,7 +3,7 @@
 
 import { html, useState, useEffect, useRef, useLayoutEffect } from '../ui/h.js';
 import { CHURCH_NAME } from './config.js';
-import { shownOn, lookOf, PRESET_INFO, SCRIPTURE_INFO, SCRIPTURE_MOTIONS, scriptureLookOf, stepsOf, marginOf } from './state.js';
+import { shownOn, lookOf, PRESET_INFO, SCRIPTURE_INFO, SCRIPTURE_MOTIONS, scriptureLookOf, stepsOf, marginOf, welcomeCardOf, WELCOME_ENV } from './state.js';
 import { BOARD_ENV, NODE_COLORS, TEXT_SIZES as BOARD_TEXT, edgePoints, visibleCount } from './board.js';
 import { idbGet } from './idb.js';
 import { splitAtPauses } from './split.js';
@@ -21,7 +21,7 @@ const ILLUS_W = { small: 560, half: 760, large: 960 };
 const OUT_MS = {
   worship: 400, praise: 200, classic: 250, poster: 200, sunshine: 300, lines: 400, beams: 500,
   banner: 200, midnight: 300, pixel: 150, neon: 350, grateful: 200, film: 300,
-  scripture: 250, title: 300, logo: 400, media: 600, board: 300, none: 400,
+  scripture: 250, title: 300, logo: 400, welcome: 500, media: 600, board: 300, none: 400,
 };
 
 /** Keeps the outgoing frame mounted (with .out) while it fades, so changes cross over smoothly. */
@@ -694,6 +694,26 @@ const TitleFrame = ({ item }) =>
         <div class="ln tc-church" style="--i:1">${CHURCH_NAME}</div>
       </div>`;
 
+// The welcome cards' glyphs: the church's cross, an open book, a flame.
+const GLYPH = {
+  sun: html`<svg viewBox="0 0 40 56" aria-hidden="true"><path d="M17 0h6v16h17v6H23v34h-6V22H0v-6h17z" fill="currentColor" /></svg>`,
+  any: html`<svg viewBox="0 0 40 56" aria-hidden="true"><path d="M17 0h6v16h17v6H23v34h-6V22H0v-6h17z" fill="currentColor" /></svg>`,
+  wed: html`<svg viewBox="0 0 64 44" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"><path d="M32 10C25 4 15 3 4 6v30c11-3 21-2 28 4 7-6 17-7 28-4V6c-11-3-21-2-28 4z" /><path d="M32 10v30" /><path d="M11 14c6-1 11-1 16 1M11 21c6-1 11-1 16 1M11 28c6-1 11-1 16 1M37 15c5-2 10-2 16-1M37 22c5-2 10-2 16-1M37 29c5-2 10-2 16-1" opacity="0.7" /></svg>`,
+  fri: html`<svg viewBox="0 0 40 56" aria-hidden="true"><path class="fl" d="M20 2c3 9 12 14 12 26a12 12 0 0 1-24 0c0-6 3-9 5-13 1 4 2 7 5 8-1-8 1-15 2-21z" fill="currentColor" /><path class="fl2" d="M20 24c2 5 6 7 6 12a6 6 0 0 1-12 0c0-3 1-5 3-7 0 2 1 3 2 4 0-3 0-6 1-9z" fill="#fff6d8" opacity="0.9" /><path d="M14 50h12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" opacity="0.7" /></svg>`,
+};
+
+/** The idle screen's welcome card: the gathering, a welcome, a verse, the time. */
+const WelcomeFrame = ({ card }) => html`<div class=${`welcome wc-${card.id}`}>
+  <div class="ln wc-church" style="--i:0">${CHURCH_NAME}</div>
+  <div class="ln wc-glyph" style="--i:1">${GLYPH[card.id] || GLYPH.any}</div>
+  ${card.kicker && html`<div class="ln wc-kicker" style="--i:2">${card.kicker}</div>`}
+  ${card.title && html`<div class="ln wc-title" style="--i:3">${card.title}</div>`}
+  ${card.sub && html`<div class="ln wc-sub" style="--i:4">${card.sub}</div>`}
+  ${card.verse && html`<i class="ln wc-rule" style="--i:5"></i><div class="ln wc-verse" style="--i:6">“${card.verse}”</div>`}
+  ${card.verse && card.ref && html`<div class="ln wc-ref" style="--i:7">${card.ref}</div>`}
+  ${card.when && html`<div class="ln wc-when" style="--i:8">${card.when}</div>`}
+</div>`;
+
 const LogoFrame = () => html`<div class="logo">
   <svg class="ln" style="--i:0" viewBox="0 0 40 56" width="56" height="78" aria-hidden="true">
     <path d="M17 0h6v16h17v6H23v34h-6V22H0v-6h17z" fill="currentColor" />
@@ -804,7 +824,10 @@ const marksFor = (st, item, index) => (st.marks && item ? st.marks[`${item.id}:$
 export function frameOf(state, { titleFor = null, out = 'preview' } = {}) {
   const { item, index = 0, mode } = state || {};
   if (!state || mode === 'black' || mode === 'clear') return { key: 'none', kind: 'none' };
-  if (mode === 'logo' || !item) return { key: 'logo', kind: 'logo' };
+  if (mode === 'logo' || !item) {
+    const card = welcomeCardOf(state);
+    return card ? { key: `welcome:${card.id}:${card.title}:${card.when}`, kind: 'welcome', card } : { key: 'logo', kind: 'logo' };
+  }
   if (!shownOn(item, out)) return { key: 'none', kind: 'none' };
   if ((item.kind === 'song' || item.kind === 'scripture') && titleFor === item.id && index === 0 && !state.sub)
     return { key: `title:${item.id}`, kind: 'title' };
@@ -843,9 +866,12 @@ export function Stage({ state, out = 'preview', layout = 'full', background = 'a
     return () => clearTimeout(t);
   }, [itemId, titleCards]);
 
-  const f = frameOf(st, { titleFor: lowerThird ? null : titleFor, out });
+  const f0 = frameOf(st, { titleFor: lowerThird ? null : titleFor, out });
+  // The idle picture (the welcome card, or the plain logo) is the TV's: the stream feed and the
+  // transparent OBS link show nothing until something is put up.
   const showLogo = out !== 'stream' && background !== 'none';
-  const key = f.kind === 'logo' && !showLogo ? 'none' : f.key;
+  const f = (f0.kind === 'logo' || f0.kind === 'welcome') && !showLogo ? { key: 'none', kind: 'none' } : f0;
+  const key = f.key;
   const motion = SCRIPTURE_MOTIONS[st.sMotion] ? st.sMotion : 'reveal';
   const outMs = f.kind === 'scripture' ? SMO_OUT[motion] : OUT_MS[f.kind === 'song' ? f.preset : f.kind] || 300;
   const frames = useSwap(key, { f, item: st.item, index: st.index || 0 }, outMs, key === 'none');
@@ -867,7 +893,7 @@ export function Stage({ state, out = 'preview', layout = 'full', background = 'a
   const sLook = scriptureLookOf(st);
   // A sermon board's theme brings its own environment too.
   const boardTheme = up === 'board' ? (BOARD_ENV[st.item.theme] ? st.item.theme : 'slate') : null;
-  const env = songLook && st.lookBg !== 'mine' ? PRESET_INFO[songLook].env : up === 'scripture' ? SCRIPTURE_INFO[sLook].env : boardTheme ? BOARD_ENV[boardTheme] : null;
+  const env = songLook && st.lookBg !== 'mine' ? PRESET_INFO[songLook].env : up === 'scripture' ? SCRIPTURE_INFO[sLook].env : boardTheme ? BOARD_ENV[boardTheme] : f.kind === 'welcome' && showLogo ? WELCOME_ENV[f.card.id] : null;
   const bg = background === 'none' ? 'none' : background === 'key' ? (lowerThird ? 'black' : 'key') : env || st.bg;
   const keyed = bg === 'none' || bg === 'key' || bg === 'black';
   // The thin bar through the passage (or through the board's nodes as they come up).
@@ -916,6 +942,7 @@ export function Stage({ state, out = 'preview', layout = 'full', background = 'a
         ${kind === 'board' && html`<${BoardFrame} item=${data.item} sub=${st.sub || 0} reveal=${st.reveal !== false} lt=${lowerThird} still=${still === true} />`}
         ${kind === 'title' && html`<${TitleFrame} item=${data.item} />`}
         ${kind === 'logo' && html`<${LogoFrame} />`}
+        ${kind === 'welcome' && html`<${WelcomeFrame} card=${data.f.card} />`}
       </div>`;
     })}
     ${illus &&

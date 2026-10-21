@@ -2068,3 +2068,44 @@ button.link {
   flex-wrap: wrap;
   gap: 6px;
 }
+.idle-row {
+  margin-top: 8px;
+  display: flex;
+  justify-content: center;
+}
+.welcome-ctl .seg button {
+  font-size: 12px;
+  padding: 0 10px;
+  height: 34px;
+}
+.welcome-settings .welcome-tabs {
+  margin: 12px 0 10px;
+}
+.welcome-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 14px;
+  margin-bottom: 12px;
+}
+.welcome-fields .field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.welcome-fields .field > span {
+  font-size: 12px;
+  color: var(--muted);
+}
+.welcome-fields textarea {
+  width: 100%;
+  resize: vertical;
+  font: inherit;
+  padding: var(--field-pad);
+  border-radius: 10px;
+  background: var(--field);
+  border: 1px solid var(--field-line);
+  color: var(--text);
+}
+.welcome-fields .field:has(textarea) {
+  grid-column: 1 / -1;
+}

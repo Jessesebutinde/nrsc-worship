@@ -161,6 +161,22 @@ every change goes to the TV as it is made, each new point popping in; **Next** a
 in order, **Replay** goes back to the first, the progress bar runs along the bottom, and the stream's lower third
 shows the point being made. Boards are kept on the laptop by name (New, Rename, Delete).
 
+## Welcome cards: the idle screen
+
+When nothing is up (Logo mode, the **Logo** button or the L key) the TV shows a welcoming card for the gathering
+instead of the plain logo: the church's name, a glyph, the gathering in small caps, a big **Welcome** in a serif, a
+line in Luganda under it, a verse with its reference, and the time along the bottom. Four cards, each with its own
+environment: **Sunday service** (stained-glass light), **Wednesday Bible study** (the manuscript's dark vellum and an
+open book), **Friday prayer altar** (candlelight and a flickering flame) and a general **Welcome** (a night sky of
+stars). The lines rise in one after another and the big word breathes a soft glow.
+
+**Idle screen** (under Clear / Black / Logo, on Orbit's home screen, and in Settings) picks the card: **By the day**
+(Sunday, Wednesday and Friday get theirs, every other day the general welcome; the TV's own clock decides), one of
+the four by hand, or **Plain logo**. **Settings → Welcome cards** rewords any line of any card (the time belongs on
+the bottom line; a blank line is left out), shows a card at once, and goes back to the standard wording. The
+wording travels with the state, so every TV shows the same card. The stream feed and the OBS link never show
+it, nor the plain logo: while the TV is idle they show nothing.
+
 ## Words that use the screen
 
 By default the words **grow to fill the TV**: each slide is measured in the real font and sized as large as fits
