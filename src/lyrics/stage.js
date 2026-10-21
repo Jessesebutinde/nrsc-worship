@@ -3,7 +3,7 @@
 
 import { html, useState, useEffect, useRef, useLayoutEffect } from '../ui/h.js';
 import { CHURCH_NAME } from './config.js';
-import { shownOn, lookOf, PRESET_INFO, SCRIPTURE_INFO, SCRIPTURE_MOTIONS, scriptureLookOf, stepsOf, marginOf, welcomeCardOf, WELCOME_ENV } from './state.js';
+import { shownOn, lookOf, PRESET_INFO, SCRIPTURE_INFO, SCRIPTURE_MOTIONS, scriptureLookOf, stepsOf, marginOf, welcomeCardOf, welcomeMotionOf, WELCOME_ENV } from './state.js';
 import { BOARD_ENV, NODE_COLORS, TEXT_SIZES as BOARD_TEXT, edgePoints, visibleCount } from './board.js';
 import { idbGet } from './idb.js';
 import { splitAtPauses } from './split.js';
@@ -698,21 +698,87 @@ const TitleFrame = ({ item }) =>
 const GLYPH = {
   sun: html`<svg viewBox="0 0 40 56" aria-hidden="true"><path d="M17 0h6v16h17v6H23v34h-6V22H0v-6h17z" fill="currentColor" /></svg>`,
   any: html`<svg viewBox="0 0 40 56" aria-hidden="true"><path d="M17 0h6v16h17v6H23v34h-6V22H0v-6h17z" fill="currentColor" /></svg>`,
-  wed: html`<svg viewBox="0 0 64 44" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"><path d="M32 10C25 4 15 3 4 6v30c11-3 21-2 28 4 7-6 17-7 28-4V6c-11-3-21-2-28 4z" /><path d="M32 10v30" /><path d="M11 14c6-1 11-1 16 1M11 21c6-1 11-1 16 1M11 28c6-1 11-1 16 1M37 15c5-2 10-2 16-1M37 22c5-2 10-2 16-1M37 29c5-2 10-2 16-1" opacity="0.7" /></svg>`,
+  // The open book: its right-hand page (.pg) lifts and turns over every few seconds.
+  wed: html`<svg viewBox="0 0 64 44" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"><path d="M32 10C25 4 15 3 4 6v30c11-3 21-2 28 4 7-6 17-7 28-4V6c-11-3-21-2-28 4z" /><path d="M32 10v30" /><path d="M11 14c6-1 11-1 16 1M11 21c6-1 11-1 16 1M11 28c6-1 11-1 16 1M37 15c5-2 10-2 16-1M37 22c5-2 10-2 16-1M37 29c5-2 10-2 16-1" opacity="0.7" /><g class="pg"><path d="M32 10c7-6 17-7 28-4v30c-11-3-21-2-28 4z" fill="currentColor" fill-opacity="0.22" /><path d="M37 15c5-2 10-2 16-1M37 22c5-2 10-2 16-1M37 29c5-2 10-2 16-1" opacity="0.7" /></g></svg>`,
   fri: html`<svg viewBox="0 0 40 56" aria-hidden="true"><path class="fl" d="M20 2c3 9 12 14 12 26a12 12 0 0 1-24 0c0-6 3-9 5-13 1 4 2 7 5 8-1-8 1-15 2-21z" fill="currentColor" /><path class="fl2" d="M20 24c2 5 6 7 6 12a6 6 0 0 1-12 0c0-3 1-5 3-7 0 2 1 3 2 4 0-3 0-6 1-9z" fill="#fff6d8" opacity="0.9" /><path d="M14 50h12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" opacity="0.7" /></svg>`,
 };
 
-/** The idle screen's welcome card: the gathering, a welcome, a verse, the time. */
-const WelcomeFrame = ({ card }) => html`<div class=${`welcome wc-${card.id}`}>
-  <div class="ln wc-church" style="--i:0">${CHURCH_NAME}</div>
-  <div class="ln wc-glyph" style="--i:1">${GLYPH[card.id] || GLYPH.any}</div>
-  ${card.kicker && html`<div class="ln wc-kicker" style="--i:2">${card.kicker}</div>`}
-  ${card.title && html`<div class="ln wc-title" style="--i:3">${card.title}</div>`}
-  ${card.sub && html`<div class="ln wc-sub" style="--i:4">${card.sub}</div>`}
-  ${card.verse && html`<i class="ln wc-rule" style="--i:5"></i><div class="ln wc-verse" style="--i:6">“${card.verse}”</div>`}
-  ${card.verse && card.ref && html`<div class="ln wc-ref" style="--i:7">${card.ref}</div>`}
-  ${card.when && html`<div class="ln wc-when" style="--i:8">${card.when}</div>`}
+// The air of each card: specks of light, dust in lamplight, embers, stars. Drawn once from a fixed
+// seed so every TV (and every test) gets the same sky. Each speck animates by its own CSS variables.
+const seeded = (seed) => () => {
+  seed = (seed * 1664525 + 1013904223) % 4294967296;
+  return seed / 4294967296;
+};
+const AIR = {
+  // [count, kind, seed] — kind decides the look (CSS) and where a speck starts.
+  sun: [26, 'mote', 7],
+  wed: [18, 'dust', 11],
+  fri: [30, 'ember', 3],
+  any: [22, 'star', 5],
+};
+const airOf = (id) => {
+  const [n, kind, seed] = AIR[id] || AIR.any;
+  const r = seeded(seed);
+  return Array.from({ length: n }, (_, i) => {
+    const x = kind === 'ember' ? 32 + r() * 36 : 3 + r() * 94; // embers rise from the altar's glow in the middle
+    const y = kind === 'star' ? 3 + r() * 70 : kind === 'ember' ? 74 + r() * 26 : 100;
+    const d = kind === 'star' ? 3 + r() * 5 : kind === 'ember' ? 6 + r() * 7 : 16 + r() * 20;
+    return { i, kind, style: `--x:${x.toFixed(1)}%;--y:${y.toFixed(1)}%;--d:${d.toFixed(1)}s;--dl:${(-r() * d).toFixed(1)}s;--s:${(kind === 'star' ? 2 + r() * 3 : kind === 'ember' ? 3 + r() * 5 : 4 + r() * 9).toFixed(1)}px;--sw:${((r() - 0.5) * 220).toFixed(0)}px;--o:${(0.35 + r() * 0.55).toFixed(2)}` };
+  });
+};
+const AIR_CACHE = {};
+const airFor = (id) => AIR_CACHE[id] || (AIR_CACHE[id] = airOf(id));
+
+/** The living air behind the words: light rays and pools, lamplight, the altar's glow, specks and shooting stars. */
+const WelcomeAir = ({ id }) => html`<div class="wc-air" aria-hidden="true">
+  ${id === 'sun' && html`<i class="wc-rays r1"></i><i class="wc-rays r2"></i><i class="wc-pool p1"></i><i class="wc-pool p2"></i>`}
+  ${id === 'wed' && html`<i class="wc-lamp"></i>`}
+  ${id === 'fri' && html`<i class="wc-lamp"></i>`}
+  ${id === 'any' && html`<i class="wc-pool p1"></i><i class="wc-shoot s1"></i><i class="wc-shoot s2"></i>`}
+  ${airFor(id).map((m) => html`<i key=${m.i} class=${`wc-${m.kind}`} style=${m.style}></i>`)}
 </div>`;
+
+const VERSE_MS = 24000; // a card turns to its next verse this often
+const VERSE_OUT_MS = 900;
+
+/** The idle screen's welcome card: the gathering, a welcome, a verse that turns, the time. */
+function WelcomeFrame({ card, motion = 'lively', still = false }) {
+  const verses = card.verses && card.verses.length ? card.verses : [{ verse: card.verse, ref: card.ref }];
+  const [q, setQ] = useState({ n: 0, out: false });
+  const turning = verses.length > 1 && motion !== 'still' && !still;
+  useEffect(() => {
+    setQ({ n: 0, out: false });
+    if (!turning) return undefined;
+    if (typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches) return undefined;
+    let t2 = 0;
+    const t = setInterval(() => {
+      setQ((s) => ({ ...s, out: true }));
+      t2 = setTimeout(() => setQ((s) => ({ n: s.n + 1, out: false })), VERSE_OUT_MS);
+    }, VERSE_MS);
+    return () => {
+      clearInterval(t);
+      clearTimeout(t2);
+    };
+  }, [card.id, verses.length, turning]);
+  const v = verses[q.n % verses.length] || verses[0];
+  return html`<div class=${`welcome wc-${card.id} wm-${motion}`}>
+    ${motion === 'lively' && !still && html`<${WelcomeAir} id=${card.id} />`}
+    <div class="ln wc-church" style="--i:0">${CHURCH_NAME}</div>
+    <div class="ln wc-glyph" style="--i:1"><i class="wc-halo"></i>${GLYPH[card.id] || GLYPH.any}</div>
+    ${card.kicker && html`<div class="ln wc-kicker" style="--i:2">${card.kicker}</div>`}
+    ${card.title && html`<div class="ln wc-title" style="--i:3"><span class="wc-t" data-t=${card.title}>${card.title}</span></div>`}
+    ${card.sub && html`<div class="ln wc-sub" style="--i:4">${card.sub}</div>`}
+    ${v.verse &&
+    html`<i class="ln wc-rule" style="--i:5"></i>
+      <div class="ln wc-quote" style="--i:6">
+        <div key=${q.n} class=${`wc-q ${q.n ? 'wc-next' : ''} ${q.out ? 'wc-out' : ''}`}>
+          <div class="wc-verse">“${v.verse}”</div>
+          ${v.ref && html`<div class="wc-ref">${v.ref}</div>`}
+        </div>
+      </div>`}
+    ${card.when && html`<div class="ln wc-when" style="--i:8">${card.when}</div>`}
+  </div>`;
+}
 
 const LogoFrame = () => html`<div class="logo">
   <svg class="ln" style="--i:0" viewBox="0 0 40 56" width="56" height="78" aria-hidden="true">
@@ -942,7 +1008,7 @@ export function Stage({ state, out = 'preview', layout = 'full', background = 'a
         ${kind === 'board' && html`<${BoardFrame} item=${data.item} sub=${st.sub || 0} reveal=${st.reveal !== false} lt=${lowerThird} still=${still === true} />`}
         ${kind === 'title' && html`<${TitleFrame} item=${data.item} />`}
         ${kind === 'logo' && html`<${LogoFrame} />`}
-        ${kind === 'welcome' && html`<${WelcomeFrame} card=${data.f.card} />`}
+        ${kind === 'welcome' && html`<${WelcomeFrame} card=${data.f.card} motion=${st.calm ? 'gentle' : welcomeMotionOf(st)} still=${still === true} />`}
       </div>`;
     })}
     ${illus &&

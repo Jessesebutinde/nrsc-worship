@@ -177,6 +177,15 @@ the bottom line; a blank line is left out), shows a card at once, and goes back 
 wording travels with the state, so every TV shows the same card. The stream feed and the OBS link never show
 it, nor the plain logo: while the TV is idle they show nothing.
 
+The card is alive, quietly. On Sunday the light through the glass sways and its colour pools drift while specks of
+light rise; on Wednesday dust floats in a lamplight that breathes and the book's page lifts and turns over; on
+Friday embers rise from the altar's glow and the flame flickers; on other days the stars twinkle and now and then
+one falls. The glyph's halo breathes, a light passes over the big word every so often, and the verse turns to the
+next one (four for each card) every 24 seconds, fading out and rising in. **Motion** in Settings → Welcome cards
+sets how much: **Lively** (all of it), **Gentle** (the glow and the flame only) or **Still**. A reworded verse
+stays put instead of turning. Calm mode, the console's previews and a TV that asks for reduced motion get the
+still card.
+
 ## Words that use the screen
 
 By default the words **grow to fill the TV**: each slide is measured in the real font and sized as large as fits
