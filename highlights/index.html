@@ -1,0 +1,65 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NRSC Highlights Cutter</title><style>
+:root{--ink:#171E33;--panel:#212A45;--raise:#2B3656;--line:#3A4668;--amber:#F2B544;--text:#F4EFE4;--mute:#97A1C1;--ok:#7DE2A8;--bad:#FF8A8A}
+*{box-sizing:border-box}body{margin:0;background:var(--ink);color:var(--text);font:15px system-ui,sans-serif}
+header{padding:12px 14px;background:var(--panel);display:flex;gap:8px;align-items:center;flex-wrap:wrap}h1{font-size:18px;margin:0 auto 0 0;color:var(--amber)}
+main{max-width:900px;margin:auto;padding:12px}section{background:var(--panel);border-radius:14px;padding:12px;margin-bottom:12px}
+h2{font-size:15px;margin:0 0 8px;color:var(--mute)}input,select{background:var(--raise);border:1px solid var(--line);color:var(--text);border-radius:10px;padding:9px;min-height:40px}
+button{background:var(--raise);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:9px 12px;min-height:40px;cursor:pointer}
+button.p{background:var(--amber);color:#171E33;font-weight:700;border:0}.row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:6px 0}
+.src{padding:8px;border-radius:10px;cursor:pointer;border:1px solid transparent}.src.on{border-color:var(--amber);background:var(--raise)}
+#pw{aspect-ratio:16/9;background:#000;border-radius:10px;overflow:hidden}#pw iframe,#pw>div{width:100%;height:100%}
+.clip{display:flex;gap:6px;align-items:center;padding:6px;border-bottom:1px solid var(--line);flex-wrap:wrap}.clip.play{background:var(--raise)}
+.t{font-variant-numeric:tabular-nums;color:var(--ok)}.m{color:var(--mute);font-size:13px}.grow{flex:1;min-width:120px}
+</style></head><body>
+<header><h1>✂️ NRSC Highlights Cutter</h1><select id="proj"></select><button onclick="newProj()">+ Project</button><button onclick="renProj()">Rename</button><button onclick="delProj()">Delete</button></header>
+<main>
+<section><h2>1 · Sources (YouTube / Streams links)</h2>
+<div class="row"><input id="url" class="grow" placeholder="Paste YouTube link"><input id="date" type="date"><input id="svc" placeholder="Service e.g. Sun 1st" style="width:150px"><button class="p" onclick="addSrc()">Add</button></div>
+<div id="srcs"></div></section>
+<section><h2>2 · Mark clips</h2><div id="pw"><div id="player"></div></div>
+<div class="row"><b>Now <span class="t" id="now">0:00</span></b> · In <span class="t" id="vin">–</span> · Out <span class="t" id="vout">–</span></div>
+<div class="row"><button class="p" onclick="mark('in')">[ Mark In</button><button class="p" onclick="mark('out')">Mark Out ]</button>
+<button onclick="nudge(-5)">−5s</button><button onclick="nudge(-1)">−1s</button><button onclick="nudge(1)">+1s</button><button onclick="nudge(5)">+5s</button></div>
+<div class="row"><input id="lbl" class="grow" placeholder="Clip label (e.g. Sermon key point)"><button class="p" onclick="addClip()">Save clip</button></div></section>
+<section><h2>3 · Highlight playlist <span class="m" id="tot"></span></h2><div id="clips"></div>
+<div class="row"><button class="p" onclick="preview()">▶ Preview all</button><button onclick="stopPrev()">■ Stop</button></div></section>
+<section><h2>4 · Save / send</h2><div class="row"><button class="p" onclick="copyJSON()">Copy project JSON (send to Alex)</button><button onclick="backup()">Backup all</button><label><button onclick="rf.click()">Restore</button></label><input type="file" id="rf" accept=".json" hidden onchange="restore(this.files[0])"></div>
+<p class="m">Saved in this browser only. Use Backup/Restore to move between phone and PC. Alex builds the final video (short crossfades) → unlisted YouTube + Drive.</p></section>
+</main>
+<script src="https://www.youtube.com/iframe_api"></script>
+<script>
+const K='nrsc-highlights-v1';let db=JSON.parse(localStorage.getItem(K)||'null')||{cur:null,projects:{}};
+let P,cur=null,inT=null,outT=null,prevI=-1,timer;
+const $=id=>document.getElementById(id),fmt=s=>{s=Math.max(0,Math.round(s*10)/10);const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=(s%60).toFixed(1).padStart(4,'0');return(h?h+':'+String(m).padStart(2,'0'):m)+':'+x};
+const ytid=u=>{const m=u.match(/(?:v=|youtu\.be\/|embed\/|live\/|shorts\/)([\w-]{11})/);return m?m[1]:(/^[\w-]{11}$/.test(u)?u:null)};
+const save=()=>{localStorage.setItem(K,JSON.stringify(db));render()};const pj=()=>db.projects[db.cur];
+function newProj(n){n=n||prompt('Project name (e.g. Sunday 1 Nov 2026 or Week 26 Oct–1 Nov)');if(!n)return;const id='p'+Date.now();db.projects[id]={name:n,created:new Date().toISOString(),sources:[],clips:[],join:{transition:'crossfade',crossfade_sec:0.5,title_cards:false}};db.cur=id;save()}
+function renProj(){const n=prompt('New name',pj().name);if(n){pj().name=n;save()}}
+function delProj(){if(!confirm('Delete project '+pj().name+'?'))return;delete db.projects[db.cur];db.cur=Object.keys(db.projects)[0]||null;if(!db.cur)newProj('My first highlight');else save()}
+function addSrc(){const u=$('url').value.trim(),id=ytid(u);if(!id)return alert('Could not read a YouTube video ID from that link');pj().sources.push({id:'s'+Date.now(),yt:id,url:u,date:$('date').value,service:$('svc').value.trim()});$('url').value='';save();load(pj().sources.length-1)}
+function load(i,t){const s=pj().sources[i];if(!s)return;cur=s.id;inT=outT=null;if(P&&P.loadVideoById)P.loadVideoById({videoId:s.yt,startSeconds:t||0});render()}
+function onYouTubeIframeAPIReady(){P=new YT.Player('player',{playerVars:{playsinline:1,rel:0},events:{onReady:()=>{const s=pj()&&pj().sources.find(x=>x.id==cur)||pj().sources[0];if(s){cur=s.id;P.cueVideoById(s.yt)}render()}}});setInterval(tick,250)}
+function tick(){if(!P||!P.getCurrentTime)return;const t=P.getCurrentTime();$('now').textContent=fmt(t);if(prevI>=0){const c=pj().clips[prevI];if(t>=c.out)playClip(prevI+1)}}
+function mark(w){if(!cur)return alert('Add/select a source first');const t=+P.getCurrentTime().toFixed(1);w=='in'?inT=t:outT=t;render()}
+function nudge(d){P.seekTo(Math.max(0,P.getCurrentTime()+d),true)}
+function addClip(){if(inT==null||outT==null||outT<=inT)return alert('Mark In then Mark Out (Out must be after In)');pj().clips.push({id:'c'+Date.now(),source:cur,in:inT,out:outT,label:$('lbl').value.trim()});inT=outT=null;$('lbl').value='';save()}
+function playClip(i){const c=pj().clips[i];if(!c){stopPrev();return}prevI=i;const s=pj().sources.find(x=>x.id==c.source);cur=s.id;P.loadVideoById({videoId:s.yt,startSeconds:c.in});render()}
+function preview(){if(pj().clips.length)playClip(0)}function stopPrev(){prevI=-1;P&&P.pauseVideo&&P.pauseVideo();render()}
+function mv(i,d){const a=pj().clips,j=i+d;if(j<0||j>=a.length)return;[a[i],a[j]]=[a[j],a[i]];save()}
+function setC(i,k,v){pj().clips[i][k]=k=='label'?v:+(+v).toFixed(1);save()}
+function exportObj(){const p=pj();return{app:'nrsc-highlights',version:1,project:p.name,created:p.created,join:p.join,sources:p.sources,clips:p.clips.map(c=>({...c,yt:p.sources.find(s=>s.id==c.source).yt}))}}
+function copyJSON(){const t=JSON.stringify(exportObj(),null,1);navigator.clipboard.writeText(t).then(()=>alert('Copied! Paste it to Alex.'),()=>prompt('Copy this',t))}
+function dl(name,obj){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(obj,null,1)],{type:'application/json'}));a.download=name;a.click()}
+function backup(){dl('nrsc-highlights-backup-'+new Date().toISOString().slice(0,10)+'.json',db)}
+function restore(f){f&&f.text().then(t=>{const d=JSON.parse(t);if(d.projects){Object.assign(db.projects,d.projects);db.cur=db.cur||d.cur}else if(d.app=='nrsc-highlights'){const id='p'+Date.now();db.projects[id]={name:d.project,created:d.created,sources:d.sources,clips:d.clips,join:d.join};db.cur=id}save();alert('Restored')})}
+function esc(s){return(s||'').replace(/[&<>"]/g,c=>'&#'+c.charCodeAt(0)+';')}
+function render(){$('proj').innerHTML=Object.entries(db.projects).map(([k,p])=>`<option value="${k}"${k==db.cur?' selected':''}>${esc(p.name)}</option>`).join('');
+const p=pj();$('srcs').innerHTML=p.sources.map((s,i)=>`<div class="src${s.id==cur?' on':''}" onclick="load(${i})">${i+1}. <b>${esc(s.date||'no date')} · ${esc(s.service||'service')}</b> <span class="m">${s.yt}</span> <button onclick="event.stopPropagation();if(confirm('Remove source and its clips?')){pj().clips=pj().clips.filter(c=>c.source!='${s.id}');pj().sources.splice(${i},1);save()}">✕</button></div>`).join('')||'<p class="m">No sources yet.</p>';
+$('vin').textContent=inT==null?'–':fmt(inT);$('vout').textContent=outT==null?'–':fmt(outT);
+let tot=0;$('clips').innerHTML=p.clips.map((c,i)=>{tot+=c.out-c.in;const s=p.sources.find(x=>x.id==c.source)||{};return`<div class="clip${i==prevI?' play':''}"><b>${i+1}</b><input class="grow" value="${esc(c.label)}" placeholder="label" onchange="setC(${i},'label',this.value)"><span class="m">${esc(s.date||'')} ${esc(s.service||'')}</span>
+<input style="width:80px" type="number" step="0.5" value="${c.in}" onchange="setC(${i},'in',this.value)">→<input style="width:80px" type="number" step="0.5" value="${c.out}" onchange="setC(${i},'out',this.value)"><span class="t">${fmt(c.out-c.in)}</span>
+<button onclick="playClip(${i})">▶</button><button onclick="mv(${i},-1)">↑</button><button onclick="mv(${i},1)">↓</button><button onclick="if(confirm('Delete clip?')){pj().clips.splice(${i},1);save()}">✕</button></div>`}).join('')||'<p class="m">No clips yet. Mark In/Out and Save clip.</p>';$('tot').textContent=p.clips.length?`· ${p.clips.length} clips · ${fmt(tot)}`:''}
+$('proj').onchange=e=>{db.cur=e.target.value;cur=null;save()};
+if(!db.cur)newProj('My first highlight');else render();
+</script></body></html>

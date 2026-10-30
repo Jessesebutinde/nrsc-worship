@@ -1,0 +1,3 @@
+{"app":"nrsc-highlights","version":1,"project":"Test week","join":{"transition":"crossfade","crossfade_sec":0.5,"title_cards":false},
+"sources":[{"id":"s1","yt":"FmiM7DEb_1c"},{"id":"s2","yt":"oEhLzT6JJQw"}],
+"clips":[{"source":"s1","yt":"FmiM7DEb_1c","in":1800,"out":1806,"label":"a"},{"source":"s2","yt":"oEhLzT6JJQw","in":1200,"out":1205,"label":"b"},{"source":"s1","yt":"FmiM7DEb_1c","in":3600,"out":3604,"label":"c"}]}
